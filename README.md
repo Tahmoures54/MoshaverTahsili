@@ -47,11 +47,15 @@ GitHub Actions در نبود keystore خصوصی، APK را با امضای debu
 - RELEASE_KEY_ALIAS
 - RELEASE_KEY_PASSWORD
 
-کلید خصوصی را در مخزن commit نکنید. در ویندوز می‌توانید محتوای Base64 فایل keystore را با دستور PowerShell زیر تولید کنید و خروجی را در Secret مربوط قرار دهید:
+کلید خصوصی را در مخزن commit نکنید و آن را به‌صورت Artifact در GitHub Actions نسازید. کلید را روی رایانه خودتان به‌صورت محلی بسازید؛ در PowerShell دستور زیر را اجرا کنید و رمزها را فقط نزد خود نگه دارید:
+
+    keytool -genkeypair -v -keystore upload-keystore.jks -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+
+سپس محتوای Base64 فایل keystore را با دستور زیر تولید کنید و خروجی را در Secret مربوط قرار دهید:
 
     [Convert]::ToBase64String([IO.File]::ReadAllBytes("upload-keystore.jks"))
 
-پس از تنظیم چهار Secret امضا و Secret مربوط به AI، نسخه را در `pubspec.yaml` افزایش دهید و یک tag مانند `v1.0.1` روی commit نهایی بسازید. GitHub Actions فقط در صورت وجود همه این مقادیر، APK امضاشده را می‌سازد و در GitHub Release منتشر می‌کند. Push عادی به `main` همچنان APK آزمایشی می‌سازد.
+مقادیر Secretها را این‌گونه تنظیم کنید: `RELEASE_KEY_ALIAS=upload`، رمز keystore در `RELEASE_KEYSTORE_PASSWORD`، رمز کلید در `RELEASE_KEY_PASSWORD` و خروجی Base64 در `RELEASE_KEYSTORE_BASE64`. پس از تنظیم چهار Secret امضا و Secret مربوط به AI، نسخه را در `pubspec.yaml` افزایش دهید و یک tag مانند `v1.0.1` روی commit نهایی بسازید. GitHub Actions فقط در صورت وجود همه این مقادیر، APK امضاشده را می‌سازد و در GitHub Release منتشر می‌کند. Push عادی به `main` همچنان APK آزمایشی می‌سازد.
 
 از فایل keystore و رمزهای آن نسخه پشتیبان امن نگه دارید؛ از دست رفتن کلید انتشار می‌تواند به‌روزرسانی نسخه منتشرشده را مختل کند.
 
