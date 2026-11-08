@@ -50,22 +50,24 @@ void main() {
 
     final answer = await service.ask(
       profile: {'grade': 'متوسطه اول', 'field': 'عمومی', 'goal': 'بهبود ریاضی'},
-      history: const [
-        {'role': 'user', 'content': 'در ریاضی مشکل دارم.'},
-        {'role': 'assistant', 'content': 'کدام مبحث؟'},
-      ],
+      history: List.generate(
+        30,
+        (index) => {'role': 'user', 'content': 'turn-$index'},
+      ),
       question: 'برای من برنامه بده.',
     );
 
     expect(answer, 'برای شروع، یک برنامه واقع‌بینانه بنویس.');
     expect(captured!.url.toString(), 'https://example.test/v1/chat/completions');
-    expect(captured!.headers['authorization'], 'Bearer test-key');
+    expect(captured!.headers['Authorization'], 'Bearer test-key');
     final body = jsonDecode(captured!.body) as Map<String, dynamic>;
     expect(body['model'], 'test-model');
     final messages = body['messages'] as List<dynamic>;
     expect(messages[0]['role'], 'system');
     expect(messages[0]['content'], contains('متوسطه اول'));
-    expect(messages[1]['content'], 'در ریاضی مشکل دارم.');
+    expect(messages.length, 26); // system + latest 24 turns + current question
+    expect(messages[1]['content'], 'turn-6');
+    expect(messages[24]['content'], 'turn-29');
     expect(messages.last['content'], 'برای من برنامه بده.');
     service.dispose();
   });
