@@ -38,7 +38,11 @@ class AiAdvisorService {
           'هیچ رشته یا آینده‌ای را تضمین نکن و در صورت نامطمئن بودن، صریح بگو.'
       },
       ...history.where((m) => m['role'] == 'user' || m['role'] == 'assistant')
+          .toList()
+          .reversed
           .take(24)
+          .toList()
+          .reversed
           .map((m) => {'role': m['role'].toString(), 'content': m['content'].toString()}),
       {'role': 'user', 'content': question},
     ];
