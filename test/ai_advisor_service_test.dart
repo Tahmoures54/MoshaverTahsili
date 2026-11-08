@@ -30,7 +30,7 @@ void main() {
 
   test('does not charge a credit when the AI request fails', () async {
     TestWidgetsFlutterBinding.ensureInitialized();
-    SharedPreferences.setMockInitialValues({'edu.ai.successful_uses': 2, 'edu.ai.credits': 2});
+    SharedPreferences.setMockInitialValues({'edu.ai.wallet': jsonEncode({'successful_uses': 2, 'credits': 2, 'purchase_tokens': <String>[]})});
     final store = await EducationStore.open();
     final service = AiAdvisorService(
       store: store,
