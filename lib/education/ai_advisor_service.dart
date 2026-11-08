@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'education_store.dart';
 
 class AiAdvisorService {
-  AiAdvisorService({http.Client? client, String? apiKey, String? endpoint, String? model})
+  AiAdvisorService({http.Client? client, String? apiKey, String? endpoint, String? model, this.store})
       : client = client ?? http.Client(),
         apiKey = apiKey ?? const String.fromEnvironment('AI_API_KEY'),
         endpoint = endpoint ?? const String.fromEnvironment(
@@ -10,6 +11,7 @@ class AiAdvisorService {
           defaultValue: 'https://api.avalai.ir/v1/chat/completions',
         ),
         model = model ?? const String.fromEnvironment('AI_MODEL', defaultValue: 'deepseek-chat');
+  final EducationStore? store;
   final http.Client client;
   final String apiKey;
   final String endpoint;
@@ -20,6 +22,9 @@ class AiAdvisorService {
     required List<Map<String, dynamic>> history,
     required String question,
   }) async {
+    if (store != null && !store!.canUseAi) {
+      throw Exception('اعتبار رایگان شما تمام شده است. برای ادامه، بسته اعتبار تهیه کنید.');
+    }
     if (apiKey.trim().isEmpty) {
       throw Exception('سرویس هوش مصنوعی هنوز برای این نسخه پیکربندی نشده است. سایر امکانات برنامه به‌صورت آفلاین در دسترس‌اند.');
     }
@@ -63,6 +68,9 @@ class AiAdvisorService {
       final message = (choices.first as Map<String, dynamic>)['message'] as Map<String, dynamic>?;
       final answer = message?['content']?.toString().trim() ?? '';
       if (answer.isEmpty) throw Exception('پاسخ خالی از سرویس دریافت شد.');
+      if (store != null && !await store!.recordSuccessfulAiUse()) {
+        throw Exception('اعتبار کافی برای ادامه وجود ندارد.');
+      }
       return answer;
     } on Exception {
       rethrow;
