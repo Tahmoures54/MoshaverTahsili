@@ -49,6 +49,8 @@ jobs:
         run: flutter pub get --enforce-lockfile
       - name: Source and Android security checks
         run: python3 scripts/security_check.py
+      - name: Format Dart sources
+        run: dart format .
       - name: Static analysis (including infos)
         run: |
           mkdir -p build/reports
