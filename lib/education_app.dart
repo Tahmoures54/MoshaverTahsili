@@ -188,6 +188,7 @@ class HomePage extends StatelessWidget {
       QuickTile(icon: Icons.calendar_month, title: 'برنامه مطالعه', subtitle: 'ثبت و پیگیری کارهای درسی', onTap: () => go(1)),
       QuickTile(icon: Icons.assessment, title: 'آزمون و کارنامه', subtitle: 'ثبت نمرات و بررسی عملکرد', onTap: () => go(2)),
       QuickTile(icon: Icons.style, title: 'مرور و فلش‌کارت', subtitle: 'مرور پرسش و پاسخ‌ها', onTap: () => go(3)),
+      QuickTile(icon: Icons.explore_outlined, title: 'راهنمای انتخاب رشته', subtitle: 'بررسی علاقه‌ها و توانایی‌ها با کمک مشاور', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CareerPage(store: store)))),
       const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('انتخاب رشته را با شناخت علاقه‌ها، توانایی‌ها و واقعیت‌های هر مسیر انجام بده؛ هیچ آزمونی به‌تنهایی آینده تو را تعیین نمی‌کند.', style: TextStyle(height: 1.7)))),
     ]);
   }
@@ -314,7 +315,7 @@ class _CardsPageState extends State<CardsPage> {
       actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
         FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('ذخیره'))]));
     if (ok == true && q.text.trim().isNotEmpty && a.text.trim().isNotEmpty) {
-      await widget.store.addCard({'id': DateTime.now().microsecondsSinceEpoch.toString(), 'q': q.text.trim(), 'a': a.text.trim(), 'interval': 0});
+      await widget.store.addCard({'id': DateTime.now().microsecondsSinceEpoch.toString(), 'q': q.text.trim(), 'a': a.text.trim(), 'interval': 0, 'dueAt': DateTime.now().toIso8601String()});
       setState(() {}); widget.changed();
     }
     q.dispose(); a.dispose();
@@ -322,16 +323,22 @@ class _CardsPageState extends State<CardsPage> {
   @override
   Widget build(BuildContext context) {
     final cards = widget.store.cards;
+    final now = DateTime.now();
+    final dueCount = cards.where((c) {
+      final raw = c['dueAt']?.toString();
+      final due = raw == null ? null : DateTime.tryParse(raw);
+      return due == null || !due.isAfter(now);
+    }).length;
     return Scaffold(backgroundColor: Colors.transparent, floatingActionButton: FloatingActionButton.extended(onPressed: add, icon: const Icon(Icons.add), label: const Text('ساخت فلش‌کارت')),
       body: ListView(padding: const EdgeInsets.fromLTRB(14, 12, 14, 90), children: [
-        Card(child: ListTile(leading: const Icon(Icons.psychology_alt, color: Colors.deepPurple), title: Text(cards.length.toString() + ' فلش‌کارت'), subtitle: const Text('پرسش‌ها را مرور کن و پاسخ را به یاد بیاور.'))),
+        Card(child: ListTile(leading: const Icon(Icons.psychology_alt, color: Colors.deepPurple), title: Text(cards.length.toString() + ' فلش‌کارت · ' + dueCount.toString() + ' آماده مرور'), subtitle: const Text('فاصله مرور کارت‌ها با میزان تسلط تو بیشتر می‌شود.'))),
         if (cards.isEmpty) const EmptyState(title: 'فلش‌کارتی نداری', subtitle: 'یک پرسش و پاسخ بساز.', icon: Icons.style),
         ...cards.map((c) => Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text(c['q'].toString(), style: const TextStyle(fontWeight: FontWeight.bold, color: navy)),
           if (revealed == c['id']) ...[const Divider(), Text(c['a'].toString(), style: const TextStyle(height: 1.6)),
             Wrap(spacing: 8, children: [
-              OutlinedButton(onPressed: () async { c['interval'] = 1; await widget.store.updateCard(c); setState(() => revealed = null); }, child: const Text('دوباره مرور می‌کنم')),
-              FilledButton(onPressed: () async { c['interval'] = ((c['interval'] as num?)?.toInt() ?? 0) < 1 ? 1 : (c['interval'] as num).toInt() * 2; await widget.store.updateCard(c); setState(() => revealed = null); }, child: const Text('یاد گرفتم')),
+              OutlinedButton(onPressed: () async { c['interval'] = 1; c['dueAt'] = DateTime.now().add(const Duration(days: 1)).toIso8601String(); await widget.store.updateCard(c); setState(() => revealed = null); }, child: const Text('دوباره مرور می‌کنم')),
+              FilledButton(onPressed: () async { c['interval'] = ((c['interval'] as num?)?.toInt() ?? 0) < 1 ? 1 : (c['interval'] as num).toInt() * 2; c['dueAt'] = DateTime.now().add(Duration(days: (c['interval'] as num).toInt())).toIso8601String(); await widget.store.updateCard(c); setState(() => revealed = null); }, child: const Text('یاد گرفتم')),
             ])
           ] else TextButton(onPressed: () => setState(() => revealed = c['id'].toString()), child: const Text('نمایش پاسخ')),
           Align(alignment: Alignment.centerLeft, child: IconButton(onPressed: () async { await widget.store.deleteCard(c['id'].toString()); setState(() {}); widget.changed(); }, icon: const Icon(Icons.delete_outline))),
@@ -405,4 +412,80 @@ class EmptyState extends StatelessWidget {
     child: Column(children: [Icon(icon, size: 46, color: Colors.blueGrey.shade300), const SizedBox(height: 12),
       Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: navy)), const SizedBox(height: 6),
       Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Colors.blueGrey))]));
+}
+
+class CareerPage extends StatefulWidget {
+  const CareerPage({super.key, required this.store});
+  final EducationStore store;
+  @override
+  State<CareerPage> createState() => _CareerPageState();
+}
+
+class _CareerPageState extends State<CareerPage> {
+  final interests = TextEditingController();
+  final strengths = TextEditingController();
+  final favoriteSubjects = TextEditingController();
+  final workStyle = TextEditingController();
+  final advisor = AiAdvisorService();
+  String? result;
+  String? error;
+  bool busy = false;
+
+  @override
+  void dispose() {
+    interests.dispose();
+    strengths.dispose();
+    favoriteSubjects.dispose();
+    workStyle.dispose();
+    advisor.dispose();
+    super.dispose();
+  }
+
+  Future<void> analyze() async {
+    if (interests.text.trim().isEmpty || favoriteSubjects.text.trim().isEmpty) {
+      setState(() => error = 'لطفاً دست‌کم علاقه‌ها و درس‌های موردعلاقه‌ات را بنویس.');
+      return;
+    }
+    setState(() { busy = true; error = null; result = null; });
+    final question = 'برای راهنمایی انتخاب رشته، این اطلاعات را بررسی کن. '
+      'علاقه‌ها: ' + interests.text.trim() +
+      '. توانایی‌ها و نقاط قوت از نگاه خود دانش‌آموز: ' + strengths.text.trim() +
+      '. درس‌های مورد علاقه: ' + favoriteSubjects.text.trim() +
+      '. سبک کاری مورد علاقه: ' + workStyle.text.trim() +
+      '. چند مسیر تحصیلی احتمالی را با دلیل، مزایا، دشواری‌ها و سؤال‌های تکمیلی معرفی کن. '
+      'هیچ رشته‌ای را قطعی تجویز نکن و تأکید کن که بررسی با مشاور مدرسه و منابع رسمی لازم است.';
+    try {
+      final answer = await advisor.ask(profile: widget.store.profile, history: const [], question: question);
+      if (mounted) setState(() => result = answer);
+    } catch (e) {
+      if (mounted) setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: Colors.transparent,
+    appBar: AppBar(title: const Text('راهنمای انتخاب رشته')),
+    body: ListView(padding: const EdgeInsets.all(16), children: [
+      const Card(child: Padding(padding: EdgeInsets.all(16), child: Text(
+        'این پرسش‌نامه برای شروع گفت‌وگو و شناخت گزینه‌هاست؛ نتیجه آن آزمون روان‌سنجی یا تشخیص قطعی استعداد نیست. پاسخ‌ها برای تحلیل به سرویس هوش مصنوعی ارسال می‌شوند.',
+        style: TextStyle(height: 1.7),
+      ))),
+      const SizedBox(height: 12),
+      TextField(controller: interests, maxLines: 3, decoration: const InputDecoration(labelText: 'به چه موضوع‌ها و فعالیت‌هایی علاقه داری؟')),
+      const SizedBox(height: 10),
+      TextField(controller: strengths, maxLines: 3, decoration: const InputDecoration(labelText: 'در چه کارهایی احساس توانمندی می‌کنی؟')),
+      const SizedBox(height: 10),
+      TextField(controller: favoriteSubjects, maxLines: 2, decoration: const InputDecoration(labelText: 'درس‌های مورد علاقه یا قوی‌تر تو')),
+      const SizedBox(height: 10),
+      TextField(controller: workStyle, maxLines: 2, decoration: const InputDecoration(labelText: 'کار عملی، پژوهشی، هنری، ارتباط با مردم یا چه سبک دیگری را دوست داری؟')),
+      const SizedBox(height: 14),
+      FilledButton.icon(onPressed: busy ? null : analyze, icon: const Icon(Icons.auto_awesome), label: Text(busy ? 'در حال بررسی...' : 'بررسی گزینه‌های تحصیلی')),
+      if (busy) const Padding(padding: EdgeInsets.all(18), child: Center(child: CircularProgressIndicator())),
+      if (error != null) Card(child: Padding(padding: const EdgeInsets.all(14), child: Text(error!, style: const TextStyle(color: Colors.red)))),
+      if (result != null) Card(child: Padding(padding: const EdgeInsets.all(16), child: SelectableText(result!, style: const TextStyle(height: 1.75)))),
+    ]),
+  );
 }
