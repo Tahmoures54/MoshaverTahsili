@@ -187,7 +187,9 @@ class AiAdvisorService {
       // Exception details may contain URLs or credentials; do not expose them.
       throw const AiException(AiErrorKind.network, 'ارتباط با مشاور برقرار نشد. اتصال اینترنت را بررسی کن.');
     } finally {
-      await subscription?.cancel();
+      try { await subscription?.cancel(); } on Object {
+        // The safe request error above remains the user-visible result.
+      }
     }
   }
 

@@ -174,7 +174,7 @@ class EducationStore extends ChangeNotifier {
     final pendingFree = (_wallet['requests'] as Map).values
         .where((Object? item) => item is Map && item['status'] == 'pending' && item['charge'] == 'free')
         .length;
-    return (freeUses - successfulAiUses - pendingFree).clamp(0, freeUses);
+    return (freeUses - successfulAiUses - pendingFree).clamp(0, freeUses).toInt();
   }
   bool get hasActiveAiRequests => _activeRequests.isNotEmpty;
   bool get canUseAi => _walletError == null && (freeAiUsesRemaining > 0 || credits > 0);
@@ -282,8 +282,8 @@ class EducationStore extends ChangeNotifier {
       wallet['successful_uses'] = successfulAiUses + 1;
     }
     _markTransaction(wallet, id, 'completed');
-    await _saveWallet(wallet);
     _activeRequests.remove(id);
+    await _saveWallet(wallet);
   });
 
   Future<void> refundAiRequest(String id) => _serialized(() async {
@@ -295,8 +295,8 @@ class EducationStore extends ChangeNotifier {
     _markTransaction(wallet, id, 'refunded');
     _transaction(wallet, '$id-refund', 'refund', request['charge'] == 'credit' ? 1 : 0,
         'بازگشت اعتبار درخواست ناموفق', 'completed');
-    await _saveWallet(wallet);
     _activeRequests.remove(id);
+    await _saveWallet(wallet);
   });
 
   /// Called once at startup, before any request can become active.

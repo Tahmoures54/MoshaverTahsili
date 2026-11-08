@@ -20,6 +20,8 @@ void main() {
     await tester.tap(find.text('بزن بریم'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, 'دانش‌آموز آزمون');
+    await tester.ensureVisible(find.text('ذخیره پروفایل'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('ذخیره پروفایل'));
     await tester.pumpAndSettle();
     expect(find.text('سلام دانش‌آموز آزمون!'), findsOneWidget);

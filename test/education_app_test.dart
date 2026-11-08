@@ -38,6 +38,8 @@ void main() {
     await tester.tap(find.text('بزن بریم'));
     await tester.pumpAndSettle();
     expect(find.text('پایه تحصیلی'), findsOneWidget);
+    await tester.ensureVisible(find.text('ذخیره پروفایل'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('ذخیره پروفایل'));
     await tester.pumpAndSettle();
     expect(find.text('سلام، همراه پرتلاش!'), findsOneWidget);

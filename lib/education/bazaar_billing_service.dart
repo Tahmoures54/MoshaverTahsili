@@ -84,7 +84,7 @@ class PluginBazaarGateway implements BazaarGateway {
   Future<List<ShopProduct>> products(List<String> ids) async {
     final details = await CafeBazaarBilling.getInAppSkuDetails(ids);
     return [for (final item in details)
-      if (CreditCatalog.byId(item.sku) != null && item.price.isNotEmpty)
+      if (CreditCatalog.byId(item.sku) != null && item.type == 'inapp' && item.price.isNotEmpty)
         ShopProduct(CreditCatalog.byId(item.sku)!, item.price)];
   }
   @override

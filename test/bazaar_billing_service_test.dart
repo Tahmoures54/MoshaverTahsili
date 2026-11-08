@@ -102,7 +102,7 @@ void main() {
   test('rejects wrong package, product, signature, token and purchase state', () async {
     final (store, gateway, service) = await setup();
     for (final invalid in [verifiedPurchase(package: 'other.app'), verifiedPurchase(id: 'credit_35'),
-      purchase(signature: ''), verifiedPurchase(token: ''), verifiedPurchase(purchased: false)]) {
+      verifiedPurchase(signature: ''), verifiedPurchase(token: ''), verifiedPurchase(purchased: false)]) {
       gateway.next = invalid;
       await expectLater(service.buy('credit_10'), throwsA(isA<BillingException>()));
     }
