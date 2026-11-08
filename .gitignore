@@ -1,98 +1,48 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# مشاور هوشمند تحصیلی - Flutter
-# ─────────────────────────────────────────────────────────────────────────────
-
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
-
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
-
-# VS Code
-.vscode/
-
-# Flutter/Dart/Pub
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-.pub-cache/
-.pub/
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
 build/
+*.egg
+.eggs/
+*.whl
 
-# Symbolication
-app.*.symbols
+# ===== Django =====
+*.sqlite3
+db.sqlite3
+media/
+staticfiles/
+static_collected/
 
-# Obfuscation
-app.*.map.json
-
-# Android (تغییرات اساسی برای حل مشکل بیلد گیت‌هاب)
-**/android/.gradle
-**/android/captures/
-**/android/local.properties
-**/android/**/GeneratedPluginRegistrant.java
-
-# کلیدها و فایل‌های امنیتی (باید در گیت‌هاب سکرت بمانند)
-**/android/key.properties
-*.jks
-*.keystore
-
-# iOS
-**/ios/**/*.mode1v3
-**/ios/**/*.mode2v3
-**/ios/**/*.moved-aside
-**/ios/**/*.pbxuser
-**/ios/**/*.perspectivev3
-**/ios/**/*sync/
-**/ios/**/.sconsign.dblite
-**/ios/**/.tags*
-**/ios/**/.vagrant/
-**/ios/**/DerivedData/
-**/ios/**/Icon?
-**/ios/**/Pods/
-**/ios/**/.symlinks/
-**/ios/**/profile
-**/ios/**/xcuserdata
-**/ios/.generated/
-**/ios/Flutter/.last_build_id
-**/ios/Flutter/App.framework
-**/ios/Flutter/Flutter.framework
-**/ios/Flutter/Flutter.podspec
-**/ios/Flutter/Generated.xcconfig
-**/ios/Flutter/ephemeral
-**/ios/Flutter/app.flx
-**/ios/Flutter/app.zip
-**/ios/Flutter/flutter_assets/
-**/ios/Flutter/flutter_export_environment.sh
-**/ios/ServiceDefinitions.json
-**/ios/Runner/GeneratedPluginRegistrant.*
-
-# Coverage
-coverage/
-
-# Exceptions
-!**/ios/**/default.mode1v3
-!**/ios/**/default.mode2v3
-!**/ios/**/default.pbxuser
-!**/ios/**/default.perspectivev3
-
-# Secrets & env
+# ===== Environment =====
 .env
-.env.*
-!.env.example
-*.pem
-secrets/
+.env.local
+.env.*.local
+venv/
+env/
+.venv/
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ===== Docker =====
+docker-compose.override.yml
+
+# ===== Logs =====
+*.log
+logs/
+
+# ===== Coverage =====
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
