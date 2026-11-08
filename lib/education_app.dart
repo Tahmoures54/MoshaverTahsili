@@ -70,7 +70,7 @@ class _EntryScreenState extends State<EntryScreen> {
           Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('سخنی با اولیا و دانش‌آموزان گرامی', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: navy)),
             const SizedBox(height: 10),
-            const Text('این برنامه برای کمک به یادگیری، برنامه‌ریزی و شناخت مسیرهای تحصیلی طراحی شده است. برنامه درسی، نمرات و یادداشت‌ها روی همین گوشی ذخیره می‌شوند. برای استفاده از مشاور هوش مصنوعی، متن پرسش از طریق اینترنت به سرویس هوش مصنوعی ارسال می‌شود. پاسخ‌های هوش مصنوعی ممکن است اشتباه باشند و جایگزین نظر معلم، مشاور مدرسه یا منابع رسمی نیستند. اطلاعات حساس و غیرضروری را در گفتگو وارد نکنید.', style: TextStyle(height: 1.8)),
+            const Text('این برنامه برای کمک به یادگیری، برنامه‌ریزی و شناخت مسیرهای تحصیلی طراحی شده است. برنامه درسی، نمرات و یادداشت‌ها روی همین گوشی ذخیره می‌شوند. برای پاسخ‌گویی هوش مصنوعی، متن پرسش، مقطع و رشته تحصیلی ثبت‌شده و بخشی از گفت‌وگوهای قبلی از طریق اینترنت به سرویس هوش مصنوعی فرستاده می‌شود؛ نمرات و برنامه درسی برای این درخواست ارسال نمی‌شوند. اطلاعات حساس، نام کامل، نشانی و شماره تماس را وارد نکنید. پاسخ هوش مصنوعی ممکن است اشتباه باشد و جایگزین نظر معلم، مشاور مدرسه یا منابع رسمی نیست.', style: TextStyle(height: 1.8)),
             CheckboxListTile(value: accepted, contentPadding: EdgeInsets.zero, onChanged: (v) => setState(() => accepted = v ?? false),
               title: const Text('توضیحات و نکات حریم خصوصی را خواندم.'), controlAffinity: ListTileControlAffinity.leading),
           ]))),
