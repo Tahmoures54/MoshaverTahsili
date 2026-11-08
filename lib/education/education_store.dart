@@ -31,7 +31,7 @@ class EducationStore {
   // are free; subsequent successful requests consume one purchased credit.
   int get credits => prefs.getInt('edu.ai.credits') ?? 0;
   int get successfulAiUses => prefs.getInt('edu.ai.successful_uses') ?? 0;
-  int get freeAiUsesRemaining => (2 - successfulAiUses).clamp(0, 2);
+  int get freeAiUsesRemaining => (2 - successfulAiUses).clamp(0, 2).toInt();
   bool get canUseAi => freeAiUsesRemaining > 0 || credits > 0;
 
   Future<bool> recordSuccessfulAiUse() async {
