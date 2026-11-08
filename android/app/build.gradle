@@ -4,6 +4,12 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "ir.moshaver.tahsili"
     compileSdk = 36
@@ -15,10 +21,20 @@ android {
         versionName = flutter.versionName
         ndk { abiFilters "arm64-v8a" }
     }
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties["keyAlias"]
+                keyPassword = keystoreProperties["keyPassword"]
+                storePassword = keystoreProperties["storePassword"]
+                storeFile = file(keystoreProperties["storeFile"])
+            }
+        }
+    }
     buildTypes {
         release {
-            // CI fallback only; store releases require the owner's private signing key.
-            signingConfig = signingConfigs.debug
+            // CI fallback only; store releases must use the owner's private signing key.
+            signingConfig = keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'

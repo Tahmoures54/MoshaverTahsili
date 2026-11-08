@@ -36,6 +36,25 @@ jobs:
         run: flutter analyze --no-fatal-infos
       - name: Test
         run: flutter test
+      - name: Prepare Gradle wrapper
+        run: chmod +x android/gradlew
+      - name: Configure optional release signing
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          if [ -z "$RELEASE_KEYSTORE_BASE64" ]; then
+            echo "No private release keystore configured; CI APK will use debug signing and is not store-ready."
+            exit 0
+          fi
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > android/app/upload-keystore.jks
+          printf '%s\\n' \\
+            "storePassword=$RELEASE_KEYSTORE_PASSWORD" \\
+            "keyPassword=$RELEASE_KEY_PASSWORD" \\
+            "keyAlias=$RELEASE_KEY_ALIAS" \\
+            "storeFile=upload-keystore.jks" > android/key.properties
       - name: Build Android arm64 APK
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
