@@ -31,7 +31,7 @@ include ":app"
 
 // Plugins need flutter.compileSdkVersion; skip :app (Flutter plugin owns it)
 gradle.beforeProject { project ->
-    if (project.name == "app" || project.name == "smart_mechanic") {
+    if (project.name == "app" || project.name == "moshaver_tahsili") {
         return
     }
     if (!project.ext.has("flutter")) {
