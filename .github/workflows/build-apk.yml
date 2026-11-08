@@ -50,11 +50,12 @@ jobs:
             exit 0
           fi
           echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > android/app/upload-keystore.jks
-          printf '%s\\n' \\
-            "storePassword=$RELEASE_KEYSTORE_PASSWORD" \\
-            "keyPassword=$RELEASE_KEY_PASSWORD" \\
-            "keyAlias=$RELEASE_KEY_ALIAS" \\
-            "storeFile=upload-keystore.jks" > android/key.properties
+          cat > android/key.properties <<EOF
+          storePassword=$RELEASE_KEYSTORE_PASSWORD
+          keyPassword=$RELEASE_KEY_PASSWORD
+          keyAlias=$RELEASE_KEY_ALIAS
+          storeFile=upload-keystore.jks
+          EOF
       - name: Build Android arm64 APK
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
