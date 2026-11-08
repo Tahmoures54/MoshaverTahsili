@@ -23,33 +23,15 @@ class _PlannerPageState extends State<PlannerPage> {
   }
 
   Future<void> add() async {
-    final title = TextEditingController();
-    final subject = TextEditingController();
-    final duration = TextEditingController(text: '۳۰');
-    final form = GlobalKey<FormState>();
-    try {
-      final ok = await showDialog<bool>(context: context, builder: (context) => StatefulBuilder(
-        builder: (context, refresh) => AlertDialog(title: const Text('یک قدم تازه برای مطالعه'),
-          content: SizedBox(width: 420, child: SingleChildScrollView(child: Form(key: form, child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextFormField(controller: title, maxLength: 120, decoration: const InputDecoration(labelText: 'چه کاری می‌خواهی انجام بدهی؟'),
-                validator: (v) => v == null || v.trim().isEmpty ? 'عنوان کار را بنویس.' : null),
-            const SizedBox(height: 10),
-            TextFormField(controller: subject, maxLength: 80, decoration: const InputDecoration(labelText: 'درس (اختیاری)')),
-            TextFormField(controller: duration, keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'زمان مطالعه به دقیقه'),
-                validator: (v) { final n = int.tryParse(digitsToEnglish(v ?? '')); return n == null || n < 1 || n > 1440 ? 'زمان باید بین ۱ تا ۱۴۴۰ دقیقه باشد.' : null; }),
-          ])))),
-          actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
-            FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(context, true); }, child: const Text('افزودن'))])));
-      if (ok == true && mounted) {
-        await mutate(() => widget.store.addTask({
-          'id': newId('task'), 'title': title.text.trim(),
-          'subject': subject.text.trim().isEmpty ? 'عمومی' : subject.text.trim(),
-          'minutes': int.parse(digitsToEnglish(duration.text)), 'done': false,
-          'createdAt': DateTime.now().toIso8601String(),
-        }));
-      }
-    } finally { title.dispose(); subject.dispose(); duration.dispose(); }
+    final result = await showDialog<Map<String, String>>(context: context, builder: (_) => const _TaskDialog());
+    if (result != null && mounted) {
+      await mutate(() => widget.store.addTask({
+        'id': newId('task'), 'title': result['title']!,
+        'subject': result['subject']!.isEmpty ? 'عمومی' : result['subject'],
+        'minutes': int.parse(digitsToEnglish(result['minutes']!)), 'done': false,
+        'createdAt': DateTime.now().toIso8601String(),
+      }));
+    }
   }
 
   @override
@@ -93,30 +75,12 @@ class _ExamsPageState extends State<ExamsPage> {
   }
 
   Future<void> add() async {
-    final subject = TextEditingController();
-    final score = TextEditingController();
-    final max = TextEditingController(text: '۲۰');
-    final form = GlobalKey<FormState>();
-    try {
-      final ok = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
-        title: const Text('ثبت نتیجه آزمون'),
-        content: SizedBox(width: 420, child: SingleChildScrollView(child: Form(key: form, child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextFormField(controller: subject, maxLength: 80, decoration: const InputDecoration(labelText: 'نام درس'),
-              validator: (v) => v == null || v.trim().isEmpty ? 'نام درس را بنویس.' : null),
-          TextFormField(controller: score, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'نمره کسب‌شده'),
-              validator: (v) { final s = double.tryParse(digitsToEnglish(v ?? '')); final m = double.tryParse(digitsToEnglish(max.text));
-                return s == null || !s.isFinite || m == null || !m.isFinite || m <= 0 || m > 1000 || s < 0 || s > m ? 'نمره باید بین صفر و نمره کل باشد.' : null; }),
-          const SizedBox(height: 12),
-          TextFormField(controller: max, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'نمره کل')),
-        ])))),
-        actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
-          FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(context, true); }, child: const Text('ثبت نمره'))]));
-      if (ok == true && mounted) {
-        await mutate(() => widget.store.addExam({'id': newId('exam'),
-          'subject': subject.text.trim(), 'score': double.parse(digitsToEnglish(score.text)),
-          'max': double.parse(digitsToEnglish(max.text)), 'createdAt': DateTime.now().toIso8601String()}));
-      }
-    } finally { subject.dispose(); score.dispose(); max.dispose(); }
+    final result = await showDialog<Map<String, String>>(context: context, builder: (_) => const _ExamDialog());
+    if (result != null && mounted) {
+      await mutate(() => widget.store.addExam({'id': newId('exam'),
+        'subject': result['subject']!, 'score': double.parse(digitsToEnglish(result['score']!)),
+        'max': double.parse(digitsToEnglish(result['max']!)), 'createdAt': DateTime.now().toIso8601String()}));
+    }
   }
 
   @override
@@ -171,24 +135,11 @@ class _CardsPageState extends State<CardsPage> {
   }
 
   Future<void> add() async {
-    final q = TextEditingController(); final a = TextEditingController();
-    final form = GlobalKey<FormState>();
-    try {
-      final ok = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
-        title: const Text('فلش‌کارت جدید'),
-        content: SizedBox(width: 420, child: SingleChildScrollView(child: Form(key: form, child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextFormField(controller: q, maxLines: 2, maxLength: 1000, decoration: const InputDecoration(labelText: 'پرسش'),
-              validator: (v) => v == null || v.trim().isEmpty ? 'پرسش را بنویس.' : null),
-          TextFormField(controller: a, maxLines: 3, maxLength: 2000, decoration: const InputDecoration(labelText: 'پاسخ'),
-              validator: (v) => v == null || v.trim().isEmpty ? 'پاسخ را بنویس.' : null),
-        ])))),
-        actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
-          FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(context, true); }, child: const Text('ذخیره'))]));
-      if (ok == true && mounted) {
-        await mutate(() => widget.store.addCard({'id': newId('card'),
-          'q': q.text.trim(), 'a': a.text.trim(), 'interval': 0, 'dueAt': DateTime.now().toIso8601String()}));
-      }
-    } finally { q.dispose(); a.dispose(); }
+    final result = await showDialog<Map<String, String>>(context: context, builder: (_) => const _CardDialog());
+    if (result != null && mounted) {
+      await mutate(() => widget.store.addCard({'id': newId('card'),
+        'q': result['q']!, 'a': result['a']!, 'interval': 0, 'dueAt': DateTime.now().toIso8601String()}));
+    }
   }
 
   Future<void> review(Map<String, dynamic> card, bool remembered) async {
@@ -244,4 +195,84 @@ class StudyTipsPage extends StatelessWidget {
         const SizedBox(height: 10), Text('تمرین پیشنهادی: ${tip.$3}', style: const TextStyle(color: teal, height: 1.7)),
       ]))),
     ]));
+}
+
+class _TaskDialog extends StatefulWidget {
+  const _TaskDialog();
+  @override
+  State<_TaskDialog> createState() => _TaskDialogState();
+}
+
+class _TaskDialogState extends State<_TaskDialog> {
+  final form = GlobalKey<FormState>();
+  final title = TextEditingController();
+  final subject = TextEditingController();
+  final duration = TextEditingController(text: '۳۰');
+  @override
+  void dispose() { title.dispose(); subject.dispose(); duration.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) => AlertDialog(title: const Text('یک قدم تازه برای مطالعه'),
+    content: SizedBox(width: 420, child: SingleChildScrollView(child: Form(key: form, child: Column(mainAxisSize: MainAxisSize.min, children: [
+      TextFormField(controller: title, maxLength: 120, decoration: const InputDecoration(labelText: 'چه کاری می‌خواهی انجام بدهی؟'),
+          validator: (v) => v == null || v.trim().isEmpty ? 'عنوان کار را بنویس.' : null),
+      const SizedBox(height: 10),
+      TextFormField(controller: subject, maxLength: 80, decoration: const InputDecoration(labelText: 'درس (اختیاری)')),
+      TextFormField(controller: duration, keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'زمان مطالعه به دقیقه'),
+          validator: (v) { final n = int.tryParse(digitsToEnglish(v ?? '')); return n == null || n < 1 || n > 1440 ? 'زمان باید بین ۱ تا ۱۴۴ دقیقه باشد.' : null; }),
+    ])))),
+    actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('انصراف')),
+      FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(context, {'title': title.text.trim(), 'subject': subject.text.trim(), 'minutes': duration.text}); }, child: const Text('افزودن'))]);
+}
+
+class _ExamDialog extends StatefulWidget {
+  const _ExamDialog();
+  @override
+  State<_ExamDialog> createState() => _ExamDialogState();
+}
+
+class _ExamDialogState extends State<_ExamDialog> {
+  final form = GlobalKey<FormState>();
+  final subject = TextEditingController();
+  final score = TextEditingController();
+  final max = TextEditingController(text: '۲۰');
+  @override
+  void dispose() { subject.dispose(); score.dispose(); max.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) => AlertDialog(title: const Text('ثبت نتیجه آزمون'),
+    content: SizedBox(width: 420, child: SingleChildScrollView(child: Form(key: form, child: Column(mainAxisSize: MainAxisSize.min, children: [
+      TextFormField(controller: subject, maxLength: 80, decoration: const InputDecoration(labelText: 'نام درس'),
+          validator: (v) => v == null || v.trim().isEmpty ? 'نام درس را بنویس.' : null),
+      TextFormField(controller: score, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'نمره کسب‌شده'),
+          validator: (v) { final s = double.tryParse(digitsToEnglish(v ?? '')); final m = double.tryParse(digitsToEnglish(max.text));
+            return s == null || !s.isFinite || m == null || !m.isFinite || m <= 0 || m > 1000 || s < 0 || s > m ? 'نمره باید بین صفر و نمره کل باشد.' : null; }),
+      const SizedBox(height: 12),
+      TextFormField(controller: max, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'نمره کل')),
+    ])))),
+    actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('انصراف')),
+      FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(context, {'subject': subject.text.trim(), 'score': score.text, 'max': max.text}); }, child: const Text('ثبت نمره'))]);
+}
+
+class _CardDialog extends StatefulWidget {
+  const _CardDialog();
+  @override
+  State<_CardDialog> createState() => _CardDialogState();
+}
+
+class _CardDialogState extends State<_CardDialog> {
+  final form = GlobalKey<FormState>();
+  final q = TextEditingController();
+  final a = TextEditingController();
+  @override
+  void dispose() { q.dispose(); a.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) => AlertDialog(title: const Text('فلش‌کارت جدید'),
+    content: SizedBox(width: 420, child: SingleChildScrollView(child: Form(key: form, child: Column(mainAxisSize: MainAxisSize.min, children: [
+      TextFormField(controller: q, maxLines: 2, maxLength: 1000, decoration: const InputDecoration(labelText: 'پرسش'),
+          validator: (v) => v == null || v.trim().isEmpty ? 'پرسش را بنویس.' : null),
+      TextFormField(controller: a, maxLines: 3, maxLength: 2000, decoration: const InputDecoration(labelText: 'پاسخ'),
+          validator: (v) => v == null || v.trim().isEmpty ? 'پاسخ را بنویس.' : null),
+    ])))),
+    actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('انصراف')),
+      FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(context, {'q': q.text.trim(), 'a': a.text.trim()}); }, child: const Text('ذخیره'))]);
 }

@@ -42,7 +42,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).at(0), 'ریاضی');
     await tester.enterText(find.byType(TextFormField).at(1), '۱۷');
-    await tester.tap(find.text('ثبت نمره'));
+    await tester.tap(find.widgetWithText(FilledButton, 'ثبت نمره'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.auto_awesome_outlined));
