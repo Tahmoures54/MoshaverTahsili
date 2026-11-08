@@ -41,13 +41,19 @@
 ## ساخت و امضای Android
 GitHub Actions در نبود keystore خصوصی، APK را با امضای debug می‌سازد تا برای نصب و آزمون قابل استفاده باشد؛ این فایل برای انتشار در کافه‌بازار یا Google Play مناسب نیست.
 
-برای ساخت انتشارگاه، این Repository Secrets را تنظیم کنید:
+برای ساخت انتشارگاه، ابتدا این Repository Secrets را در تنظیمات مخزن تنظیم کنید:
 - RELEASE_KEYSTORE_BASE64
 - RELEASE_KEYSTORE_PASSWORD
 - RELEASE_KEY_ALIAS
 - RELEASE_KEY_PASSWORD
 
-کلید خصوصی را در مخزن commit نکنید. از فایل keystore و رمزهای آن نسخه پشتیبان امن نگه دارید؛ از دست رفتن کلید انتشار می‌تواند به‌روزرسانی نسخه منتشرشده را مختل کند.
+کلید خصوصی را در مخزن commit نکنید. در ویندوز می‌توانید محتوای Base64 فایل keystore را با دستور PowerShell زیر تولید کنید و خروجی را در Secret مربوط قرار دهید:
+
+    [Convert]::ToBase64String([IO.File]::ReadAllBytes("upload-keystore.jks"))
+
+پس از تنظیم چهار Secret امضا و Secret مربوط به AI، نسخه را در `pubspec.yaml` افزایش دهید و یک tag مانند `v1.0.1` روی commit نهایی بسازید. GitHub Actions فقط در صورت وجود همه این مقادیر، APK امضاشده را می‌سازد و در GitHub Release منتشر می‌کند. Push عادی به `main` همچنان APK آزمایشی می‌سازد.
+
+از فایل keystore و رمزهای آن نسخه پشتیبان امن نگه دارید؛ از دست رفتن کلید انتشار می‌تواند به‌روزرسانی نسخه منتشرشده را مختل کند.
 
 ## کنترل کیفیت
 
