@@ -1,8 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 mkdir -p build/reports/device
+report_failure() {
+  status=$?
+  python3 scripts/annotate_log.py build/reports/device/integration.txt build/reports/device/install.txt build/reports/device/launch.txt build/reports/device/crash-log.txt || true
+  exit "$status"
+}
+trap report_failure ERR
 adb wait-for-device
+set +e
 flutter test integration_test/app_test.dart -d emulator-5554 --reporter expanded 2>&1 | tee build/reports/device/integration.txt
+integration_status=${PIPESTATUS[0]}
+set -e
+if [[ "$integration_status" != 0 ]]; then
+  exit "$integration_status"
+fi
 apk=$(find device-artifacts -type f -name '*x86_64.apk' | head -1)
 test -n "$apk" || { echo 'Release x86_64 APK artifact missing'; exit 1; }
 adb uninstall ir.moshaver.tahsili >/dev/null 2>&1 || true

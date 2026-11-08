@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// SharedPreferences implementation, not the unit-test mock. Clear app data
 /// before running; the test intentionally clears this app's local data.
 void main() {
-  final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   testWidgets('local profile, planner, exam and advisor survive an app restart', (tester) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
@@ -65,7 +65,6 @@ void main() {
     expect(store.exams.single['score'], 17);
     expect(store.credits, 0);
     expect(store.freeAiUsesRemaining, 2);
-    await binding.convertFlutterSurfaceToImage();
     await tester.pumpAndSettle();
   });
 }

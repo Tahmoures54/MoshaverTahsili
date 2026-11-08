@@ -130,6 +130,19 @@ jobs:
             pubspec.lock
           if-no-files-found: error
           retention-days: 14
+      - name: Publish failure diagnostics to job summary
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as output:
+              output.write('\n## Failure diagnostics\n')
+              for path in sorted(Path('build/reports').rglob('*.txt')):
+                  output.write(f'\n### {path.name}\n\n```text\n')
+                  output.write('\n'.join(path.read_text(errors='replace').splitlines()[-160:]))
+                  output.write('\n```\n')
+          PY
       - name: Upload test evidence
         if: always()
         uses: actions/upload-artifact@v7
