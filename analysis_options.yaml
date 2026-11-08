@@ -1,7 +1,36 @@
+# analysis_options.yaml
+# تحلیل و بهسازی شده برای پروژه مشاور هوشمند تحصیلی
+# Flutter 3.24.5 / Dart 3.5
+
 include: package:flutter_lints/flutter.yaml
 
+# ─── تنظیمات Analyzer ─────────────────────────────────────
+analyzer:
+  exclude:
+    - build/**
+    - lib/generated/**
+    - lib/**/*.g.dart       # فایل‌های code-gen
+    - lib/**/*.freezed.dart
+
+  errors:
+    # خطاهای بحرانی → error
+    missing_return: error
+    dead_code: warning
+    unused_import: warning
+    unused_local_variable: warning
+
+    # اگر از freezed/json_serializable استفاده نمی‌کنید، این خط را حذف کنید
+    invalid_annotation_target: ignore
+
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true    # ✅ جدید: List بدون <T> خطا می‌دهد
+
+# ─── قوانین Linter ────────────────────────────────────────
 linter:
   rules:
+    # ── قوانین موجود (حفظ‌شده) ──
     - always_declare_return_types
     - avoid_print
     - avoid_unnecessary_containers
@@ -16,12 +45,23 @@ linter:
     - use_build_context_synchronously
     - unawaited_futures
 
-analyzer:
-  exclude:
-    - build/**
-    - lib/generated/**
-  errors:
-    invalid_annotation_target: ignore
-  language:
-    strict-casts: true
-    strict-inference: true
+    # ── قوانین جدید: ایمنی ──
+    - avoid_dynamic_calls          # ✅ جلوگیری از فراخوانی روی dynamic
+    - cancel_subscriptions         # ✅ نشت StreamSubscription
+    - close_sinks                  # ✅ نشت StreamSink
+    - no_duplicate_case_values     # ✅ case تکراری در switch
+    - throw_in_finally             # ✅ throw در finally خطرناک
+
+    # ── قوانین جدید: سبک کد ──
+    - use_super_parameters         # ✅ super.key به‌جاز Key? key
+    - require_trailing_commas      # ✅ کامای انتهایی برای فرمت‌بندی
+    - directives_ordering          # ✅ مرتب‌سازی import‌ها
+    - sort_pub_dependencies        # ✅ مرتب‌سازی pubspec
+    - prefer_interpolation_to_compose_strings  # ✅ 'a$b' به‌جای 'a' + 'b'
+    - unnecessary_lambdas          # ✅ onTap: foo به‌جای onTap: () => foo()
+    - avoid_redundant_argument_values          # ✅ حذف آرگومان پیش‌فرض صریح
+    - prefer_relative_imports      # ✅ import نسبی درون lib/
+
+    # ── قوانین جدید: عملکرد ──
+    - avoid_slow_async_io          # ✅ File.existsSync به‌جای await .exists()
+    - prefer_foreach               # ✅ forEach برای callback ساده
