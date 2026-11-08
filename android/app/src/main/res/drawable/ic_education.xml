@@ -1,8 +1,31 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="48dp" android:height="48dp"
-    android:viewportWidth="48" android:viewportHeight="48">
-    <path android:fillColor="#2867A8" android:pathData="M4,13 L24,4 L44,13 L24,22 Z" />
-    <path android:fillColor="#2C9C91" android:pathData="M10,18 L24,24 L38,18 L38,31 C30,38 18,38 10,31 Z" />
-    <path android:fillColor="#17324D" android:pathData="M42,15 L44,15 L44,31 L42,31 Z" />
-    <path android:fillColor="#17324D" android:pathData="M40,31 L46,31 L44,37 L42,37 Z" />
+    xmlns:tools="http://schemas.android.com/tools"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48"
+    android:autoMirrored="true"
+    tools:ignore="VectorRaster">
+
+    <!-- ── کلاه فارغ‌التحصیلی (بالا) ── -->
+    <path
+        android:name="cap_top"
+        android:fillColor="#2867A8"
+        android:fillType="nonZero"
+        android:pathData="M4,13 L24,4 L44,13 L24,22 Z" />
+
+    <!-- ── بدنه کلاه با انحنای پایین ── -->
+    <path
+        android:name="cap_body"
+        android:fillColor="#2C9C91"
+        android:fillType="nonZero"
+        android:pathData="M10,18 L24,24 L38,18 L38,31 C30,38 18,38 10,31 Z" />
+
+    <!-- ── منگوله (رشته + سرمنگوله در یک مسیر) ── -->
+    <path
+        android:name="tassel"
+        android:fillColor="#17324D"
+        android:fillType="nonZero"
+        android:pathData="M41.5,14 L44.5,14 L44.5,30.5 L46.5,30.5 L44,37.5 L42,37.5 L39.5,30.5 L41.5,30.5 Z" />
+
 </vector>
