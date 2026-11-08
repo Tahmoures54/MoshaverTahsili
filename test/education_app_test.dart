@@ -26,6 +26,7 @@ void main() {
     expect(find.text('روش‌های مؤثر مطالعه'), findsOneWidget);
     expect(find.text('مطالعه فعال'), findsOneWidget);
     expect(find.text('مرور فاصله‌دار'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('آمادگی برای امتحان'), 350, scrollable: find.byType(Scrollable).first);
     expect(find.text('آمادگی برای امتحان'), findsOneWidget);
   });
 }
