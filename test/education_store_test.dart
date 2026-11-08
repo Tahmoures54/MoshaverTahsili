@@ -37,6 +37,59 @@ void main() {
     expect(store.messages.last['content'], 'message-84');
   });
 
+  test('grants a purchased credit pack only once per Bazaar purchase token', () async {
+    final store = await EducationStore.open();
+    final first = await store.grantProduct(
+      productId: 'credit_10',
+      purchaseToken: 'bazaar-token-1',
+      creditsToAdd: 10,
+    );
+    final duplicate = await store.grantProduct(
+      productId: 'credit_10',
+      purchaseToken: 'bazaar-token-1',
+      creditsToAdd: 10,
+    );
+
+    expect(first, isTrue);
+    expect(duplicate, isFalse);
+    expect(store.credits, 10);
+  });
+
+  test('allows two successful AI uses for free then consumes one credit per success', () async {
+    final store = await EducationStore.open();
+    expect(store.freeAiUsesRemaining, 2);
+    expect(store.canUseAi, isTrue);
+
+    expect(await store.recordSuccessfulAiUse(), isTrue);
+    expect(await store.recordSuccessfulAiUse(), isTrue);
+    expect(store.freeAiUsesRemaining, 0);
+    expect(store.canUseAi, isFalse);
+
+    await store.grantProduct(
+      productId: 'credit_10',
+      purchaseToken: 'bazaar-token-2',
+      creditsToAdd: 10,
+    );
+    expect(await store.recordSuccessfulAiUse(), isTrue);
+    expect(store.credits, 9);
+  });
+
+  test('keeps purchased credits and free-trial usage when student workspace is cleared', () async {
+    final store = await EducationStore.open();
+    await store.grantProduct(
+      productId: 'credit_10',
+      purchaseToken: 'bazaar-token-3',
+      creditsToAdd: 10,
+    );
+    await store.recordSuccessfulAiUse();
+    await store.saveProfile({'grade': 'متوسطه اول'});
+    await store.clear();
+
+    expect(store.profile, isNull);
+    expect(store.credits, 10);
+    expect(store.freeAiUsesRemaining, 1);
+  });
+
   test('clear removes the complete local student workspace', () async {
     final store = await EducationStore.open();
     await store.saveProfile({'grade': 'ابتدایی'});
