@@ -121,10 +121,12 @@ class _AdvisorPageState extends State<AdvisorPage> {
             onPressed: busy ? null : () => setState(() => input.text = prompt), child: Text(prompt, textAlign: TextAlign.right))),
     ]) : ListView.builder(padding: const EdgeInsets.fromLTRB(16, 10, 16, 12), itemCount: messages.length + (busy ? 1 : 0),
         itemBuilder: (context, index) {
-          if (index == messages.length) return const Padding(padding: EdgeInsets.all(12), child: Row(children: [
-            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)), SizedBox(width: 12),
-            Expanded(child: Text('در حال دریافت پاسخ… درخواست ناموفق هزینه نهایی ندارد.')),
-          ]));
+          if (index == messages.length) {
+            return const Padding(padding: EdgeInsets.all(12), child: Row(children: [
+              SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)), SizedBox(width: 12),
+              Expanded(child: Text('در حال دریافت پاسخ… درخواست ناموفق هزینه نهایی ندارد.')),
+            ]));
+          }
           final message = messages[index];
           final user = message['role'] == 'user';
           final failed = message['status'] == 'failed' || message['status'] == 'pending';

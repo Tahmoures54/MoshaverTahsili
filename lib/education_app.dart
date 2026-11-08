@@ -34,10 +34,12 @@ class _EducationAppState extends State<EducationApp> {
     builder: (context, child) => Directionality(textDirection: TextDirection.rtl, child: child ?? const SizedBox.shrink()),
     home: FutureBuilder<EducationStore>(future: future, builder: (context, snapshot) {
       if (snapshot.hasData) return EntryScreen(store: snapshot.data!);
-      if (snapshot.hasError) return Scaffold(body: Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const NoticeCard(text: 'ذخیره‌سازی گوشی آماده نشد. اطلاعات قبلی بازنویسی نشده است. فضای خالی گوشی را بررسی کن و دوباره برنامه را باز کن.', warning: true),
-        FilledButton(onPressed: () => setState(() => future = EducationStore.open()), child: const Text('تلاش دوباره')),
-      ]))));
+      if (snapshot.hasError) {
+        return Scaffold(body: Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const NoticeCard(text: 'ذخیره‌سازی گوشی آماده نشد. اطلاعات قبلی بازنویسی نشده است. فضای خالی گوشی را بررسی کن و دوباره برنامه را باز کن.', warning: true),
+          FilledButton(onPressed: () => setState(() => future = EducationStore.open()), child: const Text('تلاش دوباره')),
+        ]))));
+      }
       return const LoadingPage();
     }),
   );

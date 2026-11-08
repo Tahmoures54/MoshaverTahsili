@@ -114,8 +114,12 @@ class AiAdvisorService {
       final content = message['content'];
       if ((role != 'user' && role != 'assistant') || content is! String ||
           content.isEmpty || content.length > EducationStore.maxQuestionLength ||
-          message['status'] == 'failed' || message['status'] == 'pending') continue;
-      if (content.length > budget) continue;
+          message['status'] == 'failed' || message['status'] == 'pending') {
+        continue;
+      }
+      if (content.length > budget) {
+        continue;
+      }
       budget -= content.length;
       recent.add({'role': role as String, 'content': content});
       if (recent.length == 24) break;

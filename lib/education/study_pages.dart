@@ -27,7 +27,6 @@ class _PlannerPageState extends State<PlannerPage> {
     final subject = TextEditingController();
     final duration = TextEditingController(text: '۳۰');
     final form = GlobalKey<FormState>();
-    var error = '';
     try {
       final ok = await showDialog<bool>(context: context, builder: (context) => StatefulBuilder(
         builder: (context, refresh) => AlertDialog(title: const Text('یک قدم تازه برای مطالعه'),
@@ -39,16 +38,17 @@ class _PlannerPageState extends State<PlannerPage> {
             TextFormField(controller: duration, keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: 'زمان مطالعه به دقیقه'),
                 validator: (v) { final n = int.tryParse(digitsToEnglish(v ?? '')); return n == null || n < 1 || n > 1440 ? 'زمان باید بین ۱ تا ۱۴۴۰ دقیقه باشد.' : null; }),
-            if (error.isNotEmpty) Text(error, style: const TextStyle(color: Colors.red)),
           ])))),
           actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
             FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(context, true); }, child: const Text('افزودن'))])));
-      if (ok == true && mounted) await mutate(() => widget.store.addTask({
-        'id': newId('task'), 'title': title.text.trim(),
-        'subject': subject.text.trim().isEmpty ? 'عمومی' : subject.text.trim(),
-        'minutes': int.parse(digitsToEnglish(duration.text)), 'done': false,
-        'createdAt': DateTime.now().toIso8601String(),
-      }));
+      if (ok == true && mounted) {
+        await mutate(() => widget.store.addTask({
+          'id': newId('task'), 'title': title.text.trim(),
+          'subject': subject.text.trim().isEmpty ? 'عمومی' : subject.text.trim(),
+          'minutes': int.parse(digitsToEnglish(duration.text)), 'done': false,
+          'createdAt': DateTime.now().toIso8601String(),
+        }));
+      }
     } finally { title.dispose(); subject.dispose(); duration.dispose(); }
   }
 
@@ -111,9 +111,11 @@ class _ExamsPageState extends State<ExamsPage> {
         ])))),
         actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
           FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(context, true); }, child: const Text('ثبت نمره'))]));
-      if (ok == true && mounted) await mutate(() => widget.store.addExam({'id': newId('exam'),
-        'subject': subject.text.trim(), 'score': double.parse(digitsToEnglish(score.text)),
-        'max': double.parse(digitsToEnglish(max.text)), 'createdAt': DateTime.now().toIso8601String()}));
+      if (ok == true && mounted) {
+        await mutate(() => widget.store.addExam({'id': newId('exam'),
+          'subject': subject.text.trim(), 'score': double.parse(digitsToEnglish(score.text)),
+          'max': double.parse(digitsToEnglish(max.text)), 'createdAt': DateTime.now().toIso8601String()}));
+      }
     } finally { subject.dispose(); score.dispose(); max.dispose(); }
   }
 
@@ -182,8 +184,10 @@ class _CardsPageState extends State<CardsPage> {
         ])))),
         actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
           FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(context, true); }, child: const Text('ذخیره'))]));
-      if (ok == true && mounted) await mutate(() => widget.store.addCard({'id': newId('card'),
-        'q': q.text.trim(), 'a': a.text.trim(), 'interval': 0, 'dueAt': DateTime.now().toIso8601String()}));
+      if (ok == true && mounted) {
+        await mutate(() => widget.store.addCard({'id': newId('card'),
+          'q': q.text.trim(), 'a': a.text.trim(), 'interval': 0, 'dueAt': DateTime.now().toIso8601String()}));
+      }
     } finally { q.dispose(); a.dispose(); }
   }
 
