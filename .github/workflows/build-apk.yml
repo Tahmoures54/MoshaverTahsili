@@ -33,6 +33,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
       - uses: subosito/flutter-action@v2.23.0
         with:
           flutter-version-file: .fvmrc
@@ -165,6 +166,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
       - uses: subosito/flutter-action@v2.23.0
         with:
           flutter-version-file: .fvmrc
