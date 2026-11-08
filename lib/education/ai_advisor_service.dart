@@ -2,15 +2,18 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class AiAdvisorService {
-  AiAdvisorService({http.Client? client}) : client = client ?? http.Client();
+  AiAdvisorService({http.Client? client, String? apiKey, String? endpoint, String? model})
+      : client = client ?? http.Client(),
+        apiKey = apiKey ?? const String.fromEnvironment('AI_API_KEY'),
+        endpoint = endpoint ?? const String.fromEnvironment(
+          'AI_API_ENDPOINT',
+          defaultValue: 'https://api.avalai.ir/v1/chat/completions',
+        ),
+        model = model ?? const String.fromEnvironment('AI_MODEL', defaultValue: 'deepseek-chat');
   final http.Client client;
-
-  static const apiKey = String.fromEnvironment('AI_API_KEY');
-  static const endpoint = String.fromEnvironment(
-    'AI_API_ENDPOINT',
-    defaultValue: 'https://api.avalai.ir/v1/chat/completions',
-  );
-  static const model = String.fromEnvironment('AI_MODEL', defaultValue: 'deepseek-chat');
+  final String apiKey;
+  final String endpoint;
+  final String model;
 
   Future<String> ask({
     required Map<String, dynamic>? profile,
@@ -30,7 +33,9 @@ class AiAdvisorService {
         'content': 'تو مشاور هوشمند تحصیلی برای دانش‌آموزان ایرانی هستی. همیشه فارسی روان و متناسب با سن پاسخ بده. ' +
           'اطلاعات دانش‌آموز: ' + context + '. در آموزش مرحله‌به‌مرحله توضیح بده. در برنامه‌ریزی استراحت و توان واقعی را لحاظ کن. ' +
           'در انتخاب رشته حکم قطعی صادر نکن و اطلاعات متغیر را بدون منبع رسمی قطعی جلوه نده. ' +
-          'اطلاعات شخصی غیرضروری درخواست نکن. پاسخ پزشکی یا روان‌درمانی نده.'
+          'اطلاعات هویتی، نشانی، شماره تماس، رمز یا اطلاعات حساس درخواست نکن. پاسخ پزشکی، تشخیص روان‌شناختی یا درمان ارائه نده. '
+          'اگر دانش‌آموز از خطر فوری، آزار یا آسیب به خود صحبت کرد، با همدلی پاسخ بده و او را به گفت‌وگو با والد یا بزرگسال مورد اعتماد و خدمات اضطراری محل زندگی‌اش راهنمایی کن. '
+          'هیچ رشته یا آینده‌ای را تضمین نکن و در صورت نامطمئن بودن، صریح بگو.'
       },
       ...history.where((m) => m['role'] == 'user' || m['role'] == 'assistant')
           .take(24)
