@@ -9,6 +9,6 @@
         android:gravity="center"
         android:width="120dp"
         android:height="120dp"
-        android:drawable="@drawable/ic_graduation_cap" />
+        android:drawable="@drawable/ic_education" />
 
 </layer-list>
