@@ -26,6 +26,44 @@ class EducationStore {
   Future<void> writeList(String key, List<Map<String, dynamic>> value) =>
       prefs.setString(key, jsonEncode(value));
 
+
+  // Local-only consumable AI credit wallet. The first two successful AI requests
+  // are free; subsequent successful requests consume one purchased credit.
+  int get credits => prefs.getInt('edu.ai.credits') ?? 0;
+  int get successfulAiUses => prefs.getInt('edu.ai.successful_uses') ?? 0;
+  int get freeAiUsesRemaining => (2 - successfulAiUses).clamp(0, 2);
+  bool get canUseAi => freeAiUsesRemaining > 0 || credits > 0;
+
+  Future<bool> recordSuccessfulAiUse() async {
+    final uses = successfulAiUses;
+    if (uses < 2) {
+      await prefs.setInt('edu.ai.successful_uses', uses + 1);
+      return true;
+    }
+    final balance = credits;
+    if (balance <= 0) return false;
+    await prefs.setInt('edu.ai.credits', balance - 1);
+    await prefs.setInt('edu.ai.successful_uses', uses + 1);
+    return true;
+  }
+
+  Future<bool> grantProduct({
+    required String productId,
+    required String purchaseToken,
+    required int creditsToAdd,
+  }) async {
+    if (productId.trim().isEmpty || purchaseToken.trim().isEmpty || creditsToAdd <= 0) {
+      throw ArgumentError('شناسه محصول، توکن خرید و تعداد اعتبار معتبر الزامی است.');
+    }
+    final tokens = prefs.getStringList('edu.ai.purchase_tokens') ?? <String>[];
+    if (tokens.contains(purchaseToken)) return false;
+    // Persist the unique purchase token before increasing the wallet. This
+    // favors duplicate prevention if the process is interrupted mid-write.
+    await prefs.setStringList('edu.ai.purchase_tokens', [...tokens, purchaseToken]);
+    await prefs.setInt('edu.ai.credits', credits + creditsToAdd);
+    return true;
+  }
+
   List<Map<String, dynamic>> get tasks => readList('edu.tasks');
   Future<void> addTask(Map<String, dynamic> value) async {
     final all = tasks..insert(0, value);
