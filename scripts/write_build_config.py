@@ -8,9 +8,9 @@ from pathlib import Path
 path = Path(sys.argv[1])
 path.parent.mkdir(parents=True, exist_ok=True)
 config = {
-    'AI_API_KEY': os.environ.get('AI_API_KEY', ''),
-    'AI_API_ENDPOINT': 'https://api.avalai.ir/v1',
-    'AI_MODEL': 'deepseek-chat',
+    'AI_API_KEY': os.environ.get('AI_API_KEY', '') or os.environ.get('DEEPSEEK_API_KEY', ''),
+    'AI_API_ENDPOINT': os.environ.get('AI_API_ENDPOINT', '') or os.environ.get('DEEPSEEK_API_ENDPOINT', '') or 'https://api.avalai.ir/v1',
+    'AI_MODEL': os.environ.get('AI_MODEL', '') or os.environ.get('DEEPSEEK_MODEL', '') or 'deepseek-chat',
     'BAZAAR_RSA_PUBLIC_KEY': os.environ.get('BAZAAR_RSA_PUBLIC_KEY', ''),
     'BAZAAR_CATALOG_CONFIRMED': os.environ.get('BAZAAR_CATALOG_CONFIRMED') == 'true',
 }
