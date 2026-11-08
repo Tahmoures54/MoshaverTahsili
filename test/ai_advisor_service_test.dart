@@ -127,9 +127,9 @@ void main() {
     expect(body['model'], 'test-model');
     final messages = body['messages'] as List;
     expect(messages, hasLength(26));
-    expect(messages.first['content'], contains('هفتم'));
-    expect(messages[1]['content'], 'turn-6');
-    expect(messages.last['content'], 'برای من برنامه بده.');
+    expect(Map<String, dynamic>.from(messages.first as Map)['content'], contains('هفتم'));
+    expect(Map<String, dynamic>.from(messages[1] as Map)['content'], 'turn-6');
+    expect(Map<String, dynamic>.from(messages.last as Map)['content'], 'برای من برنامه بده.');
     expect(captured!.body.contains('network error'), isFalse);
     service.dispose();
   });
