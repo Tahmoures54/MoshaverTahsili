@@ -11,6 +11,7 @@ import 'package:moshaver_tahsili/education/bazaar_billing_service.dart';
 import 'package:moshaver_tahsili/education/credit_shop_page.dart';
 import 'package:moshaver_tahsili/education/education_store.dart';
 import 'package:moshaver_tahsili/education/study_pages.dart';
+import 'package:moshaver_tahsili/education/ui.dart';
 import 'package:moshaver_tahsili/education_app.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

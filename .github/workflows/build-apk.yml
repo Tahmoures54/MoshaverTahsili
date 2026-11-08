@@ -101,9 +101,9 @@ jobs:
             python3 scripts/write_signing_config.py
             signing=()
           fi
-          flutter build apk --release --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" "${signing[@]}"
-          flutter build apk --release --split-per-abi --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" "${signing[@]}"
-          flutter build appbundle --release --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" "${signing[@]}"
+          python3 scripts/flutter_build.py apk --release --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" "${signing[@]}"
+          python3 scripts/flutter_build.py apk --release --split-per-abi --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" "${signing[@]}"
+          python3 scripts/flutter_build.py appbundle --release --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" "${signing[@]}"
           mkdir -p build/reports/android build/installable
           cp build/app/outputs/flutter-apk/app-release.apk "build/installable/MoshaverTahsili-${{ steps.config.outputs.version }}-universal.apk"
           cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "build/installable/MoshaverTahsili-${{ steps.config.outputs.version }}-armv7.apk"

@@ -155,7 +155,7 @@ class _EntryScreenState extends State<EntryScreen> {
         SizedBox(width: double.infinity, child: FilledButton(onPressed: accepted ? start : null,
             child: const Text('بزن بریم', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)))),
       ]))),
-    ))));
+    )));
   }
 }
 

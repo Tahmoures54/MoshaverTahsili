@@ -6,7 +6,7 @@ import 'package:moshaver_tahsili/education/bazaar_billing_service.dart';
 import 'package:moshaver_tahsili/education/education_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-VerifiedPurchase purchase({String id = 'credit_10', String token = 'verified-token',
+VerifiedPurchase verifiedPurchase({String id = 'credit_10', String token = 'verified-token',
   String package = BazaarBillingService.packageName, String signature = 'verified-by-sdk', bool purchased = true}) =>
     VerifiedPurchase(productId: id, purchaseToken: token, packageName: package, signature: signature, purchased: purchased);
 
@@ -14,7 +14,7 @@ class FakeGateway implements BazaarGateway {
   FakeGateway({this.consumeSucceeds = true, this.connectFails = false});
   bool consumeSucceeds, connectFails;
   int connects = 0, purchases = 0, consumes = 0, disconnects = 0;
-  VerifiedPurchase next = purchase();
+  VerifiedPurchase next = verifiedPurchase();
   List<VerifiedPurchase> inventory = [];
   PlatformException? purchaseError;
   Completer<void>? purchaseGate;
@@ -79,7 +79,7 @@ void main() {
     final (store, gateway, service) = await setup(consume: false);
     expect((await service.buy('credit_10')).consumptionPending, isTrue);
     expect(store.credits, 10);
-    gateway.inventory = [purchase()];
+    gateway.inventory = [verifiedPurchase()];
     final first = await service.restorePurchases();
     expect(first.alreadyCredited, 1);
     expect(first.consumptionPending, isTrue);
@@ -101,8 +101,8 @@ void main() {
 
   test('rejects wrong package, product, signature, token and purchase state', () async {
     final (store, gateway, service) = await setup();
-    for (final invalid in [purchase(package: 'other.app'), purchase(id: 'credit_35'),
-      purchase(signature: ''), purchase(token: ''), purchase(purchased: false)]) {
+    for (final invalid in [verifiedPurchase(package: 'other.app'), verifiedPurchase(id: 'credit_35'),
+      purchase(signature: ''), verifiedPurchase(token: ''), verifiedPurchase(purchased: false)]) {
       gateway.next = invalid;
       await expectLater(service.buy('credit_10'), throwsA(isA<BillingException>()));
     }
@@ -112,7 +112,7 @@ void main() {
 
   test('restore skips invalid/unknown products and reports no false success', () async {
     final (store, gateway, service) = await setup();
-    gateway.inventory = [purchase(id: 'unknown'), purchase(package: 'other.app'), purchase(signature: '')];
+    gateway.inventory = [verifiedPurchase(id: 'unknown'), verifiedPurchase(package: 'other.app'), verifiedPurchase(signature: '')];
     final result = await service.restorePurchases();
     expect(result.skipped, 3);
     expect(result.credited, 0);
@@ -123,7 +123,7 @@ void main() {
 
   test('restore credits multiple distinct valid tokens atomically', () async {
     final (store, gateway, service) = await setup();
-    gateway.inventory = [purchase(token: 'a'), purchase(id: 'credit_35', token: 'b'), purchase(token: 'a')];
+    gateway.inventory = [verifiedPurchase(token: 'a'), verifiedPurchase(id: 'credit_35', token: 'b'), verifiedPurchase(token: 'a')];
     final result = await service.restorePurchases();
     expect(result.credited, 2);
     expect(result.alreadyCredited, 1);
