@@ -1,36 +1,17 @@
-// ═══════════════════════════════════════════════════════════
-//  Root build.gradle – مشاور هوشمند تحصیلی
-//  Flutter 3.24.5 | AGP 8.7 | Gradle 8.9
-// ═══════════════════════════════════════════════════════════
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        // Required by the pinned Cafe Bazaar plugin's Poolakey dependency.
+        maven { url 'https://jitpack.io' }
+    }
+}
 
-// ── خروجی بیلد ──
-rootProject.buildDir = "../build"
-
+rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
 
-// ── Workaround برای پلاگین‌های قدیمی فلاتر ──
-// پلاگین‌هایی مثل geolocator_android هنوز flutter.compileSdkVersion
-// را می‌خوانند. این بلوک مقادیر را برای آن‌ها تأمین می‌کند.
-gradle.beforeProject { project ->
-    // ماژول اصلی اپ نیازی به override ندارد
-    // (Flutter Gradle Plugin خودش مدیریت می‌کند)
-    if (project.name == "app") {
-        return
-    }
-
-    if (!project.ext.has("flutter")) {
-        project.ext.flutter = [
-            compileSdkVersion: 35,
-            minSdkVersion    : 24,
-            targetSdkVersion : 35,
-            ndkVersion       : "26.1.10909125",
-        ]
-    }
-}
-
-// ── Clean ──
-tasks.register("clean", Delete) {
+tasks.register('clean', Delete) {
     delete rootProject.buildDir
 }
