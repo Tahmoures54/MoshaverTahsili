@@ -1,3 +1,8 @@
+// ═══════════════════════════════════════════════════════════
+//  settings.gradle – مشاور هوشمند تحصیلی
+//  Flutter 3.24.5 | AGP 8.7.0 | Gradle 8.9 | Kotlin 2.0.21
+// ═══════════════════════════════════════════════════════════
+
 pluginManagement {
     def flutterSdkPath = {
         def properties = new Properties()
@@ -9,7 +14,9 @@ pluginManagement {
         }
         def envPath = System.getenv("FLUTTER_ROOT") ?: System.getenv("FLUTTER_HOME")
         if (envPath != null) return envPath
-        throw new GradleException("flutter.sdk not set in local.properties and FLUTTER_ROOT is not defined")
+        throw new GradleException(
+            "flutter.sdk not set in local.properties and FLUTTER_ROOT is not defined"
+        )
     }()
 
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
@@ -21,25 +28,40 @@ pluginManagement {
     }
 }
 
+// ── مخازن وابستگی (جایگزین allprojects قدیمی) ──
+// بدون این بلوک، Poolakey از JitPack پیدا نمی‌شود!
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        google()
+        mavenCentral()
+        // Poolakey (Bazaar IAP) فقط در JitPack منتشر شده
+        maven { url "https://jitpack.io" }
+    }
+}
+
+// ── پلاگین‌ها ──
 plugins {
     id "dev.flutter.flutter-plugin-loader" version "1.0.0"
     id "com.android.application" version "8.7.0" apply false
-    id "org.jetbrains.kotlin.android" version "2.2.0" apply false
+    id "org.jetbrains.kotlin.android" version "2.0.21" apply false
 }
 
+rootProject.name = "moshaver_tahsili"
 include ":app"
 
-// Plugins need flutter.compileSdkVersion; skip :app (Flutter plugin owns it)
+// ── Workaround برای پلاگین‌های قدیمی فلاتر ──
+// فقط در یک فایل باشد (اینجا). از build.gradle حذف کنید.
 gradle.beforeProject { project ->
-    if (project.name == "app" || project.name == "moshaver_tahsili") {
+    if (project.name == "app") {
         return
     }
     if (!project.ext.has("flutter")) {
         project.ext.flutter = [
-            compileSdkVersion: 36,
+            compileSdkVersion: 35,
             minSdkVersion    : 24,
-            targetSdkVersion : 36,
-            ndkVersion       : "27.0.12077973",
+            targetSdkVersion : 35,
+            ndkVersion       : "26.1.10909125",
         ]
     }
 }
