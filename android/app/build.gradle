@@ -1,50 +1,64 @@
 plugins {
-    id "com.android.application"
-    id "kotlin-android"
-    id "dev.flutter.flutter-gradle-plugin"
+    id 'com.android.application'
+    id 'kotlin-android'
+    id 'dev.flutter.flutter-gradle-plugin'
 }
 
 def keystoreProperties = new Properties()
-def keystorePropertiesFile = rootProject.file("key.properties")
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+def keystorePropertiesFile = rootProject.file('key.properties')
+def hasReleaseSigning = keystorePropertiesFile.exists()
+if (hasReleaseSigning) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+    ['keyAlias', 'keyPassword', 'storePassword', 'storeFile'].each { name ->
+        if (!keystoreProperties[name]?.trim()) {
+            throw new GradleException("Incomplete release signing configuration: $name")
+        }
+    }
+    if (!file(keystoreProperties['storeFile']).exists()) {
+        throw new GradleException('Release keystore file is missing')
+    }
 }
+// Only CI explicitly opts into a clearly-labelled, debug-signed test build.
+def ciTestBuild = project.findProperty('ciTestBuild') == 'true'
 
 android {
-    namespace = "ir.moshaver.tahsili"
+    namespace = 'ir.moshaver.tahsili'
     compileSdk = 36
+    ndkVersion = flutter.ndkVersion
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
-    }
+    kotlinOptions { jvmTarget = '17' }
+
     defaultConfig {
-        applicationId = "ir.moshaver.tahsili"
+        applicationId = 'ir.moshaver.tahsili'
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
+
     signingConfigs {
         release {
-            if (keystorePropertiesFile.exists()) {
-                keyAlias = keystoreProperties["keyAlias"]
-                keyPassword = keystoreProperties["keyPassword"]
-                storePassword = keystoreProperties["storePassword"]
-                storeFile = file(keystoreProperties["storeFile"])
+            if (hasReleaseSigning) {
+                keyAlias = keystoreProperties['keyAlias']
+                keyPassword = keystoreProperties['keyPassword']
+                storePassword = keystoreProperties['storePassword']
+                storeFile = file(keystoreProperties['storeFile'])
             }
         }
     }
+
     buildTypes {
         release {
-            // CI fallback only; store releases must use the owner's private signing key.
-            signingConfig = keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
-            minifyEnabled false
-            shrinkResources false
+            signingConfig = hasReleaseSigning ? signingConfigs.release : (ciTestBuild ? signingConfigs.debug : null)
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
-flutter { source = "../.." }
+
+flutter { source = '../..' }

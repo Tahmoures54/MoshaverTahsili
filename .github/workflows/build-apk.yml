@@ -2,113 +2,171 @@ name: Flutter checks and Android build
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'arena/**']
     tags: ['v*']
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      publish_candidate:
+        description: 'Publish an explicitly NON-PRODUCTION test release from this ref'
+        type: boolean
+        default: false
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: flutter-${{ github.ref }}
-  cancel-in-progress: true
+  group: android-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  validate:
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
+  validate-and-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: write # Bootstrap the generated lockfile once; reduced after locking.
+    outputs:
+      production_ready: ${{ steps.config.outputs.production_ready }}
+      version: ${{ steps.config.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2.23.0
         with:
-          flutter-version: '3.24.5'
+          flutter-version-file: .fvmrc
           channel: stable
           cache: true
-
+          pub-cache: true
       - name: Resolve dependencies
         run: flutter pub get
-
-      - name: Analyze
-        run: flutter analyze --no-fatal-infos
-
-      - name: Test
-        run: flutter test
-
-      - name: Prepare Gradle wrapper
-        run: chmod +x android/gradlew
-
-      - name: Configure Android signing
+      - name: Bootstrap dependency lock on the working branch
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')
+        run: |
+          if ! git ls-files --error-unmatch pubspec.lock >/dev/null 2>&1; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add pubspec.lock
+            git commit -m 'chore: lock Flutter dependencies [skip ci]'
+            git push origin "HEAD:$GITHUB_REF_NAME"
+          fi
+      - name: Static analysis (including infos)
+        run: flutter analyze
+      - name: Unit and widget tests
+        run: |
+          mkdir -p build/reports
+          flutter test --coverage --reporter expanded
+      - name: Check release configuration without exposing values
+        id: config
         env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          BAZAAR_RSA_PUBLIC_KEY: ${{ secrets.BAZAAR_RSA_PUBLIC_KEY }}
+          BAZAAR_CATALOG_CONFIRMED: ${{ vars.BAZAAR_CATALOG_CONFIRMED }}
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
         run: |
-          is_tag=false
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then is_tag=true; fi
-
-          if [[ "$is_tag" == true ]]; then
-            for name in RELEASE_KEYSTORE_BASE64 RELEASE_KEYSTORE_PASSWORD RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD AI_API_KEY; do
-              if [[ -z "${!name}" ]]; then
-                echo "::error::Missing required repository secret: $name"
-                exit 1
-              fi
-            done
-          fi
-
-          if [[ -z "$RELEASE_KEYSTORE_BASE64" ]]; then
-            echo "No private release keystore configured; building a debug-signed test APK."
-            exit 0
-          fi
-
-          if [[ -z "$RELEASE_KEYSTORE_PASSWORD" || -z "$RELEASE_KEY_ALIAS" || -z "$RELEASE_KEY_PASSWORD" ]]; then
-            echo "::error::Keystore supplied but one or more signing values are missing."
-            exit 1
-          fi
-
-          echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
-          test -s android/app/upload-keystore.jks
-          cat > android/key.properties <<EOF
-          storePassword=$RELEASE_KEYSTORE_PASSWORD
-          keyPassword=$RELEASE_KEY_PASSWORD
-          keyAlias=$RELEASE_KEY_ALIAS
-          storeFile=upload-keystore.jks
-          EOF
-
-      - name: Build universal Android APK
+          python3 scripts/build_config.py >> "$GITHUB_OUTPUT"
+          python3 scripts/build_config.py --summary >> "$GITHUB_STEP_SUMMARY"
+      - name: Require production inputs for a stable tag
+        if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
+        env:
+          PRODUCTION_READY: ${{ steps.config.outputs.production_ready }}
+        run: |
+          test "$PRODUCTION_READY" = true || { echo '::error::Production secrets/catalog confirmation are missing. See the safe configuration summary.'; exit 1; }
+          test "refs/tags/v${{ steps.config.outputs.version }}" = "$GITHUB_REF" || { echo '::error::Tag must match pubspec version'; exit 1; }
+      - name: Build Android artifacts
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
-          AI_API_ENDPOINT: ${{ vars.AI_API_ENDPOINT }}
-          AI_MODEL: ${{ vars.AI_MODEL }}
           BAZAAR_RSA_PUBLIC_KEY: ${{ secrets.BAZAAR_RSA_PUBLIC_KEY }}
+          BAZAAR_CATALOG_CONFIRMED: ${{ vars.BAZAAR_CATALOG_CONFIRMED }}
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          PRODUCTION_READY: ${{ steps.config.outputs.production_ready }}
         run: |
-          flutter build apk --release \
-            --dart-define="AI_API_KEY=$AI_API_KEY" \
-            --dart-define="AI_API_ENDPOINT=${AI_API_ENDPOINT:-https://api.avalai.ir/v1/chat/completions}" \
-            --dart-define="AI_MODEL=${AI_MODEL:-deepseek-chat}" \
-            --dart-define="BAZAAR_RSA_PUBLIC_KEY=$BAZAAR_RSA_PUBLIC_KEY"
-
-      - name: Upload CI APK and dependency lock
-        uses: actions/upload-artifact@v4
+          set -euo pipefail
+          trap 'rm -f android/key.properties android/app/upload-keystore.jks "$RUNNER_TEMP/ai-build-config.json"' EXIT
+          python3 scripts/write_build_config.py "$RUNNER_TEMP/ai-build-config.json"
+          chmod 600 "$RUNNER_TEMP/ai-build-config.json"
+          signing=(-PciTestBuild=true)
+          if [[ -n "$RELEASE_KEYSTORE_BASE64" ]]; then
+            for name in RELEASE_KEYSTORE_PASSWORD RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD; do
+              test -n "${!name}" || { echo "::error::Incomplete signing configuration: $name"; exit 1; }
+            done
+            printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+            test -s android/app/upload-keystore.jks
+            python3 scripts/write_signing_config.py
+            signing=()
+          fi
+          flutter build apk --release --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" "${signing[@]}"
+          flutter build apk --release --split-per-abi --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" "${signing[@]}"
+          flutter build appbundle --release --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" "${signing[@]}"
+          mkdir -p build/reports/android build/installable
+          cp build/app/outputs/flutter-apk/app-release.apk "build/installable/MoshaverTahsili-${{ steps.config.outputs.version }}-universal.apk"
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "build/installable/MoshaverTahsili-${{ steps.config.outputs.version }}-armv7.apk"
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "build/installable/MoshaverTahsili-${{ steps.config.outputs.version }}-arm64.apk"
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk "build/installable/MoshaverTahsili-${{ steps.config.outputs.version }}-x86_64.apk"
+          cp build/app/outputs/bundle/release/app-release.aab "build/installable/MoshaverTahsili-${{ steps.config.outputs.version }}.aab"
+          python3 scripts/apk_size_report.py build/installable build/reports/android
+          cat build/reports/android/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify release signature
+        env:
+          PRODUCTION_READY: ${{ steps.config.outputs.production_ready }}
+        run: |
+          signer=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
+          "$signer" verify --verbose --print-certs build/installable/*universal.apk > build/reports/android/signature.txt
+          python3 scripts/check_signer.py build/reports/android/signature.txt
+      - name: Upload installable test artifacts
+        uses: actions/upload-artifact@v7
         with:
-          name: moshaver-tahsili-universal-apk
+          name: android-${{ steps.config.outputs.version }}-${{ github.sha }}
           path: |
-            build/app/outputs/flutter-apk/app-release.apk
+            build/installable/
+            build/reports/android/
             pubspec.lock
           if-no-files-found: error
           retention-days: 14
-
-      - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@v7
         with:
-          generate_release_notes: true
-          files: |
-            build/app/outputs/flutter-apk/app-release.apk
+          name: test-evidence-${{ github.sha }}
+          path: |
+            coverage/lcov.info
+            build/reports/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  publish:
+    needs: validate-and-build
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish_candidate)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: android-${{ needs.validate-and-build.outputs.version }}-${{ github.sha }}
+          path: release-files
+      - name: Publish only honestly labelled releases
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.validate-and-build.outputs.version }}
+          READY: ${{ needs.validate-and-build.outputs.production_ready }}
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find release-files/build/installable -type f | sort)
+          if [[ "$GITHUB_REF" == refs/tags/v* && "$GITHUB_REF_NAME" != *-* && "$READY" == true ]]; then
+            gh release create "$GITHUB_REF_NAME" "${files[@]}" --verify-tag --title "مشاور تحصیلی $VERSION" --notes 'نسخه انتشار با امضای خصوصی، سرویس هوش مصنوعی پیکربندی‌شده و کاتالوگ تأییدشده بازار. آزمون پرداخت واقعی روی گوشی باید در پرونده انتشار ثبت شود.'
+          else
+            tag="v${VERSION}-test.${GITHUB_RUN_NUMBER}"
+            gh release create "$tag" "${files[@]}" --target "$GITHUB_SHA" --prerelease --title "نسخه آزمایشی $VERSION (ساخت $GITHUB_RUN_NUMBER)" --notes 'این نسخه برای نصب و آزمون است، نه انتشار تجاری. ممکن است با کلید debug امضا شده باشد یا کلید AI/تأیید کاتالوگ بازار نداشته باشد. گزارش پیکربندی و اندازه‌ها در پیوست موجود است. پرداخت و ارتباط واقعی تنها در صورت پیکربندی و آزمون مستقل تأیید می‌شوند.'
+          fi

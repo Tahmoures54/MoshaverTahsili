@@ -2,33 +2,16 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        // Poolakey is published through JitPack, not Google Maven or Maven Central.
+        // Required by the pinned Cafe Bazaar plugin's Poolakey dependency.
         maven { url 'https://jitpack.io' }
     }
 }
 
-rootProject.buildDir = "../build"
-
+rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
 
-// Plugins (geolocator_android, etc.) still use `flutter.compileSdkVersion`.
-// Do NOT set this on :app — the Flutter Gradle Plugin owns that name there.
-gradle.beforeProject { project ->
-    if (project.name == "app" || project.name == "smart_mechanic") {
-        return
-    }
-    if (!project.ext.has("flutter")) {
-        project.ext.flutter = [
-            compileSdkVersion: 36,
-            minSdkVersion    : 24,
-            targetSdkVersion : 36,
-            ndkVersion       : "26.1.10909125",
-        ]
-    }
-}
-
-tasks.register("clean", Delete) {
+tasks.register('clean', Delete) {
     delete rootProject.buildDir
 }

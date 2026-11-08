@@ -1,10 +1,12 @@
 name: moshaver_tahsili
-description: مشاور هوشمند تحصیلی؛ برنامه‌ریز و همراه یادگیری دانش‌آموزان
+description: همراه فارسی و آفلاین‌محور یادگیری و مشاوره تحصیلی
 publish_to: 'none'
-version: 1.0.1+2
+version: 1.1.0+3
+
 environment:
   sdk: '>=3.5.0 <4.0.0'
   flutter: '>=3.24.0'
+
 dependencies:
   flutter:
     sdk: flutter
@@ -12,10 +14,22 @@ dependencies:
     sdk: flutter
   http: ^1.2.2
   shared_preferences: ^2.3.2
-  cafebazaar_billing: ^1.2.0
+  # Exact published 1.2.0 source commit; do not follow a moving branch.
+  cafebazaar_billing:
+    git:
+      url: https://github.com/mavan-innovative-studio/cafebazaar-billing-package.git
+      ref: e0d7810567f245e61d66f4b86e857c33446baa12
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
   flutter_lints: ^4.0.0
+
 flutter:
   uses-material-design: true
+  fonts:
+    - family: Vazirmatn
+      fonts:
+        - asset: assets/fonts/Vazirmatn.ttf
