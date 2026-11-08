@@ -8,6 +8,17 @@ const Color blue = Color(0xFF2867A8);
 const Color teal = Color(0xFF2C9C91);
 const Color pale = Color(0xFFF4F7FB);
 
+String _digitsToEnglish(String value) {
+  const persian = '۰۱۲۳۴۵۶۷۸۹';
+  const arabic = '٠١٢٣٤٥٦٧٨٩';
+  var result = value;
+  for (var i = 0; i < 10; i++) {
+    result = result.replaceAll(persian[i], i.toString());
+    result = result.replaceAll(arabic[i], i.toString());
+  }
+  return result.replaceAll('٫', '.').replaceAll('٬', '').replaceAll(',', '.');
+}
+
 class EducationApp extends StatefulWidget {
   const EducationApp({super.key});
   @override
@@ -200,6 +211,13 @@ class HomePage extends StatelessWidget {
     final exams = store.exams;
     final cards = store.cards;
     final done = tasks.where((e) => e['done'] == true).length;
+    final weekStart = DateTime.now().subtract(const Duration(days: 7));
+    final weekTasks = tasks.where((e) {
+      final created = DateTime.tryParse((e['createdAt'] ?? '').toString());
+      return created != null && !created.isBefore(weekStart);
+    }).toList();
+    final weekDone = weekTasks.where((e) => e['done'] == true).length;
+    final weekMinutes = weekTasks.fold<int>(0, (sum, e) => sum + ((e['minutes'] as num?)?.toInt() ?? 0));
     return ListView(padding: const EdgeInsets.all(16), children: [
       Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(gradient: const LinearGradient(colors: [blue, teal]), borderRadius: BorderRadius.circular(22)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -218,6 +236,12 @@ class HomePage extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(child: StatCard(title: 'فلش‌کارت‌ها', value: cards.length.toString(), icon: Icons.style)),
       ]),
+      const SizedBox(height: 14),
+      Card(child: ListTile(
+        leading: const Icon(Icons.insights_outlined, color: teal, size: 28),
+        title: const Text('گزارش هفت روز اخیر', style: TextStyle(fontWeight: FontWeight.bold, color: navy)),
+        subtitle: Text(weekDone.toString() + ' کار از ' + weekTasks.length.toString() + ' کار انجام شده · ' + weekMinutes.toString() + ' دقیقه برنامه‌ریزی مطالعه'),
+      )),
       const SizedBox(height: 20),
       const Text('میانبرها', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: navy)),
       QuickTile(icon: Icons.auto_awesome, title: 'مشاور هوشمند', subtitle: 'رفع اشکال و راهنمایی تحصیلی', onTap: () => go(4)),
@@ -225,6 +249,7 @@ class HomePage extends StatelessWidget {
       QuickTile(icon: Icons.assessment, title: 'آزمون و کارنامه', subtitle: 'ثبت نمرات و بررسی عملکرد', onTap: () => go(2)),
       QuickTile(icon: Icons.style, title: 'مرور و فلش‌کارت', subtitle: 'مرور پرسش و پاسخ‌ها', onTap: () => go(3)),
       QuickTile(icon: Icons.explore_outlined, title: 'راهنمای انتخاب رشته', subtitle: 'بررسی علاقه‌ها و توانایی‌ها با کمک مشاور', onTap: () => unawaited(Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => CareerPage(store: store))))),
+      QuickTile(icon: Icons.menu_book_outlined, title: 'روش‌های مؤثر مطالعه', subtitle: 'تکنیک‌های یادگیری، تمرکز و آمادگی امتحان', onTap: () => unawaited(Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => const StudyTipsPage())))),
       const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('انتخاب رشته را با شناخت علاقه‌ها، توانایی‌ها و واقعیت‌های هر مسیر انجام بده؛ هیچ آزمونی به‌تنهایی آینده تو را تعیین نمی‌کند.', style: TextStyle(height: 1.7)))),
     ]);
   }
@@ -268,7 +293,7 @@ class _PlannerPageState extends State<PlannerPage> {
         FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('افزودن'))]));
     if (ok == true && title.text.trim().isNotEmpty) {
       await widget.store.addTask({'id': DateTime.now().microsecondsSinceEpoch.toString(), 'title': title.text.trim(),
-        'subject': subject.text.trim().isEmpty ? 'عمومی' : subject.text.trim(), 'minutes': int.tryParse(duration.text) ?? 30, 'done': false});
+        'subject': subject.text.trim().isEmpty ? 'عمومی' : subject.text.trim(), 'minutes': int.tryParse(_digitsToEnglish(duration.text)) ?? 30, 'done': false, 'createdAt': DateTime.now().toIso8601String()});
       setState(() {}); widget.changed();
     }
     title.dispose(); subject.dispose(); duration.dispose();
@@ -307,7 +332,7 @@ class _ExamsPageState extends State<ExamsPage> {
       ]),
       actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
         FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('ثبت'))]));
-    final s = double.tryParse(score.text); final m = double.tryParse(max.text) ?? 20;
+    final s = double.tryParse(_digitsToEnglish(score.text)); final m = double.tryParse(_digitsToEnglish(max.text)) ?? 20;
     if (ok == true && subject.text.trim().isNotEmpty && s != null && m > 0 && s >= 0 && s <= m) {
       await widget.store.addExam({'id': DateTime.now().microsecondsSinceEpoch.toString(), 'subject': subject.text.trim(), 'score': s, 'max': m});
       setState(() {}); widget.changed();
@@ -522,6 +547,65 @@ class _CareerPageState extends State<CareerPage> {
       if (busy) const Padding(padding: EdgeInsets.all(18), child: Center(child: CircularProgressIndicator())),
       if (error != null) Card(child: Padding(padding: const EdgeInsets.all(14), child: Text(error!, style: const TextStyle(color: Colors.red)))),
       if (result != null) Card(child: Padding(padding: const EdgeInsets.all(16), child: SelectableText(result!, style: const TextStyle(height: 1.75)))),
+    ]),
+  );
+}
+
+class StudyTipsPage extends StatelessWidget {
+  const StudyTipsPage({super.key});
+
+  static const tips = <Map<String, String>>[
+    {
+      'title': 'مطالعه فعال',
+      'body': 'بعد از خواندن یک بخش، کتاب را ببند و با زبان خودت توضیح بده چه یاد گرفته‌ای. به‌جای چندبار روخوانی، از خودت سؤال بپرس و پاسخ را از حافظه بازیابی کن.',
+      'action': 'پس از هر ۲۰ تا ۳۰ دقیقه مطالعه، سه پرسش از همان مبحث طرح کن.'
+    },
+    {
+      'title': 'مرور فاصله‌دار',
+      'body': 'مرور را به یک شب قبل از امتحان موکول نکن. فاصله مرورها را به‌تدریج بیشتر کن و مطالبی را که فراموش می‌کنی زودتر دوباره مرور کن.',
+      'action': 'یک مرور کوتاه در روز بعد و مرورهای بعدی در فاصله‌های طولانی‌تر تنظیم کن.'
+    },
+    {
+      'title': 'بازه‌های تمرکز',
+      'body': 'برای شروع می‌توانی ۲۵ دقیقه مطالعه متمرکز و ۵ دقیقه استراحت را امتحان کنی. اگر این بازه با شرایطت سازگار نیست، آن را کوتاه‌تر یا بلندتر کن.',
+      'action': 'هنگام مطالعه اعلان‌ها را خاموش کن و در زمان استراحت از جای خود بلند شو.'
+    },
+    {
+      'title': 'خلاصه‌نویسی مفهومی',
+      'body': 'خلاصه خوب رونویسی کتاب نیست. رابطه علت و معلول، فرمول‌های مهم، مثال‌ها و تفاوت مفاهیم را با کلمات خودت ثبت کن.',
+      'action': 'برای هر فصل یک صفحه نکته و یک مثال حل‌شده نگه دار.'
+    },
+    {
+      'title': 'آمادگی برای امتحان',
+      'body': 'نمونه‌سؤال را در شرایط نزدیک به امتحان حل کن. پس از بررسی پاسخ‌ها، اشتباه‌ها را دسته‌بندی کن: بی‌دقتی، ضعف مفهوم، فراموشی یا کمبود زمان.',
+      'action': 'برای هر اشتباه، یک تمرین مشابه انتخاب کن و دوباره حل کن.'
+    },
+    {
+      'title': 'تعادل و آرامش',
+      'body': 'خواب کافی، آب و غذا، حرکت بدنی و استراحت بخشی از یادگیری‌اند. برنامه‌ای که زمان بازیابی و استراحت ندارد معمولاً پایدار نمی‌ماند.',
+      'action': 'برنامه روزانه را واقع‌بینانه ببند و بین بازه‌های سنگین استراحت قرار بده.'
+    },
+  ];
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: Colors.transparent,
+    appBar: AppBar(title: const Text('روش‌های مؤثر مطالعه')),
+    body: ListView(padding: const EdgeInsets.all(16), children: [
+      const Card(child: Padding(padding: EdgeInsets.all(16), child: Text(
+        'این راهنما پیشنهادهای عمومی برای بهتر درس خواندن است. هر روش را متناسب با درس، سن، شرایط و تجربه خودت تنظیم کن.',
+        style: TextStyle(height: 1.7),
+      ))),
+      ...tips.map((tip) => Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(tip['title']!, style: const TextStyle(fontWeight: FontWeight.bold, color: navy, fontSize: 16)),
+          const SizedBox(height: 8),
+          Text(tip['body']!, style: const TextStyle(height: 1.7)),
+          const SizedBox(height: 10),
+          Text('تمرین پیشنهادی: ' + tip['action']!, style: const TextStyle(color: teal, height: 1.6, fontWeight: FontWeight.w600)),
+        ],
+      )))),
     ]),
   );
 }
