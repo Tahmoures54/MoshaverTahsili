@@ -140,15 +140,50 @@ class _DashboardState extends State<Dashboard> {
 
   Future<void> _settings() async {
     final choice = await showModalBottomSheet<String>(context: context, builder: (context) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      ListTile(leading: const Icon(Icons.person_outline), title: Text((widget.store.profile?['grade'] ?? '').toString()), subtitle: const Text('پروفایل تحصیلی')),
+      ListTile(leading: const Icon(Icons.person_outline), title: Text((widget.store.profile?['grade'] ?? '').toString()), subtitle: const Text('ویرایش پروفایل تحصیلی'), onTap: () => Navigator.pop(context, 'edit')),
       ListTile(leading: const Icon(Icons.delete_outline, color: Colors.red), title: const Text('حذف تمام اطلاعات این گوشی', style: TextStyle(color: Colors.red)), onTap: () => Navigator.pop(context, 'delete')),
     ])));
+    if (choice == 'edit' && mounted) {
+      final current = widget.store.profile ?? {};
+      final nickname = TextEditingController(text: (current['nickname'] ?? '').toString());
+      final field = TextEditingController(text: (current['field'] ?? 'عمومی').toString());
+      final goal = TextEditingController(text: (current['goal'] ?? '').toString());
+      String grade = (current['grade'] ?? 'متوسطه اول').toString();
+      final saved = await showModalBottomSheet<bool>(context: context, isScrollControlled: true,
+        builder: (context) => StatefulBuilder(builder: (context, refresh) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+          child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Text('ویرایش پروفایل', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            TextField(controller: nickname, decoration: const InputDecoration(labelText: 'نام یا نام مستعار')),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(value: grade, decoration: const InputDecoration(labelText: 'مقطع تحصیلی'),
+              items: const ['ابتدایی', 'متوسطه اول', 'متوسطه دوم', 'دانش‌آموز کنکوری', 'دانشجو'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+              onChanged: (v) { if (v != null) refresh(() => grade = v); }),
+            const SizedBox(height: 8), TextField(controller: field, decoration: const InputDecoration(labelText: 'رشته یا وضعیت تحصیلی')),
+            const SizedBox(height: 8), TextField(controller: goal, decoration: const InputDecoration(labelText: 'هدف تحصیلی')),
+            const SizedBox(height: 14), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('ذخیره تغییرات')),
+          ])),
+        )));
+      if (saved == true) {
+        await widget.store.saveProfile({'nickname': nickname.text.trim(), 'grade': grade, 'field': field.text.trim(), 'goal': goal.text.trim()});
+        if (mounted) setState(() {});
+      }
+      nickname.dispose(); field.dispose(); goal.dispose();
+    }
     if (choice == 'delete' && mounted) {
       final ok = await showDialog<bool>(context: context, builder: (context) => AlertDialog(title: const Text('حذف اطلاعات؟'),
         content: const Text('پروفایل، برنامه‌ها، نمرات، فلش‌کارت‌ها و تاریخچه گفتگو پاک می‌شوند.'),
         actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
           FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('حذف'))]));
-      if (ok == true) { await widget.store.clear(); if (mounted) setState(() => index = 0); }
+      if (ok == true) {
+        await widget.store.clear();
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => EntryScreen(store: widget.store)),
+            (route) => false,
+          );
+        }
+      }
     }
   }
 }
