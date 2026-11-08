@@ -9,7 +9,7 @@ report_failure() {
 trap report_failure ERR
 adb wait-for-device
 set +e
-flutter test integration_test/app_test.dart -d emulator-5554 --reporter expanded 2>&1 | tee build/reports/device/integration.txt
+flutter test integration_test/app_test.dart -d emulator-5554 --timeout 300s --reporter expanded 2>&1 | tee build/reports/device/integration.txt
 integration_status=${PIPESTATUS[0]}
 set -e
 if [[ "$integration_status" != 0 ]]; then

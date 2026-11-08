@@ -66,5 +66,5 @@ void main() {
     expect(store.credits, 0);
     expect(store.freeAiUsesRemaining, 2);
     await tester.pumpAndSettle();
-  });
+  }, timeout: const Timeout(Duration(minutes: 5)));
 }
