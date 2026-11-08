@@ -16,7 +16,8 @@ for line in Path(sys.argv[1]).read_text().splitlines():
 if count == 0:
     lines = [line.strip() for line in Path(sys.argv[1]).read_text().splitlines() if line.strip()]
     for line in lines[-40:]:
-        print(f'::error file=.github/workflows/build-apk.yml,line=62::ANALYZE: {line[:900]}')
+        level = 'notice' if '[info]' in line else 'warning' if '[warning]' in line else 'error'
+        print(f'::{level} file=.github/workflows/build-apk.yml,line=62::ANALYZE: {line[:900]}')
 #!/usr/bin/env python3
 """Surface Flutter analyzer locations in GitHub's check annotations."""
 import re
