@@ -77,7 +77,7 @@ void main() {
   for (final response in <http.Response>[
     http.Response('secret provider body', 500), http.Response('rate limited', 429),
     http.Response('not json', 200), answer(''),
-    http.Response(jsonEncode({'choices': []}), 200),
+    http.Response(jsonEncode({'choices': <dynamic>[]}), 200),
     http.Response(jsonEncode({'choices': [{'message': {'content': 42}}]}), 200),
   ]) {
     test('failed/invalid response ${response.statusCode}/${response.body.hashCode} does not charge', () async {
@@ -114,7 +114,7 @@ void main() {
   test('normalizes base endpoint, sends bounded context and excludes failed messages', () async {
     http.Request? captured;
     final service = AiAdvisorService(apiKey: 'test-key', model: 'test-model',
-        client: MockClient((request) async { captured = request as http.Request; return answer('برای شروع برنامه واقع‌بینانه بنویس.'); }));
+        client: MockClient((request) async { captured = request; return answer('برای شروع برنامه واقع‌بینانه بنویس.'); }));
     final result = await service.ask(profile: {'grade': 'متوسطه اول', 'year': 'هفتم', 'field': 'عمومی', 'goal': 'بهبود ریاضی'},
         history: [
           ...List.generate(30, (i) => {'role': 'user', 'content': 'turn-$i', 'status': 'completed'}),

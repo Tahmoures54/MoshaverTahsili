@@ -181,7 +181,8 @@ class EducationStore extends ChangeNotifier {
   String? savedAiAnswer(String id) {
     if (_walletError != null) return null;
     final request = (_wallet['requests'] as Map)[id] as Map?;
-    return request?['status'] == 'completed' ? request?['answer'] as String? : null;
+    final answer = request?['answer'];
+    return request?['status'] == 'completed' && answer is String ? answer : null;
   }
 
   List<Map<String, dynamic>> get creditHistory {
@@ -302,7 +303,7 @@ class EducationStore extends ChangeNotifier {
   Future<void> refundInterruptedRequests() => _serialized(() async {
     if (_walletError != null) return;
     final pending = (_wallet['requests'] as Map).entries
-        .where((entry) => entry.value['status'] == 'pending').map((entry) => entry.key).toList();
+        .where((entry) => entry.value['status'] == 'pending').map((entry) => entry.key.toString()).toList();
     if (pending.isEmpty) return;
     final wallet = _copyWallet();
     for (final id in pending) {

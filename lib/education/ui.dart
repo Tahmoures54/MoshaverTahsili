@@ -8,8 +8,8 @@ const blue = Color(0xFF2867A8);
 const teal = Color(0xFF217E75);
 const pale = Color(0xFFF4F7FB);
 
-String faNumber(Object value) {
-  var text = value.toString();
+String faNumber(Object? value) {
+  var text = value?.toString() ?? '';
   for (var i = 0; i < 10; i++) {
     text = text.replaceAll(i.toString(), '۰۱۲۳۴۵۶۷۸۹'[i]);
   }

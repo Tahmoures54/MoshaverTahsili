@@ -104,7 +104,7 @@ void main() {
 
   test('startup refunds interrupted paid and free reservations exactly once', () async {
     SharedPreferences.setMockInitialValues({EducationStore.walletKey: jsonEncode({
-      'version': 2, 'credits': 0, 'successful_uses': 2, 'purchase_tokens': {}, 'transactions': [],
+      'version': 2, 'credits': 0, 'successful_uses': 2, 'purchase_tokens': <String, dynamic>{}, 'transactions': <Map<String, dynamic>>[],
       'requests': {'interrupted': {'question': 'q', 'status': 'pending', 'charge': 'credit', 'createdAt': '2026-01-01T00:00:00Z'}},
     })});
     final store = await EducationStore.open();
