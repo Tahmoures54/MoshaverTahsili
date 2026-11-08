@@ -23,6 +23,20 @@ void main() {
     expect(store.tasks.single['done'], isTrue);
   });
 
+  test('keeps the newest 80 advisor messages', () async {
+    final store = await EducationStore.open();
+    final messages = List.generate(
+      85,
+      (index) => {'role': 'user', 'content': 'message-$index'},
+    );
+
+    await store.saveMessages(messages);
+
+    expect(store.messages, hasLength(80));
+    expect(store.messages.first['content'], 'message-5');
+    expect(store.messages.last['content'], 'message-84');
+  });
+
   test('clear removes the complete local student workspace', () async {
     final store = await EducationStore.open();
     await store.saveProfile({'grade': 'ابتدایی'});
