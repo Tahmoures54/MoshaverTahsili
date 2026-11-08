@@ -1,4 +1,66 @@
+# pubspec.yaml
+# مشاور هوشمند تحصیلی
+# Flutter 3.24.5 / Dart 3.5
+
 name: moshaver_tahsili
+description: مشاور هوشمند تحصیلی؛ برنامه‌ریز و همراه یادگیری دانش‌آموزان
+publish_to: 'none'
+version: 1.0.1+2
+
+# ─── محیط اجرا ────────────────────────────────────────────
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+  flutter: '>=3.24.0'
+
+# ─── وابستگی‌ها ───────────────────────────────────────────
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # مدیریت State
+  provider: ^6.1.2              # ✅ جدید: الزامی برای ChangeNotifierProvider
+
+  # شبکه
+  http: ^1.2.2
+
+  # ذخیره‌سازی محلی
+  shared_preferences: ^2.3.2
+
+  # بین‌المللی‌سازی
+  intl: ^0.19.0                 # ✅ جدید: وابستگی صریح flutter_localizations
+
+  # پرداخت درون‌برنامه‌ای بازار
+  # ⚠️ اگر cafebazaar_billing در pub.dev موجود نیست، این خط را به
+  #    in_app_purchase: ^3.2.0  تغییر دهید و bazaar_billing_service.dart
+  #    را مطابق API جدید بازنویسی کنید.
+  cafebazaar_billing: ^1.2.0
+
+# ─── وابستگی‌های توسعه ────────────────────────────────────
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.1.1         # ✅ به‌روزرسانی: 4.0.0 → 5.1.1
+
+# ─── تنظیمات Flutter ──────────────────────────────────────
+flutter:
+  uses-material-design: true
+
+  # ── فایل‌های استاتیک (در صورت نیاز uncomment کنید) ──
+  # assets:
+  #   - assets/images/
+  #   - assets/icons/
+
+  # ── فونت فارسی (در صورت نیاز uncomment کنید) ──
+  # fonts:
+  #   - family: Vazirmatn
+  #     fonts:
+  #       - asset: assets/fonts/Vazirmatn-Regular.ttf
+  #       - asset: assets/fonts/Vazirmatn-Bold.ttf
+  #         weight: 700
+  #       - asset: assets/fonts/Vazirmatn-Medium.ttf
+  #         weight: 500name: moshaver_tahsili
 description: مشاور هوشمند تحصیلی؛ برنامه‌ریز و همراه یادگیری دانش‌آموزان
 publish_to: 'none'
 version: 1.0.1+2
