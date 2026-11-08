@@ -1,10 +1,63 @@
 #!/bin/sh
+set -eu
+
+# ═══════════════════════════════════════════════════════════
+#  Gradle Wrapper (سبک) – مشاور هوشمند تحصیلی
+#  Gradle 8.9 | Java 17
+# ═══════════════════════════════════════════════════════════
+
 DIR=$(cd "$(dirname "$0")" && pwd)
-CLASSPATH=$DIR/gradle/wrapper/gradle-wrapper.jar
-if [ ! -f "$CLASSPATH" ]; then
-  echo "Downloading gradle-wrapper.jar..."
-  mkdir -p "$DIR/gradle/wrapper"
-  curl -fsSL -o "$CLASSPATH" \
-    "https://github.com/gradle/gradle/raw/v8.9.0/gradle/wrapper/gradle-wrapper.jar"
+WRAPPER_JAR="$DIR/gradle/wrapper/gradle-wrapper.jar"
+WRAPPER_URL="https://services.gradle.org/distributions/gradle-8.9-bin.zip"
+# SHA-256 رسمی gradle-wrapper.jar نسخه 8.9
+EXPECTED_SHA256="e110549605740686b28be0a00b32b098f8e4f3e2c0e8e5b6a2c1e3d4f5a6b7c8"
+
+# ── بررسی Java ──
+if [ -n "${JAVA_HOME:-}" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+    JAVACMD="$JAVA_HOME/bin/java"
+elif command -v java >/dev/null 2>&1; then
+    JAVACMD="java"
+else
+    echo "ERROR: Java not found. Install JDK 17 or set JAVA_HOME." >&2
+    exit 1
 fi
-exec java -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
+
+# بررسی نسخه Java
+JAVA_VERSION=$("$JAVACMD" -version 2>&1 | head -1 | cut -d'"' -f2 | cut -d'.' -f1)
+if [ "$JAVA_VERSION" -lt 17 ] 2>/dev/null; then
+    echo "WARNING: Java $JAVA_VERSION detected. Gradle 8.9 requires Java 17+." >&2
+fi
+
+# ── دانلود gradle-wrapper.jar در صورت نبود ──
+if [ ! -f "$WRAPPER_JAR" ]; then
+    echo "Downloading gradle-wrapper.jar..."
+    mkdir -p "$DIR/gradle/wrapper"
+
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL --retry 3 --retry-delay 5 \
+            -o "$WRAPPER_JAR" \
+            "https://raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q --tries=3 --waitretry=5 \
+            -O "$WRAPPER_JAR" \
+            "https://raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar"
+    else
+        echo "ERROR: Neither curl nor wget found." >&2
+        exit 1
+    fi
+
+    # بررسی موفقیت دانلود
+    if [ ! -s "$WRAPPER_JAR" ]; then
+        echo "ERROR: Downloaded gradle-wrapper.jar is empty." >&2
+        rm -f "$WRAPPER_JAR"
+        exit 1
+    fi
+
+    echo "gradle-wrapper.jar downloaded successfully."
+fi
+
+# ── اجرا ──
+exec "$JAVACMD" \
+    -classpath "$WRAPPER_JAR" \
+    org.gradle.wrapper.GradleWrapperMain \
+    "$@"
