@@ -82,14 +82,14 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
-      - name: Build Android arm64 APK
+      - name: Build universal Android APK
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           AI_API_ENDPOINT: ${{ vars.AI_API_ENDPOINT }}
           AI_MODEL: ${{ vars.AI_MODEL }}
           BAZAAR_RSA_PUBLIC_KEY: ${{ secrets.BAZAAR_RSA_PUBLIC_KEY }}
         run: |
-          flutter build apk --release --target-platform android-arm64 \
+          flutter build apk --release \
             --dart-define="AI_API_KEY=$AI_API_KEY" \
             --dart-define="AI_API_ENDPOINT=${AI_API_ENDPOINT:-https://api.avalai.ir/v1/chat/completions}" \
             --dart-define="AI_MODEL=${AI_MODEL:-deepseek-chat}" \
@@ -98,7 +98,7 @@ jobs:
       - name: Upload CI APK and dependency lock
         uses: actions/upload-artifact@v4
         with:
-          name: moshaver-tahsili-arm64-apk
+          name: moshaver-tahsili-universal-apk
           path: |
             build/app/outputs/flutter-apk/app-release.apk
             pubspec.lock
