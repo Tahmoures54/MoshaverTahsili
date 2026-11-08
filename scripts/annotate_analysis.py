@@ -12,3 +12,8 @@ for line in Path(sys.argv[1]).read_text().splitlines():
         level, message, file, line_no, column, code = match.groups()
         print(f'::{level} file={file},line={line_no},col={column}::{message} ({code})')
         count += 1
+
+if count == 0:
+    lines = [line.strip() for line in Path(sys.argv[1]).read_text().splitlines() if line.strip()]
+    for line in lines[-40:]:
+        print(f'::error::{line[:900]}')

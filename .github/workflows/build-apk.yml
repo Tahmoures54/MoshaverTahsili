@@ -211,6 +211,11 @@ jobs:
           if [[ "$GITHUB_REF" == refs/tags/v* && "$GITHUB_REF_NAME" != *-* && "$READY" == true ]]; then
             gh release create "$GITHUB_REF_NAME" "${files[@]}" --verify-tag --title "مشاور تحصیلی $VERSION" --notes 'نسخه انتشار با امضای خصوصی، سرویس هوش مصنوعی پیکربندی‌شده و کاتالوگ تأییدشده بازار. آزمون پرداخت واقعی روی گوشی باید در پرونده انتشار ثبت شود.'
           else
-            tag="v${VERSION}-test.${GITHUB_RUN_NUMBER}"
-            gh release create "$tag" "${files[@]}" --target "$GITHUB_SHA" --prerelease --title "نسخه آزمایشی $VERSION (ساخت $GITHUB_RUN_NUMBER)" --notes 'این نسخه برای نصب و آزمون است، نه انتشار تجاری. ممکن است با کلید debug امضا شده باشد یا کلید AI/تأیید کاتالوگ بازار نداشته باشد. گزارش پیکربندی و اندازه‌ها در پیوست موجود است. پرداخت و ارتباط واقعی تنها در صورت پیکربندی و آزمون مستقل تأیید می‌شوند.'
+            notes='این نسخه برای نصب و آزمون است، نه انتشار تجاری. ممکن است با کلید debug امضا شده باشد یا کلید AI/تأیید کاتالوگ بازار نداشته باشد. گزارش پیکربندی و اندازه‌ها در پیوست موجود است. پرداخت و ارتباط واقعی تنها در صورت پیکربندی و آزمون مستقل تأیید می‌شوند.'
+            if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+              gh release create "$GITHUB_REF_NAME" "${files[@]}" --verify-tag --prerelease --title "نسخه آزمایشی $VERSION" --notes "$notes"
+            else
+              tag="v${VERSION}-test.${GITHUB_RUN_NUMBER}"
+              gh release create "$tag" "${files[@]}" --target "$GITHUB_SHA" --prerelease --title "نسخه آزمایشی $VERSION (ساخت $GITHUB_RUN_NUMBER)" --notes "$notes"
+            fi
           fi
