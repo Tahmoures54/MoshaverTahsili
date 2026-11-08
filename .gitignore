@@ -1,48 +1,40 @@
-# ===== Python =====
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-*.egg-info/
-dist/
+# Flutter / Dart
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
 build/
-*.egg
-.eggs/
-*.whl
+coverage/
+*.g.dart
 
-# ===== Django =====
-*.sqlite3
-db.sqlite3
-media/
-staticfiles/
-static_collected/
+# Android generated files and private signing material
+android/.gradle/
+android/local.properties
+android/key.properties
+android/app/upload-keystore.jks
+*.jks
+*.keystore
+*.apk
+*.aab
+*.zip
 
-# ===== Environment =====
+# Secrets: only .env.example may be tracked
 .env
-.env.local
-.env.*.local
-venv/
-env/
-.venv/
+.env.*
+!.env.example
 
-# ===== IDE =====
+# IDE / OS / temporary files
 .vscode/
 .idea/
+.fvm/
+*.iml
 *.swp
-*.swo
 *~
 .DS_Store
 Thumbs.db
-
-# ===== Docker =====
-docker-compose.override.yml
-
-# ===== Logs =====
 *.log
-logs/
-
-# ===== Coverage =====
-htmlcov/
-.coverage
-.coverage.*
-coverage.xml
+__pycache__/
+.pytest_cache/
+.venv/
