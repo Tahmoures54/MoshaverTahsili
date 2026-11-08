@@ -11,7 +11,7 @@ void main() {
 
   test('charges one local credit only after a successful AI answer', () async {
     TestWidgetsFlutterBinding.ensureInitialized();
-    SharedPreferences.setMockInitialValues({'edu.ai.successful_uses': 2, 'edu.ai.credits': 2});
+    SharedPreferences.setMockInitialValues({'edu.ai.wallet': jsonEncode({'successful_uses': 2, 'credits': 2, 'purchase_tokens': <String>[]})});
     final store = await EducationStore.open();
     final service = AiAdvisorService(
       store: store,
@@ -48,7 +48,7 @@ void main() {
 
   test('does not send a request when the student has no free uses or credits', () async {
     TestWidgetsFlutterBinding.ensureInitialized();
-    SharedPreferences.setMockInitialValues({'edu.ai.successful_uses': 2, 'edu.ai.credits': 0});
+    SharedPreferences.setMockInitialValues({'edu.ai.wallet': jsonEncode({'successful_uses': 2, 'credits': 0, 'purchase_tokens': <String>[]})});
     final store = await EducationStore.open();
     var called = false;
     final service = AiAdvisorService(
