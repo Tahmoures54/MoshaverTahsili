@@ -52,7 +52,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('کیف اعتبار و خرید'), findsOneWidget);
     expect(find.text('بازیابی خریدها'), findsOneWidget);
-    await tester.pageBack();
+    await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
 
     // Recreate the widget tree and reopen the platform-backed store.
