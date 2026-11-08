@@ -70,10 +70,10 @@ jobs:
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          AI_API_ENDPOINT: ${{ vars.AI_API_ENDPOINT }}
-          DEEPSEEK_API_ENDPOINT: ${{ vars.DEEPSEEK_API_ENDPOINT }}
-          AI_MODEL: ${{ vars.AI_MODEL }}
-          DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL }}
+          AI_API_ENDPOINT: ${{ vars.AI_API_ENDPOINT || secrets.AI_API_ENDPOINT }}
+          DEEPSEEK_API_ENDPOINT: ${{ vars.DEEPSEEK_API_ENDPOINT || secrets.DEEPSEEK_API_ENDPOINT }}
+          AI_MODEL: ${{ vars.AI_MODEL || secrets.AI_MODEL }}
+          DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL || secrets.DEEPSEEK_MODEL }}
           BAZAAR_RSA_PUBLIC_KEY: ${{ secrets.BAZAAR_RSA_PUBLIC_KEY }}
           BAZAAR_CATALOG_CONFIRMED: ${{ vars.BAZAAR_CATALOG_CONFIRMED }}
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
@@ -93,6 +93,11 @@ jobs:
       - name: Build Android artifacts
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          AI_API_ENDPOINT: ${{ vars.AI_API_ENDPOINT || secrets.AI_API_ENDPOINT }}
+          DEEPSEEK_API_ENDPOINT: ${{ vars.DEEPSEEK_API_ENDPOINT || secrets.DEEPSEEK_API_ENDPOINT }}
+          AI_MODEL: ${{ vars.AI_MODEL || secrets.AI_MODEL }}
+          DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL || secrets.DEEPSEEK_MODEL }}
           BAZAAR_RSA_PUBLIC_KEY: ${{ secrets.BAZAAR_RSA_PUBLIC_KEY }}
           BAZAAR_CATALOG_CONFIRMED: ${{ vars.BAZAAR_CATALOG_CONFIRMED }}
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
