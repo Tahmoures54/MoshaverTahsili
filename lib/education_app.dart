@@ -445,6 +445,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => messages.add({'role': 'assistant', 'content': e.toString().replaceFirst('Exception: ', '')}));
+      await widget.store.saveMessages(messages);
     } finally { if (mounted) setState(() => busy = false); }
   }
   @override
