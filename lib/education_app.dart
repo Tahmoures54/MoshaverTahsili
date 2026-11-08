@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'education/education_store.dart';
 import 'education/ai_advisor_service.dart';
@@ -178,10 +179,10 @@ class _DashboardState extends State<Dashboard> {
       if (ok == true) {
         await widget.store.clear();
         if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => EntryScreen(store: widget.store)),
+          unawaited(Navigator.of(context).pushAndRemoveUntil<void>(
+            MaterialPageRoute<void>(builder: (_) => EntryScreen(store: widget.store)),
             (route) => false,
-          );
+          ));
         }
       }
     }
@@ -223,7 +224,7 @@ class HomePage extends StatelessWidget {
       QuickTile(icon: Icons.calendar_month, title: 'برنامه مطالعه', subtitle: 'ثبت و پیگیری کارهای درسی', onTap: () => go(1)),
       QuickTile(icon: Icons.assessment, title: 'آزمون و کارنامه', subtitle: 'ثبت نمرات و بررسی عملکرد', onTap: () => go(2)),
       QuickTile(icon: Icons.style, title: 'مرور و فلش‌کارت', subtitle: 'مرور پرسش و پاسخ‌ها', onTap: () => go(3)),
-      QuickTile(icon: Icons.explore_outlined, title: 'راهنمای انتخاب رشته', subtitle: 'بررسی علاقه‌ها و توانایی‌ها با کمک مشاور', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CareerPage(store: store)))),
+      QuickTile(icon: Icons.explore_outlined, title: 'راهنمای انتخاب رشته', subtitle: 'بررسی علاقه‌ها و توانایی‌ها با کمک مشاور', onTap: () => unawaited(Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => CareerPage(store: store))))),
       const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('انتخاب رشته را با شناخت علاقه‌ها، توانایی‌ها و واقعیت‌های هر مسیر انجام بده؛ هیچ آزمونی به‌تنهایی آینده تو را تعیین نمی‌کند.', style: TextStyle(height: 1.7)))),
     ]);
   }
