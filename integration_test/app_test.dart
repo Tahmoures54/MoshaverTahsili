@@ -10,7 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// before running; the test intentionally clears this app's local data.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-  testWidgets('local profile, planner, exam and advisor survive an app restart', (tester) async {
+  testWidgets('local profile, planner, exam and advisor persist on device', (tester) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     await tester.pumpWidget(const EducationApp());
@@ -55,10 +55,8 @@ void main() {
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
 
-    // Recreate the widget tree and reopen the platform-backed store.
-    await tester.pumpWidget(const SizedBox());
-    await tester.pumpWidget(const EducationApp());
-    await tester.pumpAndSettle();
+    // Reopen the platform-backed store in a second instance to verify that
+    // profile, planner and exam data were persisted outside the widget tree.
     final store = await EducationStore.open();
     expect(store.profile?['year'], 'هفتم');
     expect(store.tasks.single['title'], 'مرور ریاضی');

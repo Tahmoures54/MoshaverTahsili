@@ -53,67 +53,92 @@ const gradeYears = <String, List<String>>{
 };
 
 Future<bool> showProfileSheet(BuildContext context, EducationStore store) async {
-  final current = store.profile ?? {};
-  final nickname = TextEditingController(text: current['nickname']?.toString() ?? '');
-  final field = TextEditingController(text: current['field']?.toString() ?? 'عمومی');
-  final goal = TextEditingController(text: current['goal']?.toString() ?? '');
+  final saved = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    builder: (_) => _ProfileSheet(store: store),
+  );
+  return saved == true;
+}
+
+class _ProfileSheet extends StatefulWidget {
+  const _ProfileSheet({required this.store});
+  final EducationStore store;
+  @override
+  State<_ProfileSheet> createState() => _ProfileSheetState();
+}
+
+class _ProfileSheetState extends State<_ProfileSheet> {
   final form = GlobalKey<FormState>();
-  var grade = gradeYears.containsKey(current['grade']) ? current['grade'].toString() : 'متوسطه اول';
-  var year = gradeYears[grade]!.contains(current['year']) ? current['year'].toString() : gradeYears[grade]!.first;
-  var saving = false;
+  late final TextEditingController nickname;
+  late final TextEditingController field;
+  late final TextEditingController goal;
+  late String grade;
+  late String year;
+  bool saving = false;
   String? error;
-  try {
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        return StatefulBuilder(builder: (sheetContext, refresh) {
-          return SafeArea(child: Padding(
-            padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.viewInsetsOf(sheetContext).bottom + 20),
-            child: SingleChildScrollView(child: Form(key: form, child: Column(
-              mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text('کمی درباره مسیر تحصیلی‌ات بدانیم', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                const Text('نام مستعار کافی است. اطلاعات هویتی یا شماره تماس وارد نکن.', style: TextStyle(color: Colors.blueGrey, height: 1.7)),
-                const SizedBox(height: 18),
-                TextFormField(controller: nickname, maxLength: 40, decoration: const InputDecoration(labelText: 'نام یا نام مستعار (اختیاری)')),
-                DropdownButtonFormField<String>(initialValue: grade, decoration: const InputDecoration(labelText: 'مقطع تحصیلی'),
-                  items: gradeYears.keys.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
-                  onChanged: saving ? null : (value) { if (value != null) refresh(() { grade = value; year = gradeYears[value]!.first; }); }),
-                const SizedBox(height: 14),
-                DropdownButtonFormField<String>(key: ValueKey(grade), initialValue: year, decoration: const InputDecoration(labelText: 'پایه تحصیلی'),
-                  items: gradeYears[grade]!.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
-                  onChanged: saving ? null : (value) { if (value != null) refresh(() => year = value); }),
-                const SizedBox(height: 14),
-                TextFormField(controller: field, maxLength: 80, decoration: const InputDecoration(labelText: 'رشته یا زمینه مورد علاقه'),
-                  validator: (value) => value == null || value.trim().isEmpty ? 'رشته یا «عمومی» را بنویس.' : null),
-                TextFormField(controller: goal, maxLines: 2, maxLength: 300, decoration: const InputDecoration(labelText: 'هدف تحصیلی (اختیاری)')),
-                if (error != null) NoticeCard(text: error!, warning: true),
-                const SizedBox(height: 12),
-                FilledButton(onPressed: saving ? null : () async {
-                  if (!form.currentState!.validate()) return;
-                  refresh(() { saving = true; error = null; });
-                  try {
-                    await store.saveProfile({'nickname': nickname.text.trim(), 'grade': grade, 'year': year,
-                      'field': field.text.trim(), 'goal': goal.text.trim(), 'privacyVersion': 1});
-                    if (sheetContext.mounted) Navigator.pop(sheetContext, true);
-                  } on Object catch (value) {
-                    if (sheetContext.mounted) refresh(() { saving = false; error = friendlyError(value); });
-                  }
-                }, child: Text(saving ? 'در حال ذخیره…' : 'ذخیره پروفایل')),
-              ],
-            ))),
-          ));
-        });
-      },
-    );
-    // The modal route's Future completes when pop starts, while its reverse
-    // transition may still rebuild TextFormFields. Keep their controllers alive
-    // until that transition has fully detached the fields.
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-    return saved == true;
-  } finally { nickname.dispose(); field.dispose(); goal.dispose(); }
+
+  @override
+  void initState() {
+    super.initState();
+    final current = widget.store.profile ?? {};
+    nickname = TextEditingController(text: current['nickname']?.toString() ?? '');
+    field = TextEditingController(text: current['field']?.toString() ?? 'عمومی');
+    goal = TextEditingController(text: current['goal']?.toString() ?? '');
+    grade = gradeYears.containsKey(current['grade']) ? current['grade'].toString() : 'متوسطه اول';
+    year = gradeYears[grade]!.contains(current['year']) ? current['year'].toString() : gradeYears[grade]!.first;
+  }
+
+  @override
+  void dispose() {
+    nickname.dispose();
+    field.dispose();
+    goal.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!form.currentState!.validate()) return;
+    setState(() { saving = true; error = null; });
+    try {
+      await widget.store.saveProfile({'nickname': nickname.text.trim(), 'grade': grade, 'year': year,
+        'field': field.text.trim(), 'goal': goal.text.trim(), 'privacyVersion': 1});
+      if (mounted) Navigator.pop(context, true);
+    } on Object catch (value) {
+      if (mounted) setState(() { saving = false; error = friendlyError(value); });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(child: Padding(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.viewInsetsOf(context).bottom + 20),
+      child: SingleChildScrollView(child: Form(key: form, child: Column(
+        mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('کمی درباره مسیر تحصیلی‌ات بدانیم', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          const Text('نام مستعار کافی است. اطلاعات هویتی یا شماره تماس وارد نکن.', style: TextStyle(color: Colors.blueGrey, height: 1.7)),
+          const SizedBox(height: 18),
+          TextFormField(controller: nickname, maxLength: 40, decoration: const InputDecoration(labelText: 'نام یا نام مستعار (اختیاری)')),
+          DropdownButtonFormField<String>(initialValue: grade, decoration: const InputDecoration(labelText: 'مقطع تحصیلی'),
+            items: gradeYears.keys.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+            onChanged: saving ? null : (value) { if (value != null) setState(() { grade = value; year = gradeYears[value]!.first; }); }),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(key: ValueKey(grade), initialValue: year, decoration: const InputDecoration(labelText: 'پایه تحصیلی'),
+            items: gradeYears[grade]!.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+            onChanged: saving ? null : (value) { if (value != null) setState(() => year = value); }),
+          const SizedBox(height: 14),
+          TextFormField(controller: field, maxLength: 80, decoration: const InputDecoration(labelText: 'رشته یا زمینه مورد علاقه'),
+            validator: (value) => value == null || value.trim().isEmpty ? 'رشته یا «عمومی» را بنویس.' : null),
+          TextFormField(controller: goal, maxLines: 2, maxLength: 300, decoration: const InputDecoration(labelText: 'هدف تحصیلی (اختیاری)')),
+          if (error != null) NoticeCard(text: error!, warning: true),
+          const SizedBox(height: 12),
+          FilledButton(onPressed: saving ? null : _save, child: Text(saving ? 'در حال ذخیره…' : 'ذخیره پروفایل')),
+        ],
+      ))),
+    ));
+  }
 }
 
 class EntryScreen extends StatefulWidget {
