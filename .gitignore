@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Smart Mechanic - Optimized .gitignore for Flutter CI/CD (GitHub Actions)
+# مشاور هوشمند تحصیلی - Flutter
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Miscellaneous
@@ -33,7 +33,6 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 build/
-pubspec.lock
 
 # Symbolication
 app.*.symbols
