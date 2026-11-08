@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: flutter-${{ github.ref }}
@@ -30,32 +30,57 @@ jobs:
           flutter-version: '3.24.5'
           channel: stable
           cache: true
+
       - name: Resolve dependencies
         run: flutter pub get
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos
+
       - name: Test
         run: flutter test
+
       - name: Prepare Gradle wrapper
         run: chmod +x android/gradlew
-      - name: Configure optional release signing
+
+      - name: Configure Android signing
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
-          if [ -z "$RELEASE_KEYSTORE_BASE64" ]; then
-            echo "No private release keystore configured; CI APK will use debug signing and is not store-ready."
+          is_tag=false
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then is_tag=true; fi
+
+          if [[ "$is_tag" == true ]]; then
+            for name in RELEASE_KEYSTORE_BASE64 RELEASE_KEYSTORE_PASSWORD RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD AI_API_KEY; do
+              if [[ -z "${!name}" ]]; then
+                echo "::error::Missing required repository secret: $name"
+                exit 1
+              fi
+            done
+          fi
+
+          if [[ -z "$RELEASE_KEYSTORE_BASE64" ]]; then
+            echo "No private release keystore configured; building a debug-signed test APK."
             exit 0
           fi
-          echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > android/app/upload-keystore.jks
+
+          if [[ -z "$RELEASE_KEYSTORE_PASSWORD" || -z "$RELEASE_KEY_ALIAS" || -z "$RELEASE_KEY_PASSWORD" ]]; then
+            echo "::error::Keystore supplied but one or more signing values are missing."
+            exit 1
+          fi
+
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          test -s android/app/upload-keystore.jks
           cat > android/key.properties <<EOF
           storePassword=$RELEASE_KEYSTORE_PASSWORD
           keyPassword=$RELEASE_KEY_PASSWORD
           keyAlias=$RELEASE_KEY_ALIAS
           storeFile=upload-keystore.jks
           EOF
+
       - name: Build Android arm64 APK
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
@@ -66,7 +91,8 @@ jobs:
             --dart-define="AI_API_KEY=$AI_API_KEY" \
             --dart-define="AI_API_ENDPOINT=${AI_API_ENDPOINT:-https://api.avalai.ir/v1/chat/completions}" \
             --dart-define="AI_MODEL=${AI_MODEL:-deepseek-chat}"
-      - name: Upload CI APK
+
+      - name: Upload CI APK and dependency lock
         uses: actions/upload-artifact@v4
         with:
           name: moshaver-tahsili-arm64-apk
@@ -75,3 +101,11 @@ jobs:
             pubspec.lock
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
