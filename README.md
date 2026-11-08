@@ -15,7 +15,7 @@
 
 ## معماری و حریم خصوصی
 - Flutter و Dart؛ شناسه Android: `ir.moshaver.tahsili`
-- حداقل Android API: 24؛ ساخت arm64
+- حداقل Android API: 24؛ ساخت APK چندمعماری برای ARM 32 و 64 بیتی و معماری‌های پشتیبانی‌شده Flutter
 - SharedPreferences برای اطلاعات سبک نسخه پایه و کیف اعتبار محلی
 - خریدهای بازار با توکن یکتا در حافظه محلی ثبت می‌شوند تا یک خرید دوبار شارژ نشود؛ اعتبارها پس از پاسخ موفق AI مصرف می‌شوند و خطاهای درخواست هزینه‌ای ندارند.
 - برنامه‌ها، نمرات، فلش‌کارت‌ها، پروفایل و تاریخچه گفتگو روی دستگاه ذخیره می‌شوند.
@@ -36,7 +36,7 @@
 
 نمونه ساخت:
 
-    flutter build apk --release --target-platform android-arm64 --dart-define=AI_API_KEY=YOUR_KEY --dart-define=AI_API_ENDPOINT=https://api.avalai.ir/v1/chat/completions --dart-define=AI_MODEL=deepseek-chat
+    flutter build apk --release --dart-define=AI_API_KEY=YOUR_KEY --dart-define=AI_API_ENDPOINT=https://api.avalai.ir/v1/chat/completions --dart-define=AI_MODEL=deepseek-chat
 
 **هشدار امنیتی:** هر کلیدی که داخل APK قرار بگیرد قابل استخراج است. GitHub Actions Secrets مانع ثبت کلید در سورس عمومی می‌شود، اما کلید را داخل APK محرمانه نمی‌کند. برای انتشار عمومی، کلید محدودشده با سقف مصرف یا واسط امن سمت سرور راهکار مطمئن‌تری است. اگر کلید تنظیم نشده باشد، امکانات محلی فعال می‌مانند و صفحه مشاور پیام مناسب نشان می‌دهد.
 
@@ -80,7 +80,7 @@ GitHub Actions در نبود keystore خصوصی، APK را با امضای debu
     flutter pub get
     flutter analyze
     flutter test
-    flutter build apk --release --target-platform android-arm64
+    flutter build apk --release
 
 ## محدودیت‌های نسخه پایه
 - یادآوری اعلان‌محور و همگام‌سازی ابری هنوز پیاده‌سازی نشده‌اند.
