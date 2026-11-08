@@ -39,7 +39,7 @@ class _PlannerPageState extends State<PlannerPage> {
     final tasks = widget.store.tasks;
     final minutes = tasks.fold<int>(0, (sum, item) => sum + ((item['minutes'] as num?)?.toInt() ?? 0));
     return Scaffold(backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(onPressed: saving ? null : add, icon: const Icon(Icons.add), label: const Text('افزودن برنامه')),
+      floatingActionButton: FloatingActionButton.extended(heroTag: null, onPressed: saving ? null : add, icon: const Icon(Icons.add), label: const Text('افزودن برنامه')),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 92), children: [
         NoticeCard(text: '${faNumber(minutes)} دقیقه مطالعه برنامه‌ریزی کرده‌ای. کارهای کوچک و قابل انجام انتخاب کن.', icon: Icons.timer_outlined),
         if (widget.store.dataError('edu.tasks') != null) NoticeCard(text: widget.store.dataError('edu.tasks')!, warning: true),
@@ -89,7 +89,7 @@ class _ExamsPageState extends State<ExamsPage> {
     final percentages = exams.map(examPercentage).whereType<double>().toList();
     final average = percentages.isEmpty ? 0.0 : percentages.reduce((a, b) => a + b) / percentages.length;
     return Scaffold(backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(onPressed: saving ? null : add, icon: const Icon(Icons.add), label: const Text('ثبت نمره')),
+      floatingActionButton: FloatingActionButton.extended(heroTag: null, onPressed: saving ? null : add, icon: const Icon(Icons.add), label: const Text('ثبت نمره')),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 92), children: [
         Card(child: Padding(padding: const EdgeInsets.all(20), child: Column(children: [
           const Text('میانگین درصدهای ثبت‌شده'), const SizedBox(height: 8),
@@ -155,7 +155,7 @@ class _CardsPageState extends State<CardsPage> {
     final now = DateTime.now();
     final due = cards.where((card) { final date = DateTime.tryParse(card['dueAt']?.toString() ?? ''); return date == null || !date.isAfter(now); }).length;
     return Scaffold(backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(onPressed: saving ? null : add, icon: const Icon(Icons.add), label: const Text('ساخت فلش‌کارت')),
+      floatingActionButton: FloatingActionButton.extended(heroTag: null, onPressed: saving ? null : add, icon: const Icon(Icons.add), label: const Text('ساخت فلش‌کارت')),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 92), children: [
         NoticeCard(text: '${faNumber(cards.length)} فلش‌کارت · ${faNumber(due)} آماده مرور. اگر پاسخ را به یاد نیاوردی، همین امروز دوباره مرور کن.', icon: Icons.psychology_alt_outlined),
         if (cards.isEmpty) const EmptyState(title: 'یادگیری را ماندگار کنیم', subtitle: 'یک پرسش و پاسخ کوتاه بساز و در فاصله‌های مناسب مرور کن.', icon: Icons.style_outlined),
