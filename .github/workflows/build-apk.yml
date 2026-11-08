@@ -1,4 +1,4 @@
-name: Flutter checks and Android build
+name: Flutter CI/CD – Android
 
 on:
   push:
@@ -8,23 +8,30 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# ── حداقل دسترسی در سطح کل workflow ──
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: flutter-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# ══════════════════════════════════════════════
+#  Job 1 – تحلیل ایستا و تست واحد
+# ══════════════════════════════════════════════
 jobs:
-  validate:
+  check:
+    name: Analyze & Test
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v5
+
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.5'
@@ -34,16 +41,44 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
 
-      - name: Analyze
+      - name: Static analysis
         run: flutter analyze --no-fatal-infos
 
-      - name: Test
+      - name: Unit & widget tests
         run: flutter test
+
+  # ══════════════════════════════════════════════
+  #  Job 2 – بیلد APK اندروید
+  # ══════════════════════════════════════════════
+  build-android:
+    name: Build Android APK
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle              # ← کش Gradle برای سرعت بیشتر
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter doctor -v       # ← خروجی تشخیصی برای دیباگ
 
       - name: Prepare Gradle wrapper
         run: chmod +x android/gradlew
 
-      - name: Configure Android signing
+      # ── اعتبارسنجی secrets فقط برای تگ‌ها ──
+      - name: Validate release secrets
+        if: startsWith(github.ref, 'refs/tags/v')
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
@@ -51,64 +86,98 @@ jobs:
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
         run: |
-          is_tag=false
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then is_tag=true; fi
+          set -euo pipefail
+          for var in RELEASE_KEYSTORE_BASE64 RELEASE_KEYSTORE_PASSWORD \
+                     RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD AI_API_KEY; do
+            if [[ -z "${!var}" ]]; then
+              echo "::error::Missing required secret for tag release: $var"
+              exit 1
+            fi
+          done
 
-          if [[ "$is_tag" == true ]]; then
-            for name in RELEASE_KEYSTORE_BASE64 RELEASE_KEYSTORE_PASSWORD RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD AI_API_KEY; do
-              if [[ -z "${!name}" ]]; then
-                echo "::error::Missing required repository secret: $name"
-                exit 1
-              fi
-            done
-          fi
+      # ── پیکربندی امضای اندروید ──
+      - name: Configure Android signing
+        id: signing
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
 
-          if [[ -z "$RELEASE_KEYSTORE_BASE64" ]]; then
-            echo "No private release keystore configured; building a debug-signed test APK."
+          # بدون کی‌استور → بیلد با امضای دیباگ
+          if [[ -z "$KEYSTORE_B64" ]]; then
+            echo "::notice::No release keystore configured – building debug-signed APK."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          if [[ -z "$RELEASE_KEYSTORE_PASSWORD" || -z "$RELEASE_KEY_ALIAS" || -z "$RELEASE_KEY_PASSWORD" ]]; then
-            echo "::error::Keystore supplied but one or more signing values are missing."
-            exit 1
-          fi
+          # کی‌استور هست ولی بقیه مقادیر ناقص‌اند
+          for var in KEYSTORE_PASS KEY_ALIAS KEY_PASS; do
+            if [[ -z "${!var}" ]]; then
+              echo "::error::Keystore provided but $var is missing."
+              exit 1
+            fi
+          done
 
-          echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
-          test -s android/app/upload-keystore.jks
-          cat > android/key.properties <<EOF
-          storePassword=$RELEASE_KEYSTORE_PASSWORD
-          keyPassword=$RELEASE_KEY_PASSWORD
-          keyAlias=$RELEASE_KEY_ALIAS
-          storeFile=upload-keystore.jks
-          EOF
+          # دیکد و ذخیره کی‌استور
+          echo "$KEYSTORE_B64" | base64 --decode > android/app/upload-keystore.jks
+          test -s android/app/upload-keystore.jks \
+            || { echo "::error::Decoded keystore file is empty."; exit 1; }
 
-      - name: Build universal Android APK
+          # نوشتن key.properties بدون تورفتگی (با printf)
+          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=upload-keystore.jks\n' \
+            "$KEYSTORE_PASS" "$KEY_PASS" "$KEY_ALIAS" \
+            > android/key.properties
+
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      # ── بیلد نهایی APK ──
+      - name: Build universal APK
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           AI_API_ENDPOINT: ${{ vars.AI_API_ENDPOINT }}
           AI_MODEL: ${{ vars.AI_MODEL }}
           BAZAAR_RSA_PUBLIC_KEY: ${{ secrets.BAZAAR_RSA_PUBLIC_KEY }}
         run: |
+          set -euo pipefail
           flutter build apk --release \
-            --dart-define="AI_API_KEY=$AI_API_KEY" \
+            --dart-define="AI_API_KEY=${AI_API_KEY:-}" \
             --dart-define="AI_API_ENDPOINT=${AI_API_ENDPOINT:-https://api.avalai.ir/v1/chat/completions}" \
             --dart-define="AI_MODEL=${AI_MODEL:-deepseek-chat}" \
-            --dart-define="BAZAAR_RSA_PUBLIC_KEY=$BAZAAR_RSA_PUBLIC_KEY"
+            --dart-define="BAZAAR_RSA_PUBLIC_KEY=${BAZAAR_RSA_PUBLIC_KEY:-}"
 
-      - name: Upload CI APK and dependency lock
+      # ── آپلود artifact ──
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: moshaver-tahsili-universal-apk
+          name: moshaver-tahsili-apk-${{ github.run_number }}
           path: |
             build/app/outputs/flutter-apk/app-release.apk
             pubspec.lock
           if-no-files-found: error
           retention-days: 14
 
-      - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+  # ══════════════════════════════════════════════
+  #  Job 3 – انتشار ریلیز (فقط روی تگ)
+  # ══════════════════════════════════════════════
+  release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-android
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write              # ← فقط این job دسترسی write دارد
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: moshaver-tahsili-apk-${{ github.run_number }}
+          path: artifacts
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: |
-            build/app/outputs/flutter-apk/app-release.apk
+          files: artifacts/**/*.apk
