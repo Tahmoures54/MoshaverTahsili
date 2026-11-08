@@ -47,9 +47,10 @@ jobs:
         run: |
           mkdir -p build/reports
           set +e
-          flutter analyze 2>&1 | tee build/reports/analyze.txt
-          result=${PIPESTATUS[0]}
+          flutter analyze --write=build/reports/analyze.txt
+          result=$?
           set -e
+          cat build/reports/analyze.txt
           python3 scripts/annotate_analysis.py build/reports/analyze.txt
           exit "$result"
       - name: Unit and widget tests
