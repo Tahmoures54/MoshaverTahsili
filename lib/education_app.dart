@@ -1,1270 +1,341 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
-import 'education/education_store.dart';
-import 'education/ai_advisor_service.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'education/advisor_page.dart';
+import 'education/assessment_pages.dart';
 import 'education/credit_shop_page.dart';
+import 'education/education_store.dart';
+import 'education/study_pages.dart';
+import 'education/ui.dart';
 
-// ─── رنگ‌های برند ───────────────────────────────────────
-const Color _navy = Color(0xFF17324D);
-const Color _blue = Color(0xFF2867A8);
-const Color _teal = Color(0xFF2C9C91);
-const Color _pale = Color(0xFFF4F7FB);
+export 'education/advisor_page.dart';
+export 'education/assessment_pages.dart';
+export 'education/study_pages.dart';
+export 'education/ui.dart' show EmptyState;
 
-// ─── تابع کمکی: پیام خطای کاربرپسند ────────────────────
-String _userMessage(Object error) {
-  if (error is AiException) return error.message;
-  if (error is BazaarBillingException) return error.message;
-  return error
-      .toString()
-      .replaceFirst(RegExp(r'^[A-Za-z]+Exception:\s*'), '');
-}
-
-// ─── تابع کمکی: تبدیل ارقام فارسی به انگلیسی ───────────
-String _digitsToEnglish(String value) {
-  const fa = '۰۱۲۳۴۵۶۷۸۹';
-  const en = '0123456789';
-  var result = value;
-  for (var i = 0; i < fa.length; i++) {
-    result = result.replaceAll(fa[i], en[i]);
-  }
-  return result;
-}
-
-// ═══════════════════════════════════════════════════════════
-//  EducationApp – نقطه ورود اصلی اپ
-// ═══════════════════════════════════════════════════════════
 class EducationApp extends StatefulWidget {
-  const EducationApp({super.key});
-
+  const EducationApp({super.key, this.store});
+  final EducationStore? store;
   @override
   State<EducationApp> createState() => _EducationAppState();
 }
 
-class _EducationAppState extends State<EducationApp>
-    with TickerProviderStateMixin {
-  late final TabController _tab;
+class _EducationAppState extends State<EducationApp> {
+  late Future<EducationStore> future;
+  @override
+  void initState() { super.initState(); future = widget.store == null ? EducationStore.open() : Future.value(widget.store); }
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    title: 'مشاور هوشمند تحصیلی', debugShowCheckedModeBanner: false,
+    locale: const Locale('fa'), supportedLocales: const [Locale('fa'), Locale('en')],
+    localizationsDelegates: GlobalMaterialLocalizations.delegates,
+    theme: buildAppTheme(),
+    home: FutureBuilder<EducationStore>(future: future, builder: (context, snapshot) {
+      if (snapshot.hasData) return EntryScreen(store: snapshot.data!);
+      if (snapshot.hasError) {
+        return Scaffold(body: Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const NoticeCard(text: 'ذخیره‌سازی گوشی آماده نشد. اطلاعات قبلی بازنویسی نشده است. فضای خالی گوشی را بررسی کن و دوباره برنامه را باز کن.', warning: true),
+          FilledButton(onPressed: () => setState(() => future = EducationStore.open()), child: const Text('تلاش دوباره')),
+        ]))));
+      }
+      return const LoadingPage();
+    }),
+  );
+}
+
+const gradeYears = <String, List<String>>{
+  'ابتدایی': ['اول', 'دوم', 'سوم', 'چهارم', 'پنجم', 'ششم'],
+  'متوسطه اول': ['هفتم', 'هشتم', 'نهم'],
+  'متوسطه دوم': ['دهم', 'یازدهم', 'دوازدهم'],
+  'دانش‌آموز کنکوری': ['پایه دهم', 'پایه یازدهم', 'پایه دوازدهم', 'فارغ‌التحصیل'],
+  'دانشجو': ['ترم اول', 'ترم دوم یا بالاتر'],
+};
+
+Future<bool> showProfileSheet(BuildContext context, EducationStore store) async {
+  final saved = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    builder: (_) => _ProfileSheet(store: store),
+  );
+  return saved == true;
+}
+
+class _ProfileSheet extends StatefulWidget {
+  const _ProfileSheet({required this.store});
+  final EducationStore store;
+  @override
+  State<_ProfileSheet> createState() => _ProfileSheetState();
+}
+
+class _ProfileSheetState extends State<_ProfileSheet> {
+  final form = GlobalKey<FormState>();
+  late final TextEditingController nickname;
+  late final TextEditingController field;
+  late final TextEditingController goal;
+  late String grade;
+  late String year;
+  bool saving = false;
+  String? error;
 
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 5, vsync: this);
+    final current = widget.store.profile ?? {};
+    nickname = TextEditingController(text: current['nickname']?.toString() ?? '');
+    field = TextEditingController(text: current['field']?.toString() ?? 'عمومی');
+    goal = TextEditingController(text: current['goal']?.toString() ?? '');
+    grade = gradeYears.containsKey(current['grade']) ? current['grade'].toString() : 'متوسطه اول';
+    year = gradeYears[grade]!.contains(current['year']) ? current['year'].toString() : gradeYears[grade]!.first;
   }
 
   @override
   void dispose() {
-    _tab.dispose();
+    nickname.dispose();
+    field.dispose();
+    goal.dispose();
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: _navy,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          title: const Text(
-            'مشاور هوشمند تحصیلی',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          centerTitle: true,
-          bottom: TabBar(
-            controller: _tab,
-            indicatorColor: _teal,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white60,
-            isScrollable: true,
-            tabs: const [
-              Tab(icon: Icon(Icons.home_rounded), text: 'خانه'),
-              Tab(icon: Icon(Icons.calendar_today_rounded), text: 'برنامه'),
-              Tab(icon: Icon(Icons.quiz_rounded), text: 'آزمون'),
-              Tab(icon: Icon(Icons.style_rounded), text: 'فلش‌کارت'),
-              Tab(icon: Icon(Icons.smart_toy_rounded), text: 'مشاور'),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          controller: _tab,
-          children: const [
-            HomePage(),
-            PlannerPage(),
-            ExamsPage(),
-            CardsPage(),
-            AdvisorPage(),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-//  ۱) صفحه خانه
-// ═══════════════════════════════════════════════════════════
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final store = context.watch<EducationStore>();
-    final profile = store.profile;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ── کارت خوش‌آمدگویی ──
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [_blue, _teal],
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'سلام ${profile['name'] ?? 'دانش‌آموز'} عزیز! 👋',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'پایه ${profile['grade'] ?? '—'}  •  '
-                  'رشته ${profile['field'] ?? '—'}',
-                  style: const TextStyle(color: Colors.white70, fontSize: 15),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // ── آمار سریع ──
-          Row(
-            children: [
-              _StatCard(
-                icon: Icons.task_alt_rounded,
-                label: 'تکالیف',
-                value: '${store.tasks.length}',
-                color: _blue,
-              ),
-              const SizedBox(width: 12),
-              _StatCard(
-                icon: Icons.quiz_rounded,
-                label: 'آزمون',
-                value: '${store.exams.length}',
-                color: _teal,
-              ),
-              const SizedBox(width: 12),
-              _StatCard(
-                icon: Icons.style_rounded,
-                label: 'کارت',
-                value: '${store.cards.length}',
-                color: _navy,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // ── اعتبار هوش مصنوعی ──
-          Card(
-            elevation: 2,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  const Icon(Icons.auto_awesome, color: Colors.amber, size: 32),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'اعتبار مشاور هوشمند',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          store.aiWallet > 0
-                              ? '${store.aiWallet} پیام باقی‌مانده'
-                              : 'اعتبار رایگان: ${store.freeAiUsed}/${EducationStore.freeAiLimit}',
-                          style: TextStyle(
-                            color: store.aiWallet > 0 ? _teal : Colors.grey,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  FilledButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ChangeNotifierProvider.value(
-                            value: store,
-                            child: const CreditShopPage(),
-                          ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.shopping_cart_rounded, size: 18),
-                    label: const Text('خرید'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _teal,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // ── میانبرها ──
-          const Text(
-            'میانبرها',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _ShortcutChip(
-                icon: Icons.school_rounded,
-                label: 'انتخاب رشته',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const CareerPage()),
-                  );
-                },
-              ),
-              _ShortcutChip(
-                icon: Icons.tips_and_updates_rounded,
-                label: 'نکات مطالعه',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const StudyTipsPage()),
-                  );
-                },
-              ),
-              _ShortcutChip(
-                icon: Icons.person_rounded,
-                label: 'ویرایش پروفایل',
-                onTap: () => _showProfileDialog(context, store),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showProfileDialog(BuildContext context, EducationStore store) {
-    final nameCtrl =
-        TextEditingController(text: store.profile['name'] as String? ?? '');
-    final gradeCtrl =
-        TextEditingController(text: store.profile['grade'] as String? ?? '');
-    final fieldCtrl =
-        TextEditingController(text: store.profile['field'] as String? ?? '');
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('ویرایش پروفایل'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(labelText: 'نام'),
-            ),
-            TextField(
-              controller: gradeCtrl,
-              decoration: const InputDecoration(labelText: 'پایه تحصیلی'),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: fieldCtrl,
-              decoration: const InputDecoration(labelText: 'رشته'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('انصراف'),
-          ),
-          FilledButton(
-            onPressed: () {
-              store.updateProfile(
-                name: nameCtrl.text.trim(),
-                grade: _digitsToEnglish(gradeCtrl.text.trim()),
-                field: fieldCtrl.text.trim(),
-              );
-              Navigator.pop(ctx);
-            },
-            child: const Text('ذخیره'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _StatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-          child: Column(
-            children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 6),
-              Text(value,
-                  style: TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.bold, color: color)),
-              Text(label,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ShortcutChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _ShortcutChip({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ActionChip(
-      avatar: Icon(icon, size: 18, color: _blue),
-      label: Text(label),
-      onPressed: onTap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      side: const BorderSide(color: _blue, width: 0.5),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-//  ۲) صفحه برنامه درسی
-// ═══════════════════════════════════════════════════════════
-class PlannerPage extends StatelessWidget {
-  const PlannerPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final store = context.watch<EducationStore>();
-    final tasks = store.tasks;
-
-    if (tasks.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.calendar_today_rounded, size: 64, color: Colors.grey[300]),
-            const SizedBox(height: 12),
-            const Text('هنوز تکلیفی ثبت نشده',
-                style: TextStyle(color: Colors.grey, fontSize: 16)),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () => _showAddTask(context, store),
-              icon: const Icon(Icons.add),
-              label: const Text('افزودن تکلیف'),
-              style: FilledButton.styleFrom(backgroundColor: _blue),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: FilledButton.icon(
-              onPressed: () => _showAddTask(context, store),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('تکلیف جدید'),
-              style: FilledButton.styleFrom(backgroundColor: _blue),
-            ),
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: tasks.length,
-            itemBuilder: (context, i) {
-              final task = tasks[i];
-              final done = task['done'] == true;
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-                child: CheckboxListTile(
-                  value: done,
-                  onChanged: (v) => store.toggleTask(i),
-                  title: Text(
-                    task['title'] as String? ?? '',
-                    style: TextStyle(
-                      decoration: done ? TextDecoration.lineThrough : null,
-                      color: done ? Colors.grey : null,
-                    ),
-                  ),
-                  subtitle: Text(
-                    '📅 ${task['date'] ?? '—'}  •  ⏰ ${task['duration'] ?? '—'} دقیقه',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  activeColor: _teal,
-                  controlAffinity: ListTileControlAffinity.leading,
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _showAddTask(BuildContext context, EducationStore store) {
-    showDialog(
-      context: context,
-      builder: (ctx) => _AddTaskDialog(
-        onAdd: (title, date, duration) {
-          store.addTask(title: title, date: date, duration: duration);
-        },
-      ),
-    );
-  }
-}
-
-class _AddTaskDialog extends StatefulWidget {
-  final void Function(String title, String date, int duration) onAdd;
-  const _AddTaskDialog({required this.onAdd});
-
-  @override
-  State<_AddTaskDialog> createState() => _AddTaskDialogState();
-}
-
-class _AddTaskDialogState extends State<_AddTaskDialog> {
-  final _titleCtrl = TextEditingController();
-  final _dateCtrl = TextEditingController();
-  final _durCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _titleCtrl.dispose();
-    _dateCtrl.dispose();
-    _durCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('تکلیف جدید'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _titleCtrl,
-            decoration: const InputDecoration(labelText: 'عنوان تکلیف'),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _dateCtrl,
-            decoration: const InputDecoration(
-              labelText: 'تاریخ (مثلاً ۱۴۰۴/۰۳/۲۵)',
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _durCtrl,
-            decoration: const InputDecoration(labelText: 'مدت (دقیقه)'),
-            keyboardType: TextInputType.number,
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('انصراف'),
-        ),
-        FilledButton(
-          onPressed: () {
-            final title = _titleCtrl.text.trim();
-            if (title.isEmpty) return;
-            widget.onAdd(
-              title,
-              _dateCtrl.text.trim(),
-              int.tryParse(_digitsToEnglish(_durCtrl.text.trim())) ?? 30,
-            );
-            Navigator.pop(context);
-          },
-          child: const Text('افزودن'),
-        ),
-      ],
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-//  ۳) صفحه آزمون‌ها
-// ═══════════════════════════════════════════════════════════
-class ExamsPage extends StatelessWidget {
-  const ExamsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final store = context.watch<EducationStore>();
-    final exams = store.exams;
-
-    if (exams.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.quiz_rounded, size: 64, color: Colors.grey[300]),
-            const SizedBox(height: 12),
-            const Text('آزمونی ثبت نشده',
-                style: TextStyle(color: Colors.grey, fontSize: 16)),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () => _showAddExam(context, store),
-              icon: const Icon(Icons.add),
-              label: const Text('افزودن آزمون'),
-              style: FilledButton.styleFrom(backgroundColor: _teal),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: FilledButton.icon(
-              onPressed: () => _showAddExam(context, store),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('آزمون جدید'),
-              style: FilledButton.styleFrom(backgroundColor: _teal),
-            ),
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: exams.length,
-            itemBuilder: (context, i) {
-              final exam = exams[i];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-                child: ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: _teal,
-                    child: Icon(Icons.quiz_rounded, color: Colors.white),
-                  ),
-                  title: Text(exam['subject'] as String? ?? ''),
-                  subtitle: Text(
-                    '📅 ${exam['date'] ?? '—'}  •  '
-                    'نمره: ${exam['score'] ?? '—'}',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: () => store.removeExam(i),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _showAddExam(BuildContext context, EducationStore store) {
-    showDialog(
-      context: context,
-      builder: (ctx) => _AddExamDialog(
-        onAdd: (subject, date, score) {
-          store.addExam(subject: subject, date: date, score: score);
-        },
-      ),
-    );
-  }
-}
-
-class _AddExamDialog extends StatefulWidget {
-  final void Function(String subject, String date, String score) onAdd;
-  const _AddExamDialog({required this.onAdd});
-
-  @override
-  State<_AddExamDialog> createState() => _AddExamDialogState();
-}
-
-class _AddExamDialogState extends State<_AddExamDialog> {
-  final _subCtrl = TextEditingController();
-  final _dateCtrl = TextEditingController();
-  final _scoreCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _subCtrl.dispose();
-    _dateCtrl.dispose();
-    _scoreCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('آزمون جدید'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _subCtrl,
-            decoration: const InputDecoration(labelText: 'درس'),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _dateCtrl,
-            decoration: const InputDecoration(labelText: 'تاریخ'),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _scoreCtrl,
-            decoration: const InputDecoration(labelText: 'نمره (اختیاری)'),
-            keyboardType: TextInputType.number,
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('انصراف'),
-        ),
-        FilledButton(
-          onPressed: () {
-            final sub = _subCtrl.text.trim();
-            if (sub.isEmpty) return;
-            widget.onAdd(
-              sub,
-              _dateCtrl.text.trim(),
-              _scoreCtrl.text.trim(),
-            );
-            Navigator.pop(context);
-          },
-          child: const Text('افزودن'),
-        ),
-      ],
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-//  ۴) صفحه فلش‌کارت‌ها
-// ═══════════════════════════════════════════════════════════
-class CardsPage extends StatelessWidget {
-  const CardsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final store = context.watch<EducationStore>();
-    final cards = store.cards;
-
-    if (cards.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.style_rounded, size: 64, color: Colors.grey[300]),
-            const SizedBox(height: 12),
-            const Text('فلش‌کارتی ساخته نشده',
-                style: TextStyle(color: Colors.grey, fontSize: 16)),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () => _showAddCard(context, store),
-              icon: const Icon(Icons.add),
-              label: const Text('ساخت فلش‌کارت'),
-              style: FilledButton.styleFrom(backgroundColor: _navy),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: FilledButton.icon(
-              onPressed: () => _showAddCard(context, store),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('کارت جدید'),
-              style: FilledButton.styleFrom(backgroundColor: _navy),
-            ),
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: cards.length,
-            itemBuilder: (context, i) {
-              final card = cards[i];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-                child: ExpansionTile(
-                  leading: const Icon(Icons.style_rounded, color: _navy),
-                  title: Text(card['front'] as String? ?? ''),
-                  subtitle: Text(
-                    'تکرار: ${card['interval'] ?? 1} روز',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(
-                        card['back'] as String? ?? '',
-                        style: const TextStyle(fontSize: 15),
-                      ),
-                    ),
-                    ButtonBar(
-                      children: [
-                        TextButton(
-                          onPressed: () {
-                            // کپی امن Map برای جلوگیری از mutation مستقیم
-                            final updated = Map<String, dynamic>.from(card)
-                              ..['interval'] =
-                                  ((card['interval'] as int?) ?? 1) * 2;
-                            store.updateCard(i, updated);
-                          },
-                          child: const Text('✅ بلدم'),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            final updated = Map<String, dynamic>.from(card)
-                              ..['interval'] = 1;
-                            store.updateCard(i, updated);
-                          },
-                          child: const Text('🔄 مرور دوباره'),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline,
-                              color: Colors.red, size: 20),
-                          onPressed: () => store.removeCard(i),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _showAddCard(BuildContext context, EducationStore store) {
-    showDialog(
-      context: context,
-      builder: (ctx) => _AddCardDialog(
-        onAdd: (front, back) {
-          store.addCard(front: front, back: back);
-        },
-      ),
-    );
-  }
-}
-
-class _AddCardDialog extends StatefulWidget {
-  final void Function(String front, String back) onAdd;
-  const _AddCardDialog({required this.onAdd});
-
-  @override
-  State<_AddCardDialog> createState() => _AddCardDialogState();
-}
-
-class _AddCardDialogState extends State<_AddCardDialog> {
-  final _frontCtrl = TextEditingController();
-  final _backCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _frontCtrl.dispose();
-    _backCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('فلش‌کارت جدید'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _frontCtrl,
-            decoration: const InputDecoration(labelText: 'سؤال (رو)'),
-            maxLines: 2,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _backCtrl,
-            decoration: const InputDecoration(labelText: 'پاسخ (پشت)'),
-            maxLines: 3,
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('انصراف'),
-        ),
-        FilledButton(
-          onPressed: () {
-            final front = _frontCtrl.text.trim();
-            final back = _backCtrl.text.trim();
-            if (front.isEmpty || back.isEmpty) return;
-            widget.onAdd(front, back);
-            Navigator.pop(context);
-          },
-          child: const Text('ساختن'),
-        ),
-      ],
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-//  ۵) صفحه مشاور هوشمند
-// ═══════════════════════════════════════════════════════════
-class AdvisorPage extends StatefulWidget {
-  const AdvisorPage({super.key});
-
-  @override
-  State<AdvisorPage> createState() => _AdvisorPageState();
-}
-
-class _AdvisorPageState extends State<AdvisorPage> {
-  final _msgCtrl = TextEditingController();
-  final _scrollCtrl = ScrollController();
-  final _ai = AiAdvisorService();
-  bool _loading = false;
-
-  @override
-  void dispose() {
-    _msgCtrl.dispose();
-    _scrollCtrl.dispose();
-    super.dispose();
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollCtrl.hasClients) {
-        _scrollCtrl.animateTo(
-          _scrollCtrl.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
-  }
-
-  Future<void> _send() async {
-    final text = _msgCtrl.text.trim();
-    if (text.isEmpty || _loading) return;
-
-    final store = context.read<EducationStore>();
-
-    // بررسی اعتبار
-    if (store.aiWallet <= 0 && store.freeAiUsed >= EducationStore.freeAiLimit) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('اعتبار مشاور تمام شده. لطفاً بسته بخرید.'),
-          backgroundColor: Colors.red.shade700,
-          action: SnackBarAction(
-            label: 'خرید',
-            textColor: Colors.white,
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ChangeNotifierProvider.value(
-                    value: store,
-                    child: const CreditShopPage(),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      );
-      return;
-    }
-
-    // افزودن پیام کاربر
-    store.addMessage(role: 'user', content: text);
-    _msgCtrl.clear();
-    _scrollToBottom();
-
-    setState(() => _loading = true);
-
+  Future<void> _save() async {
+    if (!form.currentState!.validate()) return;
+    setState(() { saving = true; error = null; });
     try {
-      final reply = await _ai.chat(
-        userMessage: text,
-        history: store.messages,
-        profile: store.profile,
-      );
-      store.addMessage(role: 'assistant', content: reply);
-
-      // کسر اعتبار
-      if (store.aiWallet > 0) {
-        store.deductAiCredit(1);
-      } else {
-        store.incrementFreeAiUsed();
-      }
-    } on AiException catch (e) {
-      // خطاهای AiException در تاریخچه ذخیره نمی‌شوند
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.message),
-            backgroundColor: Colors.orange.shade800,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_userMessage(e)),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-      _scrollToBottom();
+      await widget.store.saveProfile({'nickname': nickname.text.trim(), 'grade': grade, 'year': year,
+        'field': field.text.trim(), 'goal': goal.text.trim(), 'privacyVersion': 1});
+      if (mounted) Navigator.pop(context, true);
+    } on Object catch (value) {
+      if (mounted) setState(() { saving = false; error = friendlyError(value); });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final store = context.watch<EducationStore>();
-    final messages = store.messages;
-
-    return Column(
-      children: [
-        // ── نوار اعتبار ──
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: _pale,
-          child: Row(
-            children: [
-              const Icon(Icons.auto_awesome, size: 18, color: Colors.amber),
-              const SizedBox(width: 6),
-              Text(
-                store.aiWallet > 0
-                    ? '💰 ${store.aiWallet} اعتبار'
-                    : '🆓 ${store.freeAiUsed}/${EducationStore.freeAiLimit} رایگان',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-              ),
-              const Spacer(),
-              if (messages.isNotEmpty)
-                TextButton.icon(
-                  onPressed: () => store.clearMessages(),
-                  icon: const Icon(Icons.delete_sweep, size: 16),
-                  label: const Text('پاک کردن', style: TextStyle(fontSize: 12)),
-                  style: TextButton.styleFrom(foregroundColor: Colors.red),
-                ),
-            ],
-          ),
-        ),
-
-        // ── لیست پیام‌ها ──
-        Expanded(
-          child: messages.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.smart_toy_rounded,
-                          size: 64, color: Colors.grey[300]),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'سؤالت را از مشاور هوشمند بپرس! 🤖',
-                        style: TextStyle(color: Colors.grey, fontSize: 15),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  controller: _scrollCtrl,
-                  padding: const EdgeInsets.all(12),
-                  itemCount: messages.length,
-                  itemBuilder: (context, i) {
-                    final msg = messages[i];
-                    final isUser = msg['role'] == 'user';
-                    return Align(
-                      alignment: isUser
-                          ? Alignment.centerLeft
-                          : Alignment.centerRight,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isUser ? _blue : Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.06),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          msg['content'] as String? ?? '',
-                          style: TextStyle(
-                            color: isUser ? Colors.white : Colors.black87,
-                            fontSize: 14,
-                            height: 1.6,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-
-        // ── نوار ورودی ──
-        if (_loading)
-          const Padding(
-            padding: EdgeInsets.all(8),
-            child: LinearProgressIndicator(color: _teal),
-          ),
-        Container(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, -2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _msgCtrl,
-                  maxLines: 3,
-                  minLines: 1,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => _send(),
-                  decoration: InputDecoration(
-                    hintText: 'سؤالت را بنویس...',
-                    filled: true,
-                    fillColor: _pale,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              CircleAvatar(
-                backgroundColor: _teal,
-                child: IconButton(
-                  icon: const Icon(Icons.send_rounded,
-                      color: Colors.white, size: 20),
-                  onPressed: _loading ? null : _send,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+    return SafeArea(child: Padding(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.viewInsetsOf(context).bottom + 20),
+      child: SingleChildScrollView(child: Form(key: form, child: Column(
+        mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('کمی درباره مسیر تحصیلی‌ات بدانیم', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          const Text('نام مستعار کافی است. اطلاعات هویتی یا شماره تماس وارد نکن.', style: TextStyle(color: Colors.blueGrey, height: 1.7)),
+          const SizedBox(height: 18),
+          TextFormField(controller: nickname, maxLength: 40, decoration: const InputDecoration(labelText: 'نام یا نام مستعار (اختیاری)')),
+          DropdownButtonFormField<String>(initialValue: grade, decoration: const InputDecoration(labelText: 'مقطع تحصیلی'),
+            items: gradeYears.keys.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+            onChanged: saving ? null : (value) { if (value != null) setState(() { grade = value; year = gradeYears[value]!.first; }); }),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(key: ValueKey(grade), initialValue: year, decoration: const InputDecoration(labelText: 'پایه تحصیلی'),
+            items: gradeYears[grade]!.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+            onChanged: saving ? null : (value) { if (value != null) setState(() => year = value); }),
+          const SizedBox(height: 14),
+          TextFormField(controller: field, maxLength: 80, decoration: const InputDecoration(labelText: 'رشته یا زمینه مورد علاقه'),
+            validator: (value) => value == null || value.trim().isEmpty ? 'رشته یا «عمومی» را بنویس.' : null),
+          TextFormField(controller: goal, maxLines: 2, maxLength: 300, decoration: const InputDecoration(labelText: 'هدف تحصیلی (اختیاری)')),
+          if (error != null) NoticeCard(text: error!, warning: true),
+          const SizedBox(height: 12),
+          FilledButton(onPressed: saving ? null : _save, child: Text(saving ? 'در حال ذخیره…' : 'ذخیره پروفایل')),
+        ],
+      ))),
+    ));
   }
 }
 
-// ═══════════════════════════════════════════════════════════
-//  صفحه انتخاب رشته
-// ═══════════════════════════════════════════════════════════
-class CareerPage extends StatelessWidget {
-  const CareerPage({super.key});
+class EntryScreen extends StatefulWidget {
+  const EntryScreen({super.key, required this.store});
+  final EducationStore store;
+  @override
+  State<EntryScreen> createState() => _EntryScreenState();
+}
 
+class _EntryScreenState extends State<EntryScreen> {
+  bool accepted = false;
+  Future<void> start() async {
+    if (!accepted) return;
+    if (await showProfileSheet(context, widget.store) && mounted) setState(() {});
+  }
   @override
   Widget build(BuildContext context) {
-    final fields = [
-      {'icon': Icons.engineering, 'title': 'ریاضی فیزیک', 'desc': 'مهندسی، کامپیوتر، معماری'},
-      {'icon': Icons.biotech, 'title': 'علوم تجربی', 'desc': 'پزشکی، داروسازی، پرستاری'},
-      {'icon': Icons.menu_book, 'title': 'علوم انسانی', 'desc': 'حقوق، روانشناسی، مدیریت'},
-      {'icon': Icons.palette, 'title': 'هنر', 'desc': 'گرافیک، سینما، موسیقی'},
-      {'icon': Icons.language, 'title': 'زبان‌های خارجی', 'desc': 'مترجمی، آموزش زبان'},
-    ];
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('راهنمای انتخاب رشته'),
-        backgroundColor: _navy,
-        foregroundColor: Colors.white,
-      ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(12),
-        itemCount: fields.length,
-        itemBuilder: (context, i) {
-          final f = fields[i];
-          return Card(
-            margin: const EdgeInsets.only(bottom: 10),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: _teal.withOpacity(0.15),
-                child: Icon(f['icon'] as IconData, color: _teal),
-              ),
-              title: Text(f['title'] as String,
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(f['desc'] as String),
-              trailing: const Icon(Icons.chevron_left),
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('برای اطلاعات بیشتر از مشاور هوشمند بپرسید'),
-                    backgroundColor: _blue,
-                  ),
-                );
-              },
-            ),
-          );
-        },
-      ),
-    );
+    if (widget.store.profile != null) return Dashboard(store: widget.store);
+    return Scaffold(body: SafeArea(child: Center(child: SingleChildScrollView(
+      padding: const EdgeInsets.all(22), child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 500), child: Column(children: [
+        const SizedBox(height: 16),
+        Container(width: 92, height: 92, decoration: BoxDecoration(color: blue.withValues(alpha: .1), borderRadius: BorderRadius.circular(28)),
+            child: const Icon(Icons.school_rounded, color: blue, size: 54)),
+        const SizedBox(height: 20),
+        const Text('مشاور هوشمند تحصیلی', textAlign: TextAlign.center, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: navy)),
+        const SizedBox(height: 8),
+        const Text('قدم‌های کوچک، یادگیری عمیق‌تر', textAlign: TextAlign.center, style: TextStyle(color: Colors.blueGrey)),
+        const SizedBox(height: 24),
+        Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('سخنی با اولیا و دانش‌آموزان گرامی', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          const Text('برنامه مطالعه، نمرات، فلش‌کارت‌ها و سابقه مشاوره روی همین گوشی ذخیره می‌شوند. '
+              'برای پاسخ هوش مصنوعی، پرسش، گفت‌وگوهای اخیر و پروفایل تحصیلی ارسال می‌شوند. '
+              'در تحلیل وضعیت تحصیلی، خلاصه نمره‌ها فقط پس از زدن دکمه تحلیل ارسال می‌شود. '
+              'نام کامل، نشانی، شماره تماس و اطلاعات حساس را وارد نکن. '
+              'پاسخ هوش مصنوعی ممکن است اشتباه باشد و جایگزین معلم، مشاور مدرسه یا منابع رسمی نیست. '
+              'با حذف برنامه، اطلاعات و اعتبار محلی از دست می‌روند.', style: TextStyle(height: 1.9)),
+          CheckboxListTile(value: accepted, contentPadding: EdgeInsets.zero, controlAffinity: ListTileControlAffinity.leading,
+              onChanged: (value) => setState(() => accepted = value ?? false), title: const Text('توضیحات و نکات حریم خصوصی را خواندم.')),
+        ]))),
+        if (widget.store.walletError != null) NoticeCard(text: widget.store.walletError!, warning: true),
+        if (widget.store.dataError('edu.profile') != null) NoticeCard(text: widget.store.dataError('edu.profile')!, warning: true),
+        const SizedBox(height: 14),
+        SizedBox(width: double.infinity, child: FilledButton(onPressed: accepted ? start : null,
+            child: const Text('بزن بریم', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)))),
+      ]))),
+    )));
   }
 }
 
-// ═══════════════════════════════════════════════════════════
-//  صفحه نکات مطالعه
-// ═══════════════════════════════════════════════════════════
-class StudyTipsPage extends StatelessWidget {
-  const StudyTipsPage({super.key});
+class Dashboard extends StatefulWidget {
+  const Dashboard({super.key, required this.store});
+  final EducationStore store;
+  @override
+  State<Dashboard> createState() => _DashboardState();
+}
 
-  static const _tips = [
-    {'emoji': '🍅', 'title': 'تکنیک پومودورو', 'body': '۲۵ دقیقه مطالعه، ۵ دقیقه استراحت. بعد از ۴ دور، ۱۵ دقیقه استراحت بلند.'},
-    {'emoji': '🧠', 'title': 'تکرار فاصله‌دار', 'body': 'مطالب را در فواصل زمانی افزایشی مرور کن: ۱ روز، ۳ روز، ۷ روز، ۱۴ روز.'},
-    {'emoji': '📝', 'title': 'یادداشت فعال', 'body': 'به جای رونویسی، مطالب را با کلمات خودت خلاصه کن.'},
-    {'emoji': '😴', 'title': 'خواب کافی', 'body': 'حداقل ۷ ساعت خواب. حافظه در خواب تثبیت می‌شود.'},
-    {'emoji': '📵', 'title': 'حذف حواس‌پرتی', 'body': 'گوشی را در حالت پرواز بگذار و در اتاق دیگری قرار بده.'},
-    {'emoji': '🎯', 'title': 'هدف‌گذاری روزانه', 'body': 'هر شب ۳ هدف مشخص برای فردا بنویس.'},
-  ];
+class _DashboardState extends State<Dashboard> {
+  int index = 0;
+  void refresh() { if (mounted) setState(() {}); }
+  void go(int value) => setState(() => index = value);
+  void push(Widget page) => unawaited(Navigator.push<void>(context, MaterialPageRoute(builder: (_) => page)).then((_) => refresh()));
+
+  Future<void> settings() async {
+    final choice = await showModalBottomSheet<String>(context: context, builder: (context) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
+      const Padding(padding: EdgeInsets.all(18), child: Text('تنظیمات و اطلاعات', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
+      ListTile(leading: const Icon(Icons.person_outline), title: const Text('ویرایش پروفایل تحصیلی'),
+          subtitle: Text('${widget.store.profile?['grade'] ?? ''} · ${widget.store.profile?['year'] ?? 'پایه ثبت نشده'}'), onTap: () => Navigator.pop(context, 'profile')),
+      ListTile(leading: const Icon(Icons.account_balance_wallet_outlined), title: const Text('کیف اعتبار و تاریخچه خرید'), onTap: () => Navigator.pop(context, 'wallet')),
+      ListTile(leading: const Icon(Icons.history_edu_outlined), title: const Text('تاریخچه مشاوره‌ها'), onTap: () => Navigator.pop(context, 'reports')),
+      ListTile(leading: const Icon(Icons.info_outline), title: const Text('درباره برنامه و حریم خصوصی'), subtitle: const Text('نسخه ۱.۱.۰ · ساخت ۳'), onTap: () => Navigator.pop(context, 'about')),
+      ListTile(leading: const Icon(Icons.delete_outline, color: Colors.red), title: const Text('حذف اطلاعات تحصیلی این گوشی', style: TextStyle(color: Colors.red)), onTap: () => Navigator.pop(context, 'delete')),
+    ])));
+    if (!mounted || choice == null) return;
+    switch (choice) {
+      case 'profile': await showProfileSheet(context, widget.store); refresh();
+      case 'wallet': push(CreditShopPage(store: widget.store));
+      case 'reports': push(ReportsPage(store: widget.store));
+      case 'about': push(const AboutPage());
+      case 'delete': await deleteWorkspace();
+    }
+  }
+
+  Future<void> deleteWorkspace() async {
+    if (widget.store.hasActiveAiRequests) { showMessage(context, 'صبر کن تا درخواست فعلی مشاور کامل شود.'); return; }
+    final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
+      title: const Text('اطلاعات تحصیلی پاک شود؟'),
+      content: const Text('پروفایل، برنامه‌ها، نمرات، فلش‌کارت‌ها و سابقه مشاوره پاک می‌شوند. اعتبار خریداری‌شده و سابقه خرید پاک نمی‌شوند. این کار برگشت‌پذیر نیست.'),
+      actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
+        FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('حذف اطلاعات'))]));
+    if (confirmed != true || !mounted) return;
+    try { await widget.store.clear(); if (mounted) setState(() => index = 0); }
+    on Object catch (error) { if (mounted) showMessage(context, friendlyError(error)); }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('نکات مطالعه مؤثر'),
-        backgroundColor: _navy,
-        foregroundColor: Colors.white,
-      ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(12),
-        itemCount: _tips.length,
-        itemBuilder: (context, i) {
-          final tip = _tips[i];
-          return Card(
-            margin: const EdgeInsets.only(bottom: 10),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${tip['emoji']}  ${tip['title']}',
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    tip['body'] as String,
-                    style: const TextStyle(fontSize: 14, height: 1.6),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
+    const titles = ['خانه', 'برنامه مطالعه من', 'آزمون‌ها و کارنامه', 'مرور و فلش‌کارت', 'مشاور هوشمند'];
+    return Scaffold(appBar: AppBar(title: Text(titles[index], style: const TextStyle(fontWeight: FontWeight.bold)),
+        actions: [IconButton(tooltip: 'تنظیمات', onPressed: settings, icon: const Icon(Icons.settings_outlined))]),
+      body: IndexedStack(index: index, children: [
+        HomePage(store: widget.store, go: go),
+        PlannerPage(store: widget.store, changed: refresh),
+        ExamsPage(store: widget.store, changed: refresh),
+        CardsPage(store: widget.store, changed: refresh),
+        AdvisorPage(store: widget.store),
+      ]),
+      bottomNavigationBar: NavigationBar(selectedIndex: index, onDestinationSelected: go, destinations: const [
+        NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'خانه'),
+        NavigationDestination(icon: Icon(Icons.calendar_month_outlined), selectedIcon: Icon(Icons.calendar_month), label: 'برنامه'),
+        NavigationDestination(icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'آزمون'),
+        NavigationDestination(icon: Icon(Icons.style_outlined), selectedIcon: Icon(Icons.style), label: 'مرور'),
+        NavigationDestination(icon: Icon(Icons.auto_awesome_outlined), selectedIcon: Icon(Icons.auto_awesome), label: 'مشاور'),
+      ]));
   }
+}
+
+class HomePage extends StatelessWidget {
+  const HomePage({super.key, required this.store, required this.go});
+  final EducationStore store;
+  final ValueChanged<int> go;
+  void push(BuildContext context, Widget page) => Navigator.push<void>(context, MaterialPageRoute(builder: (_) => page));
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = store.profile ?? {};
+    final tasks = store.tasks;
+    final weekStart = DateTime.now().subtract(const Duration(days: 7));
+    final recent = tasks.where((task) { final date = DateTime.tryParse(task['createdAt']?.toString() ?? ''); return date != null && !date.isBefore(weekStart); }).toList();
+    final completed = recent.where((task) => task['done'] == true).toList();
+    final minutes = completed.fold<int>(0, (sum, task) => sum + ((task['minutes'] as num?)?.toInt() ?? 0));
+    final nickname = profile['nickname']?.toString() ?? '';
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
+      Container(width: double.infinity, padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(color: navy, borderRadius: BorderRadius.circular(24)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(nickname.isEmpty ? 'سلام، همراه پرتلاش!' : 'سلام $nickname!', style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text('${profile['grade'] ?? ''} · پایه ${profile['year'] ?? 'ثبت‌نشده'} · ${profile['field'] ?? ''}', style: const TextStyle(color: Colors.white70, height: 1.7)),
+          const SizedBox(height: 14), const Text('امروز فقط یک قدم کوچک بردار؛ استمرار از برنامه‌های سنگین مهم‌تر است.', style: TextStyle(color: Colors.white, height: 1.8)),
+        ])),
+      const SizedBox(height: 14),
+      CreditSummary(store: store, onShop: () => push(context, CreditShopPage(store: store))),
+      Row(children: [
+        Expanded(child: StatCard(title: 'انجام‌شده', value: '${faNumber(tasks.where((task) => task['done'] == true).length)}/${faNumber(tasks.length)}', icon: Icons.task_alt)),
+        const SizedBox(width: 8), Expanded(child: StatCard(title: 'آزمون', value: faNumber(store.exams.length), icon: Icons.assessment_outlined)),
+        const SizedBox(width: 8), Expanded(child: StatCard(title: 'فلش‌کارت', value: faNumber(store.cards.length), icon: Icons.style_outlined)),
+      ]),
+      const SizedBox(height: 12),
+      NoticeCard(text: 'هفت روز اخیر: ${faNumber(completed.length)} کار از ${faNumber(recent.length)} کار ثبت‌شده انجام شده؛ ${faNumber(minutes)} دقیقه مطالعه برنامه‌ریزی‌شده در کارهای انجام‌شده.', icon: Icons.insights_outlined),
+      const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('از کجا شروع کنیم؟', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
+      QuickTile(icon: Icons.auto_awesome, title: 'گفت‌وگو با مشاور هوشمند', subtitle: 'پرسش، برنامه مطالعه و روش بهبود', onTap: () => go(4)),
+      QuickTile(icon: Icons.insights_outlined, title: 'بررسی وضعیت تحصیلی', subtitle: 'نقاط قوت و ضعف بر اساس نمره‌های تو', onTap: () => push(context, AcademicInsightsPage(store: store))),
+      QuickTile(icon: Icons.calendar_month, title: 'برنامه مطالعه', subtitle: 'ثبت و پیگیری کارهای درسی', onTap: () => go(1)),
+      QuickTile(icon: Icons.assessment_outlined, title: 'آزمون و کارنامه', subtitle: 'ثبت نمرات و مشاهده میانگین', onTap: () => go(2)),
+      QuickTile(icon: Icons.style_outlined, title: 'مرور و فلش‌کارت', subtitle: 'یادگیری ماندگار با مرور فاصله‌دار', onTap: () => go(3)),
+      QuickTile(icon: Icons.explore_outlined, title: 'راهنمای انتخاب رشته', subtitle: 'شناخت علاقه‌ها و مسیرهای ممکن', onTap: () => push(context, CareerPage(store: store))),
+      QuickTile(icon: Icons.history_edu_outlined, title: 'تاریخچه مشاوره‌ها', subtitle: 'پاسخ‌های قبلی و درخواست‌های ناتمام', onTap: () => push(context, ReportsPage(store: store))),
+      QuickTile(icon: Icons.menu_book_outlined, title: 'روش‌های مؤثر مطالعه', subtitle: 'راهنمای آفلاین تمرکز و یادگیری', onTap: () => push(context, const StudyTipsPage())),
+    ]);
+  }
+}
+
+class StatCard extends StatelessWidget {
+  const StatCard({super.key, required this.title, required this.value, required this.icon});
+  final String title, value;
+  final IconData icon;
+  @override
+  Widget build(BuildContext context) => Card(child: Padding(padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 6),
+    child: Column(children: [Icon(icon, color: teal), const SizedBox(height: 8),
+      Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+      Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: Colors.blueGrey))])));
+}
+
+class QuickTile extends StatelessWidget {
+  const QuickTile({super.key, required this.icon, required this.title, required this.subtitle, required this.onTap});
+  final IconData icon;
+  final String title, subtitle;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Card(child: ListTile(onTap: onTap,
+    leading: Icon(icon, color: blue), title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+    subtitle: Text(subtitle, style: const TextStyle(height: 1.6)), trailing: const Icon(Icons.chevron_left)));
+}
+
+class AboutPage extends StatelessWidget {
+  const AboutPage({super.key});
+  @override
+  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('درباره مشاور تحصیلی')),
+    body: ListView(padding: const EdgeInsets.all(16), children: const [
+      NoticeCard(text: 'نسخه ۱.۱.۰ · ساخت ۳\nشناسه برنامه: ir.moshaver.tahsili', icon: Icons.school_outlined),
+      NoticeCard(text: 'اطلاعات تحصیلی و کیف اعتبار محلی هستند و به حساب کاربری یا سرور اختصاصی فرستاده نمی‌شوند. '
+          'فقط درخواست‌های هوش مصنوعی و عملیات خرید بازار به اینترنت نیاز دارند. متن پرسش، بخشی از گفت‌وگو و اطلاعات تحصیلیِ اعلام‌شده در هر درخواست با سرویس هوش مصنوعی به اشتراک گذاشته می‌شوند.'),
+      NoticeCard(text: 'اعتبار و خریدها با امضای بازار و دفتر محلی بررسی می‌شوند، اما این بررسی جایگزین اعتبارسنجی سمت سرور نیست. '
+          'داده گوشی قابل دستکاری است و اعتبار بین دستگاه‌ها منتقل نمی‌شود. کلید هوش مصنوعی تزریق‌شده در APK نیز قابل استخراج است.'),
+      NoticeCard(text: 'پاسخ هوش مصنوعی ممکن است اشتباه باشد. تصمیم‌های مهم تحصیلی را با معلم، مشاور مدرسه و منابع رسمی بررسی کن. '
+          'این برنامه تشخیص پزشکی یا روان‌شناختی ارائه نمی‌دهد.'),
+      NoticeCard(text: 'فونت وزیرمتن با مجوز SIL Open Font License استفاده شده است. مجوز برنامه MIT است.'),
+    ]));
 }
