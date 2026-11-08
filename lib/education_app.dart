@@ -31,7 +31,6 @@ class _EducationAppState extends State<EducationApp> {
     locale: const Locale('fa'), supportedLocales: const [Locale('fa'), Locale('en')],
     localizationsDelegates: GlobalMaterialLocalizations.delegates,
     theme: buildAppTheme(),
-    builder: (context, child) => Directionality(textDirection: TextDirection.rtl, child: child ?? const SizedBox.shrink()),
     home: FutureBuilder<EducationStore>(future: future, builder: (context, snapshot) {
       if (snapshot.hasData) return EntryScreen(store: snapshot.data!);
       if (snapshot.hasError) {
