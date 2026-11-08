@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'education/education_store.dart';
 import 'education/ai_advisor_service.dart';
+import 'education/credit_shop_page.dart';
 
 const Color navy = Color(0xFF17324D);
 const Color blue = Color(0xFF2867A8);
@@ -425,11 +426,11 @@ class AdvisorPage extends StatefulWidget {
 }
 class _AdvisorPageState extends State<AdvisorPage> {
   final input = TextEditingController();
-  final service = AiAdvisorService();
+  late final AiAdvisorService service;
   late List<Map<String, dynamic>> messages;
   bool busy = false;
   @override
-  void initState() { super.initState(); messages = widget.store.messages; }
+  void initState() { super.initState(); service = AiAdvisorService(store: widget.store); messages = widget.store.messages; }
   @override
   void dispose() { input.dispose(); service.dispose(); super.dispose(); }
   Future<void> send() async {
@@ -450,6 +451,24 @@ class _AdvisorPageState extends State<AdvisorPage> {
   }
   @override
   Widget build(BuildContext context) => Column(children: [
+    Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+      child: Card(
+        child: ListTile(
+          leading: const Icon(Icons.account_balance_wallet_outlined, color: teal),
+          title: Text('اعتبار هوش مصنوعی: ${widget.store.credits}', style: const TextStyle(fontWeight: FontWeight.bold)),
+          subtitle: Text(widget.store.freeAiUsesRemaining > 0
+              ? '${widget.store.freeAiUsesRemaining} درخواست رایگان باقی مانده'
+              : 'برای ادامه استفاده، اعتبار تهیه کن'),
+          trailing: TextButton(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => CreditShopPage(store: widget.store),
+            )).then((_) { if (mounted) setState(() {}); }),
+            child: const Text('خرید اعتبار'),
+          ),
+        ),
+      ),
+    ),
     Expanded(child: messages.isEmpty
       ? const Center(child: Padding(padding: EdgeInsets.all(26), child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.auto_awesome, color: blue, size: 46), SizedBox(height: 12),
@@ -497,10 +516,16 @@ class _CareerPageState extends State<CareerPage> {
   final strengths = TextEditingController();
   final favoriteSubjects = TextEditingController();
   final workStyle = TextEditingController();
-  final advisor = AiAdvisorService();
+  late final AiAdvisorService advisor;
   String? result;
   String? error;
   bool busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    advisor = AiAdvisorService(store: widget.store);
+  }
 
   @override
   void dispose() {
