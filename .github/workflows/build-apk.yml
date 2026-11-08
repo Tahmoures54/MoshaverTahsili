@@ -49,6 +49,7 @@ jobs:
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
         run: |
           is_tag=false
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then is_tag=true; fi
