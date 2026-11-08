@@ -406,39 +406,56 @@ class EducationStore extends ChangeNotifier {
     notifyListeners();
   });
 
+  Future<void> _mutateList(String key,
+      List<Map<String, dynamic>> Function(List<Map<String, dynamic>>) update) =>
+      _serialized(() async {
+        if (_dataErrors.containsKey(key)) throw LocalDataException(_dataErrors[key]!);
+        final current = readList(key);
+        final next = update(current);
+        if (!await prefs.setString(key, jsonEncode(next))) {
+          throw const LocalDataException('ذخیره اطلاعات انجام نشد. فضای خالی گوشی را بررسی کن.');
+        }
+        notifyListeners();
+      });
+
   List<Map<String, dynamic>> get tasks => readList('edu.tasks');
-  Future<void> addTask(Map<String, dynamic> value) => writeList('edu.tasks', [value, ...tasks]);
-  Future<void> toggleTask(String id) async {
-    final all = tasks;
+  Future<void> addTask(Map<String, dynamic> value) =>
+      _mutateList('edu.tasks', (all) => [value, ...all]);
+  Future<void> toggleTask(String id) => _mutateList('edu.tasks', (all) {
     for (final item in all) {
       if (item['id'] == id) item['done'] = !(item['done'] as bool? ?? false);
     }
-    await writeList('edu.tasks', all);
-  }
-  Future<void> deleteTask(String id) => writeList('edu.tasks', tasks.where((e) => e['id'] != id).toList());
+    return all;
+  });
+  Future<void> deleteTask(String id) =>
+      _mutateList('edu.tasks', (all) => all.where((e) => e['id'] != id).toList());
 
   List<Map<String, dynamic>> get exams => readList('edu.exams');
-  Future<void> addExam(Map<String, dynamic> value) => writeList('edu.exams', [value, ...exams]);
-  Future<void> deleteExam(String id) => writeList('edu.exams', exams.where((e) => e['id'] != id).toList());
+  Future<void> addExam(Map<String, dynamic> value) =>
+      _mutateList('edu.exams', (all) => [value, ...all]);
+  Future<void> deleteExam(String id) =>
+      _mutateList('edu.exams', (all) => all.where((e) => e['id'] != id).toList());
 
   List<Map<String, dynamic>> get cards => readList('edu.cards');
-  Future<void> addCard(Map<String, dynamic> value) => writeList('edu.cards', [value, ...cards]);
-  Future<void> updateCard(Map<String, dynamic> value) async {
-    final all = cards;
+  Future<void> addCard(Map<String, dynamic> value) =>
+      _mutateList('edu.cards', (all) => [value, ...all]);
+  Future<void> updateCard(Map<String, dynamic> value) => _mutateList('edu.cards', (all) {
     final index = all.indexWhere((e) => e['id'] == value['id']);
     if (index >= 0) all[index] = value;
-    await writeList('edu.cards', all);
-  }
-  Future<void> deleteCard(String id) => writeList('edu.cards', cards.where((e) => e['id'] != id).toList());
+    return all;
+  });
+  Future<void> deleteCard(String id) =>
+      _mutateList('edu.cards', (all) => all.where((e) => e['id'] != id).toList());
 
   List<Map<String, dynamic>> get messages => readList('edu.messages');
   Future<void> saveMessages(List<Map<String, dynamic>> value) => writeList('edu.messages',
       value.length <= 80 ? value : value.sublist(value.length - 80));
 
   List<Map<String, dynamic>> get reports => readList('edu.reports');
-  Future<void> addReport(Map<String, dynamic> value) => writeList('edu.reports',
-      ([value, ...reports]).take(50).toList());
-  Future<void> deleteReport(String id) => writeList('edu.reports', reports.where((e) => e['id'] != id).toList());
+  Future<void> addReport(Map<String, dynamic> value) =>
+      _mutateList('edu.reports', (all) => [value, ...all].take(50).toList());
+  Future<void> deleteReport(String id) =>
+      _mutateList('edu.reports', (all) => all.where((e) => e['id'] != id).toList());
   Map<String, dynamic>? get careerDraft {
     final raw = prefs.getString('edu.career.draft');
     if (raw == null) return null;
