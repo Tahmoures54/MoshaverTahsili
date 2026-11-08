@@ -24,8 +24,6 @@ jobs:
   validate-and-build:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    permissions:
-      contents: write # Bootstrap the generated lockfile once; reduced after locking.
     outputs:
       production_ready: ${{ steps.config.outputs.production_ready }}
       version: ${{ steps.config.outputs.version }}
@@ -41,24 +39,21 @@ jobs:
           channel: stable
           cache: true
           pub-cache: true
-      - name: Resolve dependencies
-        run: flutter pub get
-      - name: Bootstrap dependency lock on the working branch
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')
-        run: |
-          if ! git ls-files --error-unmatch pubspec.lock >/dev/null 2>&1; then
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add pubspec.lock
-            git commit -m 'chore: lock Flutter dependencies [skip ci]'
-            git push origin "HEAD:$GITHUB_REF_NAME"
-          fi
+      - name: Resolve locked dependencies
+        run: flutter pub get --enforce-lockfile
       - name: Static analysis (including infos)
-        run: flutter analyze
+        run: |
+          mkdir -p build/reports
+          set +e
+          flutter analyze 2>&1 | tee build/reports/analyze.txt
+          result=${PIPESTATUS[0]}
+          set -e
+          python3 scripts/annotate_analysis.py build/reports/analyze.txt
+          exit "$result"
       - name: Unit and widget tests
         run: |
           mkdir -p build/reports
-          flutter test --coverage --reporter expanded
+          flutter test --coverage --reporter expanded 2>&1 | tee build/reports/tests.txt
       - name: Check release configuration without exposing values
         id: config
         env:
