@@ -13,6 +13,13 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "ir.moshaver.tahsili"
     compileSdk = 36
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }
     defaultConfig {
         applicationId = "ir.moshaver.tahsili"
         minSdk = 24
