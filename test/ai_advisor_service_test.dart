@@ -4,8 +4,69 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:moshaver_tahsili/education/ai_advisor_service.dart';
+import 'package:moshaver_tahsili/education/education_store.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+
+  test('charges one local credit only after a successful AI answer', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({'edu.ai.successful_uses': 2, 'edu.ai.credits': 2});
+    final store = await EducationStore.open();
+    final service = AiAdvisorService(
+      store: store,
+      apiKey: 'test-key',
+      client: MockClient((request) async => http.Response(
+        jsonEncode({'choices': [{'message': {'content': 'پاسخ آزمایشی'}}]}),
+        200,
+        headers: {'content-type': 'application/json; charset=utf-8'},
+      )),
+    );
+
+    expect(await service.ask(profile: null, history: const [], question: 'سلام'), 'پاسخ آزمایشی');
+    expect(store.credits, 1);
+    service.dispose();
+  });
+
+  test('does not charge a credit when the AI request fails', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({'edu.ai.successful_uses': 2, 'edu.ai.credits': 2});
+    final store = await EducationStore.open();
+    final service = AiAdvisorService(
+      store: store,
+      apiKey: 'test-key',
+      client: MockClient((request) async => http.Response('server error', 500)),
+    );
+
+    await expectLater(
+      service.ask(profile: null, history: const [], question: 'سلام'),
+      throwsA(isA<Exception>()),
+    );
+    expect(store.credits, 2);
+    service.dispose();
+  });
+
+  test('does not send a request when the student has no free uses or credits', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({'edu.ai.successful_uses': 2, 'edu.ai.credits': 0});
+    final store = await EducationStore.open();
+    var called = false;
+    final service = AiAdvisorService(
+      store: store,
+      apiKey: 'test-key',
+      client: MockClient((request) async {
+        called = true;
+        return http.Response('{}', 200);
+      }),
+    );
+
+    await expectLater(
+      service.ask(profile: null, history: const [], question: 'سلام'),
+      throwsA(isA<Exception>().having((e) => e.toString(), 'message', contains('اعتبار رایگان'))),
+    );
+    expect(called, isFalse);
+    service.dispose();
+  });
   test('does not make a request when the API key is missing', () async {
     var called = false;
     final service = AiAdvisorService(
