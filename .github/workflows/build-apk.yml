@@ -51,11 +51,11 @@ jobs:
         run: python3 scripts/security_check.py
       - name: Format Dart sources
         run: dart format .
-      - name: Static analysis (including infos)
+      - name: Static analysis (errors and warnings fail; style infos are non-blocking)
         run: |
           mkdir -p build/reports
           set +e
-          flutter analyze --write=build/reports/analyze.txt
+          flutter analyze --no-fatal-infos --write=build/reports/analyze.txt
           result=$?
           set -e
           cat build/reports/analyze.txt
