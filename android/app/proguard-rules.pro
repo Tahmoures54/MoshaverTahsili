@@ -1,31 +1,15 @@
-# Flutter
--keep class io.flutter.app.** { *; }
--keep class io.flutter.plugin.**  { *; }
--keep class io.flutter.util.**  { *; }
--keep class io.flutter.view.**  { *; }
--keep class io.flutter.**  { *; }
--keep class io.flutter.plugins.**  { *; }
-
-# Google Maps / Play Services
--keep class com.google.android.gms.** { *; }
--dontwarn com.google.android.gms.**
-
-# flutter_sound / audio
--dontwarn com.dooboolab.**
--keep class com.dooboolab.** { *; }
-
-# Keep native methods
+# Flutter embedding and plugin entry points.
+-keep class io.flutter.** { *; }
 -keepclasseswithmembernames class * {
     native <methods>;
 }
 
-# Gson / JSON if any
+# This app does not use Play Store deferred components. Flutter keeps optional
+# references in its embedding; suppress only those unused optional classes.
+-dontwarn com.google.android.play.core.**
+
+# Preserve runtime annotations and generic signatures.
 -keepattributes Signature
 -keepattributes *Annotation*
 -keepattributes EnclosingMethod
 -keepattributes InnerClasses
-
-# OkHttp / platform
--dontwarn okhttp3.**
--dontwarn okio.**
--dontwarn javax.annotation.**
