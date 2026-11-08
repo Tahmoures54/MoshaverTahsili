@@ -29,6 +29,11 @@ jobs:
       version: ${{ steps.config.outputs.version }}
     steps:
       - uses: actions/checkout@v7
+      - name: Restore Gradle wrapper bootstrap
+        run: |
+          mkdir -p android/gradle/wrapper
+          curl --fail --silent --show-error --location https://raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar -o android/gradle/wrapper/gradle-wrapper.jar
+          test -s android/gradle/wrapper/gradle-wrapper.jar
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
