@@ -1,10 +1,42 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ── دسترسی‌ها ── -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- دسترسی‌های اختیاری (فقط در صورت نیاز فعال کنید) -->
+    <!-- <uses-permission android:name="android.permission.VIBRATE" /> -->
+    <!-- <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" /> -->
+
+    <!-- ── Package Visibility برای Android 11+ ── -->
+    <!-- ضروری برای IAP بازار: بدون این، اپ بازار پیدا نمی‌شود -->
+    <queries>
+        <package android:name="com.farsitel.bazaar" />
+        <intent>
+            <action android:name="ir.cafebazaar.pardakht.InAppBillingService.BIND" />
+            <data android:mimeType="*/*" />
+        </intent>
+        <!-- اگر لینک وب باز می‌کنید -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+
     <application
-        android:label="مشاور هوشمند تحصیلی"
+        android:label="@string/app_name"
         android:name="${applicationName}"
-        android:icon="@drawable/ic_education"
-        android:roundIcon="@drawable/ic_education">
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:enableOnBackInvokedCallback="true"
+        android:hardwareAccelerated="true"
+        android:localeConfig="@xml/locales_config"
+        tools:targetApi="tiramisu">
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -12,14 +44,38 @@
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-            android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
-            <meta-data android:name="io.flutter.embedding.android.NormalTheme" android:resource="@style/NormalTheme" />
+
+            <!-- تم عادی پس از splash -->
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+
+            <!-- لانچر اصلی -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- دیپ‌لینک (اختیاری – اگر نیاز دارید فعال کنید) -->
+            <!--
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="moshaver-tahsili.ir"
+                    android:pathPrefix="/" />
+            </intent-filter>
+            -->
         </activity>
-        <meta-data android:name="flutterEmbedding" android:value="2" />
+
+        <!-- Flutter Embedding v2 -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+
     </application>
+
 </manifest>
