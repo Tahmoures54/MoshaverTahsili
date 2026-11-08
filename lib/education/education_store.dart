@@ -65,7 +65,7 @@ class EducationStore {
 
   List<Map<String, dynamic>> get messages => readList('edu.messages');
   Future<void> saveMessages(List<Map<String, dynamic>> value) =>
-      writeList('edu.messages', value.take(80).toList());
+      writeList('edu.messages', value.length <= 80 ? value : value.sublist(value.length - 80));
 
   Future<void> clear() async {
     for (final key in ['edu.profile', 'edu.tasks', 'edu.exams', 'edu.cards', 'edu.messages']) {
