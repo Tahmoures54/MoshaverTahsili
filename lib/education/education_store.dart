@@ -27,23 +27,33 @@ class EducationStore {
       prefs.setString(key, jsonEncode(value));
 
 
-  // Local-only consumable AI credit wallet. The first two successful AI requests
-  // are free; subsequent successful requests consume one purchased credit.
-  int get credits => prefs.getInt('edu.ai.credits') ?? 0;
-  int get successfulAiUses => prefs.getInt('edu.ai.successful_uses') ?? 0;
+  // Local-only consumable AI wallet. A single JSON preference keeps the
+  // balance, successful-use counter and purchase-token ledger in one write.
+  Map<String, dynamic> get _wallet {
+    try {
+      return Map<String, dynamic>.from(
+        jsonDecode(prefs.getString('edu.ai.wallet') ?? '{}') as Map,
+      );
+    } catch (_) {
+      return <String, dynamic>{};
+    }
+  }
+
+  int get credits => (_wallet['credits'] as num?)?.toInt() ?? 0;
+  int get successfulAiUses => (_wallet['successful_uses'] as num?)?.toInt() ?? 0;
   int get freeAiUsesRemaining => (2 - successfulAiUses).clamp(0, 2).toInt();
   bool get canUseAi => freeAiUsesRemaining > 0 || credits > 0;
 
   Future<bool> recordSuccessfulAiUse() async {
-    final uses = successfulAiUses;
-    if (uses < 2) {
-      await prefs.setInt('edu.ai.successful_uses', uses + 1);
-      return true;
-    }
-    final balance = credits;
-    if (balance <= 0) return false;
-    await prefs.setInt('edu.ai.credits', balance - 1);
-    await prefs.setInt('edu.ai.successful_uses', uses + 1);
+    final wallet = _wallet;
+    final uses = (wallet['successful_uses'] as num?)?.toInt() ?? 0;
+    final balance = (wallet['credits'] as num?)?.toInt() ?? 0;
+    if (uses >= 2 && balance <= 0) return false;
+    await prefs.setString('edu.ai.wallet', jsonEncode({
+      'credits': uses >= 2 ? balance - 1 : balance,
+      'successful_uses': uses + 1,
+      'purchase_tokens': (wallet['purchase_tokens'] as List?)?.cast<String>() ?? <String>[],
+    }));
     return true;
   }
 
@@ -55,12 +65,14 @@ class EducationStore {
     if (productId.trim().isEmpty || purchaseToken.trim().isEmpty || creditsToAdd <= 0) {
       throw ArgumentError('شناسه محصول، توکن خرید و تعداد اعتبار معتبر الزامی است.');
     }
-    final tokens = prefs.getStringList('edu.ai.purchase_tokens') ?? <String>[];
+    final wallet = _wallet;
+    final tokens = (wallet['purchase_tokens'] as List?)?.cast<String>() ?? <String>[];
     if (tokens.contains(purchaseToken)) return false;
-    // Persist the unique purchase token before increasing the wallet. This
-    // favors duplicate prevention if the process is interrupted mid-write.
-    await prefs.setStringList('edu.ai.purchase_tokens', [...tokens, purchaseToken]);
-    await prefs.setInt('edu.ai.credits', credits + creditsToAdd);
+    await prefs.setString('edu.ai.wallet', jsonEncode({
+      'credits': ((wallet['credits'] as num?)?.toInt() ?? 0) + creditsToAdd,
+      'successful_uses': (wallet['successful_uses'] as num?)?.toInt() ?? 0,
+      'purchase_tokens': [...tokens, purchaseToken],
+    }));
     return true;
   }
 
