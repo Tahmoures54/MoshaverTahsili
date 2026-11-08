@@ -7,8 +7,9 @@ import sys
 from pathlib import Path
 
 args = sys.argv[1:]
-secrets = [os.environ.get(name, '') for name in ['AI_API_KEY', 'BAZAAR_RSA_PUBLIC_KEY',
-    'RELEASE_KEYSTORE_BASE64', 'RELEASE_KEYSTORE_PASSWORD', 'RELEASE_KEY_ALIAS', 'RELEASE_KEY_PASSWORD']]
+secrets = [os.environ.get(name, '') for name in ['AI_API_KEY', 'DEEPSEEK_API_KEY', 'AI_API_ENDPOINT', 'DEEPSEEK_API_ENDPOINT',
+    'AI_MODEL', 'DEEPSEEK_MODEL', 'BAZAAR_RSA_PUBLIC_KEY', 'RELEASE_KEYSTORE_BASE64',
+    'RELEASE_KEYSTORE_PASSWORD', 'RELEASE_KEY_ALIAS', 'RELEASE_KEY_PASSWORD']]
 secrets = sorted((value for value in secrets if value), key=len, reverse=True)
 def redact(line: str) -> str:
     for value in secrets:
