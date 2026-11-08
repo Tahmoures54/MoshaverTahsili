@@ -103,9 +103,26 @@ jobs:
             python3 scripts/write_signing_config.py
             signing=()
           fi
-          python3 scripts/flutter_build.py apk --release --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" "${signing[@]}"
-          python3 scripts/flutter_build.py apk --release --split-per-abi --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" "${signing[@]}"
-          python3 scripts/flutter_build.py appbundle --release --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" "${signing[@]}"
+          build_with_retry() {
+            local label="$1"
+            shift
+            local log="build/reports/android/build-${label}.txt"
+            for attempt in 1 2 3; do
+              if python3 scripts/flutter_build.py "$@"; then
+                return 0
+              fi
+              if [[ -f "$log" ]] && grep -Eq 'SocketTimeoutException|HTTP response code: 5|Downloading from|Read timed out|Could not GET|Could not HEAD' "$log"; then
+                echo "::warning::Transient build/download failure; retrying ${label} (attempt ${attempt})"
+                sleep 20
+              else
+                return 1
+              fi
+            done
+            return 1
+          }
+          build_with_retry apk-universal apk --release --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" "${signing[@]}"
+          build_with_retry apk-split apk --release --split-per-abi --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" "${signing[@]}"
+          build_with_retry appbundle appbundle --release --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" "${signing[@]}"
           mkdir -p build/reports/android build/installable
           cp build/app/outputs/flutter-apk/app-release.apk "build/installable/MoshaverTahsili-${{ steps.config.outputs.version }}-universal.apk"
           cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "build/installable/MoshaverTahsili-${{ steps.config.outputs.version }}-armv7.apk"
