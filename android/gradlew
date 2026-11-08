@@ -1,0 +1,10 @@
+#!/bin/sh
+DIR=$(cd "$(dirname "$0")" && pwd)
+CLASSPATH=$DIR/gradle/wrapper/gradle-wrapper.jar
+if [ ! -f "$CLASSPATH" ]; then
+  echo "Downloading gradle-wrapper.jar..."
+  mkdir -p "$DIR/gradle/wrapper"
+  curl -fsSL -o "$CLASSPATH" \
+    "https://github.com/gradle/gradle/raw/v8.9.0/gradle/wrapper/gradle-wrapper.jar"
+fi
+exec java -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
