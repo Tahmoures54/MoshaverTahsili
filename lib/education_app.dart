@@ -70,7 +70,7 @@ class _EntryScreenState extends State<EntryScreen> {
           Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('سخنی با اولیا و دانش‌آموزان گرامی', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: navy)),
             const SizedBox(height: 10),
-            const Text('این برنامه برای کمک به یادگیری، برنامه‌ریزی و شناخت مسیرهای تحصیلی طراحی شده است. برنامه درسی، نمرات و یادداشت‌ها روی همین گوشی ذخیره می‌شوند. برای پاسخ‌گویی هوش مصنوعی، متن پرسش، مقطع و رشته تحصیلی ثبت‌شده و بخشی از گفت‌وگوهای قبلی از طریق اینترنت به سرویس هوش مصنوعی فرستاده می‌شود؛ نمرات و برنامه درسی برای این درخواست ارسال نمی‌شوند. اطلاعات حساس، نام کامل، نشانی و شماره تماس را وارد نکنید. پاسخ هوش مصنوعی ممکن است اشتباه باشد و جایگزین نظر معلم، مشاور مدرسه یا منابع رسمی نیست.', style: TextStyle(height: 1.8)),
+            const Text('این برنامه برای کمک به یادگیری، برنامه‌ریزی و شناخت مسیرهای تحصیلی طراحی شده است. برنامه درسی، نمرات و یادداشت‌ها روی همین گوشی ذخیره می‌شوند. برای پاسخ‌گویی هوش مصنوعی، متن پرسش، مقطع، رشته و هدف تحصیلی ثبت‌شده و بخشی از گفت‌وگوهای قبلی از طریق اینترنت به سرویس هوش مصنوعی فرستاده می‌شود؛ نمرات و برنامه درسی برای این درخواست ارسال نمی‌شوند. اطلاعات حساس، نام کامل، نشانی و شماره تماس را وارد نکنید. پاسخ هوش مصنوعی ممکن است اشتباه باشد و جایگزین نظر معلم، مشاور مدرسه یا منابع رسمی نیست.', style: TextStyle(height: 1.8)),
             CheckboxListTile(value: accepted, contentPadding: EdgeInsets.zero, onChanged: (v) => setState(() => accepted = v ?? false),
               title: const Text('توضیحات و نکات حریم خصوصی را خواندم.'), controlAffinity: ListTileControlAffinity.leading),
           ]))),
@@ -291,10 +291,19 @@ class _PlannerPageState extends State<PlannerPage> {
       ]),
       actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
         FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('افزودن'))]));
-    if (ok == true && title.text.trim().isNotEmpty) {
-      await widget.store.addTask({'id': DateTime.now().microsecondsSinceEpoch.toString(), 'title': title.text.trim(),
-        'subject': subject.text.trim().isEmpty ? 'عمومی' : subject.text.trim(), 'minutes': int.tryParse(_digitsToEnglish(duration.text)) ?? 30, 'done': false, 'createdAt': DateTime.now().toIso8601String()});
-      setState(() {}); widget.changed();
+    if (ok == true) {
+      final minutes = int.tryParse(_digitsToEnglish(duration.text));
+      if (title.text.trim().isEmpty || minutes == null || minutes < 1 || minutes > 1440) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('عنوان برنامه و مدت معتبر بین ۱ تا ۱۴۴۰ دقیقه را وارد کن.')),
+          );
+        }
+      } else {
+        await widget.store.addTask({'id': DateTime.now().microsecondsSinceEpoch.toString(), 'title': title.text.trim(),
+          'subject': subject.text.trim().isEmpty ? 'عمومی' : subject.text.trim(), 'minutes': minutes, 'done': false, 'createdAt': DateTime.now().toIso8601String()});
+        if (mounted) { setState(() {}); widget.changed(); }
+      }
     }
     title.dispose(); subject.dispose(); duration.dispose();
   }
