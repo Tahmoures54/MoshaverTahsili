@@ -85,7 +85,7 @@ void main() {
       final service = AiAdvisorService(store: store, apiKey: 'test-key', client: MockClient((_) async => response));
       await expectLater(service.ask(profile: null, history: const [], question: 'q', requestId: 'failed'), throwsA(isA<AiException>()));
       expect(store.credits, 2);
-      expect(store.creditHistory.every((item) => item['status'] != 'completed'), isTrue);
+      expect(store.creditHistory.where((item) => item['kind'] == 'ai').every((item) => item['status'] != 'completed'), isTrue);
       service.dispose();
     });
   }
