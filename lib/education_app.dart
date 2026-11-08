@@ -108,6 +108,10 @@ Future<bool> showProfileSheet(BuildContext context, EducationStore store) async 
         });
       },
     );
+    // The modal route's Future completes when pop starts, while its reverse
+    // transition may still rebuild TextFormFields. Keep their controllers alive
+    // until that transition has fully detached the fields.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
     return saved == true;
   } finally { nickname.dispose(); field.dispose(); goal.dispose(); }
 }
