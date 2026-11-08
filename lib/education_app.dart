@@ -570,6 +570,17 @@ class _CareerPageState extends State<CareerPage> {
         style: TextStyle(height: 1.7),
       ))),
       const SizedBox(height: 12),
+      Card(child: ListTile(
+        leading: const Icon(Icons.account_balance_wallet_outlined, color: teal),
+        title: Text('اعتبار هوش مصنوعی: ${widget.store.credits}', style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(widget.store.freeAiUsesRemaining > 0 ? '${widget.store.freeAiUsesRemaining} درخواست رایگان باقی مانده' : 'برای تحلیل انتخاب رشته اعتبار لازم است'),
+        trailing: TextButton(
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => CreditShopPage(store: widget.store),
+          )).then((_) { if (mounted) setState(() {}); }),
+          child: const Text('خرید اعتبار'),
+        ),
+      )),
       TextField(controller: interests, maxLines: 3, decoration: const InputDecoration(labelText: 'به چه موضوع‌ها و فعالیت‌هایی علاقه داری؟')),
       const SizedBox(height: 10),
       TextField(controller: strengths, maxLines: 3, decoration: const InputDecoration(labelText: 'در چه کارهایی احساس توانمندی می‌کنی؟')),
