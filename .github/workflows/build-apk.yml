@@ -1,183 +1,257 @@
-name: Flutter CI/CD – Android
+name: Flutter checks and Android build
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'arena/**']
     tags: ['v*']
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      publish_candidate:
+        description: 'Publish an explicitly NON-PRODUCTION test release from this ref'
+        type: boolean
+        default: false
 
-# ── حداقل دسترسی در سطح کل workflow ──
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: android-${{ github.ref }}
+  cancel-in-progress: false
 
-# ══════════════════════════════════════════════
-#  Job 1 – تحلیل ایستا و تست واحد
-# ══════════════════════════════════════════════
 jobs:
-  check:
-    name: Analyze & Test
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+  validate-and-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      production_ready: ${{ steps.config.outputs.production_ready }}
+      version: ${{ steps.config.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
-
-      - uses: subosito/flutter-action@v2
+          cache: gradle
+      - uses: subosito/flutter-action@v2.23.0
         with:
-          flutter-version: '3.24.5'
+          flutter-version-file: .fvmrc
           channel: stable
           cache: true
-
-      - name: Resolve dependencies
-        run: flutter pub get
-
-      - name: Static analysis
-        run: flutter analyze --no-fatal-infos
-
-      - name: Unit & widget tests
-        run: flutter test
-
-  # ══════════════════════════════════════════════
-  #  Job 2 – بیلد APK اندروید
-  # ══════════════════════════════════════════════
-  build-android:
-    name: Build Android APK
-    needs: check
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-          cache: gradle              # ← کش Gradle برای سرعت بیشتر
-
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.24.5'
-          channel: stable
-          cache: true
-
-      - run: flutter pub get
-      - run: flutter doctor -v       # ← خروجی تشخیصی برای دیباگ
-
-      - name: Prepare Gradle wrapper
-        run: chmod +x android/gradlew
-
-      # ── اعتبارسنجی secrets فقط برای تگ‌ها ──
-      - name: Validate release secrets
-        if: startsWith(github.ref, 'refs/tags/v')
+          pub-cache: true
+      - name: Resolve locked dependencies
+        run: flutter pub get --enforce-lockfile
+      - name: Source and Android security checks
+        run: python3 scripts/security_check.py
+      - name: Static analysis (including infos)
+        run: |
+          mkdir -p build/reports
+          set +e
+          flutter analyze --write=build/reports/analyze.txt
+          result=$?
+          set -e
+          cat build/reports/analyze.txt
+          python3 scripts/annotate_analysis.py build/reports/analyze.txt
+          exit "$result"
+      - name: Unit and widget tests
+        run: |
+          mkdir -p build/reports
+          flutter test --coverage --reporter expanded 2>&1 | tee build/reports/tests.txt
+      - name: Check release configuration without exposing values
+        id: config
         env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          BAZAAR_RSA_PUBLIC_KEY: ${{ secrets.BAZAAR_RSA_PUBLIC_KEY }}
+          BAZAAR_CATALOG_CONFIRMED: ${{ vars.BAZAAR_CATALOG_CONFIRMED }}
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
         run: |
-          set -euo pipefail
-          for var in RELEASE_KEYSTORE_BASE64 RELEASE_KEYSTORE_PASSWORD \
-                     RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD AI_API_KEY; do
-            if [[ -z "${!var}" ]]; then
-              echo "::error::Missing required secret for tag release: $var"
-              exit 1
-            fi
-          done
-
-      # ── پیکربندی امضای اندروید ──
-      - name: Configure Android signing
-        id: signing
+          python3 scripts/build_config.py >> "$GITHUB_OUTPUT"
+          python3 scripts/build_config.py --summary >> "$GITHUB_STEP_SUMMARY"
+      - name: Require production inputs for a stable tag
+        if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
         env:
-          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-          KEYSTORE_PASS: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          KEY_PASS: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          PRODUCTION_READY: ${{ steps.config.outputs.production_ready }}
         run: |
-          set -euo pipefail
-
-          # بدون کی‌استور → بیلد با امضای دیباگ
-          if [[ -z "$KEYSTORE_B64" ]]; then
-            echo "::notice::No release keystore configured – building debug-signed APK."
-            echo "signed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # کی‌استور هست ولی بقیه مقادیر ناقص‌اند
-          for var in KEYSTORE_PASS KEY_ALIAS KEY_PASS; do
-            if [[ -z "${!var}" ]]; then
-              echo "::error::Keystore provided but $var is missing."
-              exit 1
-            fi
-          done
-
-          # دیکد و ذخیره کی‌استور
-          echo "$KEYSTORE_B64" | base64 --decode > android/app/upload-keystore.jks
-          test -s android/app/upload-keystore.jks \
-            || { echo "::error::Decoded keystore file is empty."; exit 1; }
-
-          # نوشتن key.properties بدون تورفتگی (با printf)
-          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=upload-keystore.jks\n' \
-            "$KEYSTORE_PASS" "$KEY_PASS" "$KEY_ALIAS" \
-            > android/key.properties
-
-          echo "signed=true" >> "$GITHUB_OUTPUT"
-
-      # ── بیلد نهایی APK ──
-      - name: Build universal APK
+          test "$PRODUCTION_READY" = true || { echo '::error::Production secrets/catalog confirmation are missing. See the safe configuration summary.'; exit 1; }
+          test "refs/tags/v${{ steps.config.outputs.version }}" = "$GITHUB_REF" || { echo '::error::Tag must match pubspec version'; exit 1; }
+      - name: Build Android artifacts
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
-          AI_API_ENDPOINT: ${{ vars.AI_API_ENDPOINT }}
-          AI_MODEL: ${{ vars.AI_MODEL }}
           BAZAAR_RSA_PUBLIC_KEY: ${{ secrets.BAZAAR_RSA_PUBLIC_KEY }}
+          BAZAAR_CATALOG_CONFIRMED: ${{ vars.BAZAAR_CATALOG_CONFIRMED }}
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          PRODUCTION_READY: ${{ steps.config.outputs.production_ready }}
         run: |
           set -euo pipefail
-          flutter build apk --release \
-            --dart-define="AI_API_KEY=${AI_API_KEY:-}" \
-            --dart-define="AI_API_ENDPOINT=${AI_API_ENDPOINT:-https://api.avalai.ir/v1/chat/completions}" \
-            --dart-define="AI_MODEL=${AI_MODEL:-deepseek-chat}" \
-            --dart-define="BAZAAR_RSA_PUBLIC_KEY=${BAZAAR_RSA_PUBLIC_KEY:-}"
-
-      # ── آپلود artifact ──
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+          trap 'rm -f android/key.properties android/app/upload-keystore.jks "$RUNNER_TEMP/ai-build-config.json"' EXIT
+          python3 scripts/write_build_config.py "$RUNNER_TEMP/ai-build-config.json"
+          chmod 600 "$RUNNER_TEMP/ai-build-config.json"
+          signing=(-PciTestBuild=true)
+          if [[ -n "$RELEASE_KEYSTORE_BASE64" ]]; then
+            for name in RELEASE_KEYSTORE_PASSWORD RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD; do
+              test -n "${!name}" || { echo "::error::Incomplete signing configuration: $name"; exit 1; }
+            done
+            printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+            test -s android/app/upload-keystore.jks
+            python3 scripts/write_signing_config.py
+            signing=()
+          fi
+          build_with_retry() {
+            local label="$1"
+            shift
+            local log="build/reports/android/build-${label}.txt"
+            for attempt in 1 2 3; do
+              if python3 scripts/flutter_build.py "$@"; then
+                return 0
+              fi
+              if [[ -f "$log" ]] && grep -Eq 'SocketTimeoutException|HTTP response code: 5|Downloading from|Read timed out|Could not GET|Could not HEAD' "$log"; then
+                echo "::warning::Transient build/download failure; retrying ${label} (attempt ${attempt})"
+                sleep 20
+              else
+                return 1
+              fi
+            done
+            return 1
+          }
+          build_with_retry apk-universal apk --release --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" "${signing[@]}"
+          build_with_retry apk-split apk --release --split-per-abi --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" "${signing[@]}"
+          build_with_retry appbundle appbundle --release --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" "${signing[@]}"
+          mkdir -p build/reports/android build/installable
+          cp build/app/outputs/flutter-apk/app-release.apk "build/installable/MoshaverTahsili-${{ steps.config.outputs.version }}-universal.apk"
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "build/installable/MoshaverTahsili-${{ steps.config.outputs.version }}-armv7.apk"
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "build/installable/MoshaverTahsili-${{ steps.config.outputs.version }}-arm64.apk"
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk "build/installable/MoshaverTahsili-${{ steps.config.outputs.version }}-x86_64.apk"
+          cp build/app/outputs/bundle/release/app-release.aab "build/installable/MoshaverTahsili-${{ steps.config.outputs.version }}.aab"
+          python3 scripts/apk_size_report.py build/installable build/reports/android
+          cat build/reports/android/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify release signature
+        env:
+          PRODUCTION_READY: ${{ steps.config.outputs.production_ready }}
+        run: |
+          signer=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
+          "$signer" verify --verbose --print-certs build/installable/*universal.apk > build/reports/android/signature.txt
+          python3 scripts/check_signer.py build/reports/android/signature.txt
+      - name: Upload installable test artifacts
+        uses: actions/upload-artifact@v7
         with:
-          name: moshaver-tahsili-apk-${{ github.run_number }}
+          name: android-${{ steps.config.outputs.version }}-${{ github.sha }}
           path: |
-            build/app/outputs/flutter-apk/app-release.apk
+            build/installable/
+            build/reports/android/
             pubspec.lock
           if-no-files-found: error
           retention-days: 14
+      - name: Publish failure diagnostics to job summary
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as output:
+              output.write('\n## Failure diagnostics\n')
+              for path in sorted(Path('build/reports').rglob('*.txt')):
+                  output.write(f'\n### {path.name}\n\n```text\n')
+                  output.write('\n'.join(path.read_text(errors='replace').splitlines()[-160:]))
+                  output.write('\n```\n')
+          PY
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-evidence-${{ github.sha }}
+          path: |
+            coverage/lcov.info
+            build/reports/
+          if-no-files-found: ignore
+          retention-days: 14
 
-  # ══════════════════════════════════════════════
-  #  Job 3 – انتشار ریلیز (فقط روی تگ)
-  # ══════════════════════════════════════════════
-  release:
-    name: Publish GitHub Release
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build-android
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write              # ← فقط این job دسترسی write دارد
+
+  android-smoke:
+    needs: validate-and-build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
     steps:
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
-          name: moshaver-tahsili-apk-${{ github.run_number }}
-          path: artifacts
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: subosito/flutter-action@v2.23.0
+        with:
+          flutter-version-file: .fvmrc
+          channel: stable
+          cache: true
+          pub-cache: true
+      - run: flutter pub get --enforce-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          name: android-${{ needs.validate-and-build.outputs.version }}-${{ github.sha }}
+          path: device-artifacts
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Integration test and release APK installation on Android emulator
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-boot-timeout: 1200
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash scripts/android_smoke.sh
+      - name: Annotate Android smoke failure
+        if: failure()
+        run: python3 scripts/annotate_log.py build/reports/device/integration.txt build/reports/device/install.txt build/reports/device/launch.txt build/reports/device/crash-log.txt
+      - name: Upload emulator evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-emulator-evidence-${{ github.sha }}
+          path: build/reports/device/
+          if-no-files-found: ignore
+          retention-days: 14
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+  publish:
+    needs: [validate-and-build, android-smoke]
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish_candidate)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
         with:
-          generate_release_notes: true
-          files: artifacts/**/*.apk
+          name: android-${{ needs.validate-and-build.outputs.version }}-${{ github.sha }}
+          path: release-files
+      - name: Publish only honestly labelled releases
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.validate-and-build.outputs.version }}
+          READY: ${{ needs.validate-and-build.outputs.production_ready }}
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find release-files/build/installable -type f | sort)
+          if [[ "$GITHUB_REF" == refs/tags/v* && "$GITHUB_REF_NAME" != *-* && "$READY" == true ]]; then
+            gh release create "$GITHUB_REF_NAME" "${files[@]}" --verify-tag --title "مشاور تحصیلی $VERSION" --notes 'نسخه انتشار با امضای خصوصی، سرویس هوش مصنوعی پیکربندی‌شده و کاتالوگ تأییدشده بازار. آزمون پرداخت واقعی روی گوشی باید در پرونده انتشار ثبت شود.'
+          else
+            notes='این نسخه برای نصب و آزمون است، نه انتشار تجاری. ممکن است با کلید debug امضا شده باشد یا کلید AI/تأیید کاتالوگ بازار نداشته باشد. گزارش پیکربندی و اندازه‌ها در پیوست موجود است. پرداخت و ارتباط واقعی تنها در صورت پیکربندی و آزمون مستقل تأیید می‌شوند.'
+            if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+              gh release create "$GITHUB_REF_NAME" "${files[@]}" --verify-tag --prerelease --title "نسخه آزمایشی $VERSION" --notes "$notes"
+            else
+              tag="v${VERSION}-test.${GITHUB_RUN_NUMBER}"
+              gh release create "$tag" "${files[@]}" --target "$GITHUB_SHA" --prerelease --title "نسخه آزمایشی $VERSION (ساخت $GITHUB_RUN_NUMBER)" --notes "$notes"
+            fi
+          fi
