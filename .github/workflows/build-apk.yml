@@ -87,11 +87,13 @@ jobs:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           AI_API_ENDPOINT: ${{ vars.AI_API_ENDPOINT }}
           AI_MODEL: ${{ vars.AI_MODEL }}
+          BAZAAR_RSA_PUBLIC_KEY: ${{ secrets.BAZAAR_RSA_PUBLIC_KEY }}
         run: |
           flutter build apk --release --target-platform android-arm64 \
             --dart-define="AI_API_KEY=$AI_API_KEY" \
             --dart-define="AI_API_ENDPOINT=${AI_API_ENDPOINT:-https://api.avalai.ir/v1/chat/completions}" \
-            --dart-define="AI_MODEL=${AI_MODEL:-deepseek-chat}"
+            --dart-define="AI_MODEL=${AI_MODEL:-deepseek-chat}" \
+            --dart-define="BAZAAR_RSA_PUBLIC_KEY=$BAZAAR_RSA_PUBLIC_KEY"
 
       - name: Upload CI APK and dependency lock
         uses: actions/upload-artifact@v4
