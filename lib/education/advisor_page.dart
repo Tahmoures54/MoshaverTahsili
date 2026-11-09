@@ -22,7 +22,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
   late List<Map<String, dynamic>> messages;
   bool busy = false;
   String? error;
-  String? retryId, retryText;
+  String? retryId;
 
   @override
   void initState() {
@@ -30,7 +30,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
     messages = widget.store.messages;
     for (final message in messages.reversed) {
       if (message['role'] == 'user' && {'pending', 'failed'}.contains(message['status'])) {
-        retryId = message['id']?.toString(); retryText = message['content']?.toString();
+        retryId = message['id']?.toString();
         break;
       }
       if (message['role'] == 'user') break;
@@ -70,7 +70,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
   Future<void> request(String id, String text) async {
     if (busy && retryId != null && retryId != id) return;
-    setState(() { busy = true; error = null; retryId = id; retryText = text; });
+    setState(() { busy = true; error = null; retryId = id; });
     final history = messages.where((m) => m['id'] != id).toList();
     try {
       final answer = await service.ask(profile: widget.store.profile, history: history,
@@ -81,7 +81,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
         messages.removeWhere((m) => m['id'] == '$id-answer');
         messages.add({'id': '$id-answer', 'role': 'assistant', 'content': answer,
           'status': 'completed', 'createdAt': DateTime.now().toIso8601String()});
-        retryId = null; retryText = null;
+        retryId = null;
       });
       await widget.store.saveMessages(messages);
     } on Object catch (value) {
@@ -104,7 +104,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
       actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
         FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('پاک کردن'))]));
     if (confirmed != true || !mounted) return;
-    try { await widget.store.saveMessages([]); if (mounted) setState(() { messages = []; error = null; retryId = null; retryText = null; }); }
+    try { await widget.store.saveMessages([]); if (mounted) setState(() { messages = []; error = null; retryId = null; }); }
     on Object catch (value) { if (mounted) showMessage(context, friendlyError(value)); }
   }
 
