@@ -17,6 +17,7 @@ class AdvisorPage extends StatefulWidget {
 
 class _AdvisorPageState extends State<AdvisorPage> {
   final input = TextEditingController();
+  late final bool _ownsService = widget.service == null;
   late final AiAdvisorService service = widget.service ?? AiAdvisorService(store: widget.store);
   late List<Map<String, dynamic>> messages;
   bool busy = false;
@@ -37,7 +38,11 @@ class _AdvisorPageState extends State<AdvisorPage> {
   }
 
   @override
-  void dispose() { input.dispose(); service.dispose(); super.dispose(); }
+  void dispose() {
+    input.dispose();
+    if (_ownsService) service.dispose();
+    super.dispose();
+  }
 
   Future<void> openShop() async {
     await Navigator.push<void>(context, MaterialPageRoute(builder: (_) => CreditShopPage(store: widget.store)));
