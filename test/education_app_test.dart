@@ -31,7 +31,11 @@ void main() {
     expect(find.text('مشاور هوشمند تحصیلی'), findsOneWidget);
     expect(find.text('سخنی با اولیا و دانش‌آموزان گرامی'), findsOneWidget);
     expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'بزن بریم')).onPressed, isNull);
+    await tester.ensureVisible(find.byType(Checkbox));
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(Checkbox));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('بزن بریم'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('بزن بریم'));
     await tester.pumpAndSettle();
@@ -109,6 +113,8 @@ void main() {
     expect(store.credits, 1);
     expect(store.messages.last['status'], 'failed');
     expect(find.text('تلاش دوباره همین درخواست'), findsOneWidget);
+    await tester.ensureVisible(find.text('تلاش دوباره همین درخواست'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('تلاش دوباره همین درخواست'));
     await tester.pumpAndSettle();
     expect(store.credits, 0);
@@ -130,6 +136,8 @@ void main() {
     await tester.tap(find.text('خرید از بازار').first);
     await tester.pumpAndSettle();
     expect(store.credits, 10);
+    await tester.ensureVisible(find.text('تاریخچه اعتبار'));
+    await tester.pumpAndSettle();
     expect(find.text('تاریخچه اعتبار'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('بسته برنزی').last, 300);
     expect(tester.takeException(), isNull);
