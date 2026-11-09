@@ -63,6 +63,7 @@ jobs:
           exit "$result"
       - name: Unit and widget tests
         run: |
+          set -euo pipefail
           mkdir -p build/reports
           flutter test --coverage --reporter expanded 2>&1 | tee build/reports/tests.txt
       - name: Check release configuration without exposing values
