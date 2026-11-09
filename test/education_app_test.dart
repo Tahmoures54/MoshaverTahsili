@@ -116,7 +116,7 @@ void main() {
     final retryButton = find.byKey(const ValueKey('advisor-retry-request'));
     expect(retryButton, findsOneWidget);
     expect(tester.widget<TextButton>(retryButton).onPressed, isNotNull);
-    await tester.ensureVisible(retryButton);
+    await tester.scrollUntilVisible(retryButton, 300, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
     await tester.tap(retryButton);
     await tester.pumpAndSettle();
