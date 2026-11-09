@@ -114,7 +114,8 @@ void main() {
     final service = AiAdvisorService(store: store, apiKey: 'test-key', client: MockClient((_) async {
       calls++;
       return calls == 1 ? http.Response('unavailable', 503) : http.Response(
-          jsonEncode({'choices': [{'message': {'content': 'Recovered after retry'}}]}), 200);
+          jsonEncode({'choices': [{'message': {'content': 'Recovered after retry'}}]}), 200,
+          headers: {'content-type': 'application/json; charset=utf-8'});
     }));
     await tester.pumpWidget(frame(AdvisorPage(store: store, service: service)));
     await tester.enterText(find.byType(TextField), 'چطور بهتر مطالعه کنم؟');
