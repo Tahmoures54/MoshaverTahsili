@@ -111,7 +111,8 @@ void main() {
       {'id': 'previous-failed', 'role': 'user', 'content': 'پرسش ناموفق قبلی',
         'status': 'failed', 'createdAt': '2026-01-01T00:00:00Z'},
     ]);
-    final service = AiAdvisorService(store: store, apiKey: 'test-key', client: MockClient((_) async {
+    final service = AiAdvisorService(store: store, apiKey: 'test-key',
+        timeout: const Duration(seconds: 2), client: MockClient((_) async {
       calls++;
       return calls == 1 ? http.Response('unavailable', 503) : http.Response(
           jsonEncode({'choices': [{'message': {'content': 'Recovered after retry'}}]}), 200,
@@ -135,6 +136,7 @@ void main() {
     await tester.scrollUntilVisible(retryButton, 300, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
     await tester.tap(retryButton);
+    await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();
     expect(calls, 2);
     final completedWallet = jsonDecode((await SharedPreferences.getInstance())
