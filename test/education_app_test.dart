@@ -145,6 +145,8 @@ void main() {
     expect(store.messages.last['status'], 'completed');
     expect(store.messages.where((message) => message['role'] == 'user'), hasLength(1));
     expect(store.messages.last['content'], contains('شبیه‌سازی‌شده در تست'));
+    await tester.pumpWidget(const SizedBox());
+    service.dispose();
   });
 
   testWidgets('shop shows balance, packages, purchase result and history', (tester) async {
