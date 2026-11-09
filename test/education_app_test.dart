@@ -128,8 +128,8 @@ void main() {
         .getString(EducationStore.walletKey)!);
     expect(failedWallet['requests'][requestId]['charge'], 'credit');
     expect(failedWallet['requests'][requestId]['status'], 'refunded');
-    expect(find.text('تلاش دوباره همین درخواست'), findsOneWidget);
-    final retryButton = find.byKey(const ValueKey('advisor-retry-request'));
+    expect(find.text('تلاش دوباره همین درخواست'), findsNWidgets(2));
+    final retryButton = find.byKey(ValueKey('advisor-retry-$requestId'));
     expect(retryButton, findsOneWidget);
     expect(tester.widget<TextButton>(retryButton).onPressed, isNotNull);
     await tester.scrollUntilVisible(retryButton, 300, scrollable: find.byType(Scrollable).first);
