@@ -98,8 +98,14 @@ void main() {
   });
 
   testWidgets('advisor keeps failed question retryable and never displays it as an AI answer', (tester) async {
-    SharedPreferences.setMockInitialValues({EducationStore.walletKey: jsonEncode({'credits': 1, 'successful_uses': 2})});
+    SharedPreferences.setMockInitialValues({EducationStore.walletKey: jsonEncode({
+      'version': 2, 'credits': 1, 'successful_uses': 2,
+      'purchase_tokens': <String, dynamic>{}, 'requests': <String, dynamic>{},
+      'transactions': <Map<String, dynamic>>[],
+    })});
     final store = await EducationStore.open();
+    expect(store.successfulAiUses, 2);
+    expect(store.freeAiUsesRemaining, 0);
     var calls = 0;
     final service = AiAdvisorService(store: store, apiKey: 'test-key', client: MockClient((_) async {
       calls++;
@@ -112,6 +118,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(store.credits, 1);
     expect(store.messages.last['status'], 'failed');
+    final requestId = store.messages.last['id'].toString();
+    final failedWallet = jsonDecode((await SharedPreferences.getInstance())
+        .getString(EducationStore.walletKey)!);
+    expect(failedWallet['requests'][requestId]['charge'], 'credit');
+    expect(failedWallet['requests'][requestId]['status'], 'refunded');
     expect(find.text('تلاش دوباره همین درخواست'), findsOneWidget);
     final retryButton = find.byKey(const ValueKey('advisor-retry-request'));
     expect(retryButton, findsOneWidget);
@@ -122,7 +133,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(calls, 2);
     expect(store.credits, 0);
-    expect(calls, 2);
+    final completedWallet = jsonDecode((await SharedPreferences.getInstance())
+        .getString(EducationStore.walletKey)!);
+    expect(completedWallet['requests'][requestId]['charge'], 'credit');
+    expect(completedWallet['requests'][requestId]['status'], 'completed');
     expect(store.messages.where((message) => message['role'] == 'user'), hasLength(1));
     expect(store.messages.last['content'], contains('شبیه‌سازی‌شده در تست'));
   });
