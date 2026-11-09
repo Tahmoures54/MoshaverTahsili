@@ -133,6 +133,8 @@ class EducationStore extends ChangeNotifier {
           'status': status,
           'charge': charge,
           'createdAt': _string(item['createdAt'], 40),
+          if (item['attempt'] != null) 'attempt': _nonNegativeInt(item['attempt']),
+          if (item['transactionId'] != null) 'transactionId': _string(item['transactionId'], 512),
           if (item['answer'] != null) 'answer': _string(item['answer'], maxAnswerLength),
         };
         if (status == 'completed' && requests[id]['answer'] == null) {
@@ -215,9 +217,13 @@ class EducationStore extends ChangeNotifier {
   }
 
   void _markTransaction(Map<String, dynamic> wallet, String id, String status) {
-    for (final Object? item in wallet['transactions'] as List) {
-      final transaction = item as Map;
-      if (transaction['id'] == id) transaction['status'] = status;
+    final history = wallet['transactions'] as List;
+    for (var index = history.length - 1; index >= 0; index--) {
+      final transaction = history[index] as Map;
+      if (transaction['id'] == id && transaction['kind'] == 'ai') {
+        transaction['status'] = status;
+        return;
+      }
     }
   }
 
@@ -259,9 +265,12 @@ class EducationStore extends ChangeNotifier {
           throw const LocalDataException('اعتبار کافی نداری. برای ادامه، بسته اعتبار تهیه کن.');
         }
         if (charge == 'credit') wallet['credits'] = credits - 1;
+        final attempt = previous == null ? 1 : ((previous['attempt'] as int?) ?? 1) + 1;
+        final transactionId = '$id-attempt-$attempt';
         requests[id] = {'question': question, 'status': 'pending', 'charge': charge,
-          'createdAt': previous?['createdAt'] ?? _now()};
-        _transaction(wallet, id, 'ai', 1, 'درخواست مشاور هوشمند', 'pending');
+          'createdAt': previous?['createdAt'] ?? _now(),
+          'attempt': attempt, 'transactionId': transactionId};
+        _transaction(wallet, transactionId, 'ai', 1, 'درخواست مشاور هوشمند', 'pending');
         _trimRequests(wallet);
         await _saveWallet(wallet);
         _activeRequests.add(id);
@@ -281,7 +290,7 @@ class EducationStore extends ChangeNotifier {
     if (request['charge'] == 'free') {
       wallet['successful_uses'] = successfulAiUses + 1;
     }
-    _markTransaction(wallet, id, 'completed');
+    _markTransaction(wallet, (request['transactionId'] as String?) ?? id, 'completed');
     _activeRequests.remove(id);
     await _saveWallet(wallet);
   });
@@ -292,8 +301,9 @@ class EducationStore extends ChangeNotifier {
     if (request == null || request['status'] != 'pending') return;
     request['status'] = 'refunded';
     if (request['charge'] == 'credit') wallet['credits'] = credits + 1;
-    _markTransaction(wallet, id, 'refunded');
-    _transaction(wallet, '$id-refund', 'refund', request['charge'] == 'credit' ? 1 : 0,
+    final transactionId = (request['transactionId'] as String?) ?? id;
+    _markTransaction(wallet, transactionId, 'refunded');
+    _transaction(wallet, '$transactionId-refund', 'refund', request['charge'] == 'credit' ? 1 : 0,
         'بازگشت اعتبار درخواست ناموفق', 'completed');
     _activeRequests.remove(id);
     await _saveWallet(wallet);
@@ -315,8 +325,9 @@ class EducationStore extends ChangeNotifier {
       if (request['charge'] == 'credit') {
         wallet['credits'] = (wallet['credits'] as int) + 1;
       }
-      _markTransaction(wallet, id, 'refunded');
-      _transaction(wallet, '$id-refund', 'refund', request['charge'] == 'credit' ? 1 : 0,
+      final transactionId = (request['transactionId'] as String?) ?? id;
+      _markTransaction(wallet, transactionId, 'refunded');
+      _transaction(wallet, '$transactionId-refund', 'refund', request['charge'] == 'credit' ? 1 : 0,
           'بازگشت رزرو پس از بسته شدن برنامه', 'completed');
     }
     await _saveWallet(wallet);
