@@ -192,8 +192,11 @@ class AiAdvisorService {
       throw const AiException(AiErrorKind.timeout, 'پاسخ به‌موقع نرسید. اتصال اینترنت را بررسی کن و دوباره تلاش کن.');
     } on AiException {
       rethrow;
-    } on Object {
-      // Exception details may contain URLs or credentials; do not expose them.
+    } on Object catch (error) {
+      // The optional test hook receives raw transport failures; never show them in the UI.
+      try { onError?.call(error); } on Object {
+        // Diagnostics must not affect the request lifecycle.
+      }
       throw const AiException(AiErrorKind.network, 'ارتباط با مشاور برقرار نشد. اتصال اینترنت را بررسی کن.');
     } finally {
       try { await subscription?.cancel(); } on Object {
