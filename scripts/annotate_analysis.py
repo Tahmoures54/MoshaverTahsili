@@ -1,39 +1,29 @@
 #!/usr/bin/env python3
-"""Surface Flutter analyzer locations in GitHub's check annotations."""
+"""Convert Flutter analyzer output into accurate GitHub annotations."""
 import re
 import sys
 from pathlib import Path
 
-pattern = re.compile(r'^\s*(error|warning|info)\s+•\s+(.*?)\s+•\s+([^:]+):(\d+):(\d+)\s+•\s+(.*)$')
-count = 0
-for line in Path(sys.argv[1]).read_text().splitlines():
-    match = pattern.match(line)
-    if match and count < 40:
-        level, message, file, line_no, column, code = match.groups()
-        print(f'::{level} file={file},line={line_no},col={column}::{message} ({code})')
-        count += 1
+location_pattern = re.compile(r"^(.*):(\d+):(\d+)$")
+path = Path(sys.argv[1])
+annotations = 0
 
-if count == 0:
-    lines = [line.strip() for line in Path(sys.argv[1]).read_text().splitlines() if line.strip()]
-    for line in lines[-40:]:
-        level = 'notice' if '[info]' in line else 'warning' if '[warning]' in line else 'error'
-        print(f'::{level} file=.github/workflows/build-apk.yml,line=62::ANALYZE: {line[:900]}')
-#!/usr/bin/env python3
-"""Surface Flutter analyzer locations in GitHub's check annotations."""
-import re
-import sys
-from pathlib import Path
+for raw_line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+    parts = [part.strip() for part in raw_line.split(" • ")]
+    if len(parts) < 4 or parts[0] not in {"error", "warning", "info"}:
+        continue
+    location = location_pattern.match(parts[-2])
+    if not location:
+        continue
+    file_name, line_number, column = location.groups()
+    level = {"error": "error", "warning": "warning", "info": "notice"}[parts[0]]
+    message = parts[1].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    code = parts[-1]
+    print(
+        f"::{level} file={file_name},line={line_number},col={column}::"
+        f"{message} ({code})"
+    )
+    annotations += 1
 
-pattern = re.compile(r'^\s*(error|warning|info)\s+•\s+(.*?)\s+•\s+([^:]+):(\d+):(\d+)\s+•\s+(.*)$')
-count = 0
-for line in Path(sys.argv[1]).read_text().splitlines():
-    match = pattern.match(line)
-    if match and count < 40:
-        level, message, file, line_no, column, code = match.groups()
-        print(f'::{level} file={file},line={line_no},col={column}::{message} ({code})')
-        count += 1
-
-if count == 0:
-    lines = [line.strip() for line in Path(sys.argv[1]).read_text().splitlines() if line.strip()]
-    for line in lines[-40:]:
-        print(f'::error file=.github/workflows/build-apk.yml,line=62::ANALYZE: {line[:900]}')
+if annotations == 0:
+    print("::notice::Flutter analyzer produced no parseable diagnostic lines.")
