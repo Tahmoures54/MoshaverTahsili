@@ -107,11 +107,11 @@ void main() {
     expect(store.successfulAiUses, 2);
     expect(store.freeAiUsesRemaining, 0);
     var calls = 0;
-    final failures = <Object>[];
-    final service = AiAdvisorService(store: store, apiKey: 'test-key', onError: failures.add, client: MockClient((_) async {
+    final service = AiAdvisorService(store: store, apiKey: 'test-key', client: MockClient((_) async {
       calls++;
       return calls == 1 ? http.Response('unavailable', 503) : http.Response(
-          jsonEncode({'choices': [{'message': {'content': 'پاسخ واقعیِ شبیه‌سازی‌شده در تست'}}]}), 200);
+          jsonEncode({'choices': [{'message': {'content': 'پاسخ واقعیِ شبیه‌سازی‌شده در تست'}}]}), 200,
+          headers: {'content-type': 'application/json; charset=utf-8'});
     }));
     await tester.pumpWidget(frame(AdvisorPage(store: store, service: service)));
     await tester.enterText(find.byType(TextField), 'چطور بهتر مطالعه کنم؟');
@@ -135,9 +135,6 @@ void main() {
     expect(calls, 2);
     final completedWallet = jsonDecode((await SharedPreferences.getInstance())
         .getString(EducationStore.walletKey)!);
-    // Temporary diagnostic: the widget retry must update the same logical request.
-    print('WALLET_AFTER_RETRY requestId=$requestId data=${jsonEncode(completedWallet)}');
-    print('ADVISOR_FAILURES ${failures.map((error) => error.runtimeType.toString()+': '+error.toString()).toList()}');
     expect(completedWallet['requests'][requestId]['charge'], 'credit');
     expect(completedWallet['requests'][requestId]['status'], 'completed');
     expect(completedWallet['credits'], 0);
