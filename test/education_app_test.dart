@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -112,11 +111,11 @@ void main() {
       {'id': 'previous-failed', 'role': 'user', 'content': 'پرسش ناموفق قبلی',
         'status': 'failed', 'createdAt': '2026-01-01T00:00:00Z'},
     ]);
-    final retryResponse = Completer<http.Response>();
-    final service = AiAdvisorService(store: store, apiKey: 'test-key', client: MockClient((_) async {
+    final service = AiAdvisorService(store: store, apiKey: 'test-key',
+        timeout: const Duration(seconds: 2), client: MockClient((_) async {
       calls++;
-      if (calls == 1) return http.Response('unavailable', 503);
-      return retryResponse.future;
+      return calls == 1 ? http.Response('unavailable', 503) : http.Response(
+          jsonEncode({'choices': [{'message': {'content': 'Recovered after retry'}}]}), 200);
     }));
     await tester.pumpWidget(frame(AdvisorPage(store: store, service: service)));
     await tester.enterText(find.byType(TextField), 'چطور بهتر مطالعه کنم؟');
@@ -136,11 +135,7 @@ void main() {
     await tester.scrollUntilVisible(retryButton, 300, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
     await tester.tap(retryButton);
-    await tester.pump();
-    expect(calls, 2);
-    retryResponse.complete(http.Response(
-        jsonEncode({'choices': [{'message': {'content': 'Recovered after retry'}}]}), 200,
-        headers: {'content-type': 'application/json; charset=utf-8'}));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(seconds: 3)));
     await tester.pump();
     await tester.pumpAndSettle();
     expect(calls, 2);
