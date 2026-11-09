@@ -19,7 +19,7 @@ class AiException implements Exception {
 
 class AiAdvisorService {
   AiAdvisorService({http.Client? client, String? apiKey, String? endpoint, String? model,
-    this.store, this.timeout = const Duration(seconds: 45)})
+    this.store, this.timeout = const Duration(seconds: 45), this.onError})
       : client = client ?? http.Client(),
         apiKey = (apiKey ?? const String.fromEnvironment('AI_API_KEY')).trim(),
         endpoint = endpoint ?? const String.fromEnvironment('AI_API_ENDPOINT',
@@ -27,6 +27,8 @@ class AiAdvisorService {
         model = model ?? const String.fromEnvironment('AI_MODEL', defaultValue: 'deepseek-chat');
 
   final EducationStore? store;
+  /// Optional diagnostic hook for tests; production callers should leave it unset.
+  final void Function(Object error)? onError;
   final http.Client client;
   final String apiKey, endpoint, model;
   final Duration timeout;
@@ -88,6 +90,9 @@ class AiAdvisorService {
       if (store != null) await store!.completeAiRequest(id, answer);
       return answer;
     } on Object catch (error) {
+      try { onError?.call(error); } on Object {
+        // Diagnostics must never interfere with the refund path.
+      }
       if (reserved) {
         try { await store!.refundAiRequest(id); } on Object {
           // The pending reservation survives a storage failure and is refunded
