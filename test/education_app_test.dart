@@ -109,8 +109,8 @@ void main() {
     var calls = 0;
     final service = AiAdvisorService(store: store, apiKey: 'test-key', client: MockClient((_) async {
       calls++;
-      return calls == 1 ? http.Response('unavailable', 503) : http.Response(
-          jsonEncode({'choices': [{'message': {'content': 'پاسخ واقعیِ شبیه‌سازی‌شده در تست'}}]}), 200,
+      return calls == 1 ? http.Response('unavailable', 503) : http.Response.bytes(
+          utf8.encode(jsonEncode({'choices': [{'message': {'content': 'پاسخ واقعیِ شبیه‌سازی‌شده در تست'}}]})), 200,
           headers: {'content-type': 'application/json; charset=utf-8'});
     }));
     await tester.pumpWidget(frame(AdvisorPage(store: store, service: service)));
