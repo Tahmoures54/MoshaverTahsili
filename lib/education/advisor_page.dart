@@ -22,19 +22,11 @@ class _AdvisorPageState extends State<AdvisorPage> {
   late List<Map<String, dynamic>> messages;
   bool busy = false;
   String? error;
-  String? retryId;
 
   @override
   void initState() {
     super.initState();
     messages = widget.store.messages;
-    for (final message in messages.reversed) {
-      if (message['role'] == 'user' && {'pending', 'failed'}.contains(message['status'])) {
-        retryId = message['id']?.toString();
-        break;
-      }
-      if (message['role'] == 'user') break;
-    }
   }
 
   @override
@@ -70,7 +62,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
   Future<void> request(String id, String text, {bool alreadyBusy = false}) async {
     if (busy && !alreadyBusy) return;
-    setState(() { busy = true; error = null; retryId = id; });
+    setState(() { busy = true; error = null; });
     final history = messages.where((m) => m['id'] != id).toList();
     try {
       final answer = await service.ask(profile: widget.store.profile, history: history,
@@ -81,7 +73,6 @@ class _AdvisorPageState extends State<AdvisorPage> {
         messages.removeWhere((m) => m['id'] == '$id-answer');
         messages.add({'id': '$id-answer', 'role': 'assistant', 'content': answer,
           'status': 'completed', 'createdAt': DateTime.now().toIso8601String()});
-        retryId = null;
       });
       await widget.store.saveMessages(messages);
     } on Object catch (value) {
@@ -104,7 +95,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
       actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
         FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('پاک کردن'))]));
     if (confirmed != true || !mounted) return;
-    try { await widget.store.saveMessages([]); if (mounted) setState(() { messages = []; error = null; retryId = null; }); }
+    try { await widget.store.saveMessages([]); if (mounted) setState(() { messages = []; error = null;  }); }
     on Object catch (value) { if (mounted) showMessage(context, friendlyError(value)); }
   }
 
@@ -147,10 +138,10 @@ class _AdvisorPageState extends State<AdvisorPage> {
                 if (user && failed) Padding(padding: const EdgeInsets.only(top: 8), child: Text(
                     message['status'] == 'pending' ? 'پاسخ این درخواست هنوز ثبت نشده است.' : 'این درخواست کامل نشد.',
                     style: const TextStyle(color: Colors.white70, fontSize: 12))),
-                if (user && failed && retryId == message['id'] && !busy)
+                if (user && failed)
                   TextButton.icon(
-                      key: const ValueKey('advisor-retry-request'),
-                      onPressed: () => request(
+                      key: ValueKey('advisor-retry-${message['id']}'),
+                      onPressed: busy ? null : () => request(
                           message['id'].toString(), message['content'].toString()),
                       icon: const Icon(Icons.refresh, color: Colors.white),
                       label: const Text('تلاش دوباره همین درخواست', style: TextStyle(color: Colors.white))),
