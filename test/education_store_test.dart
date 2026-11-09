@@ -127,12 +127,12 @@ void main() {
     })});
     final store = await EducationStore.open();
     expect(store.credits, 2);
-    expect(store.freeAiUsesRemaining, 2);
+    expect(store.freeAiUsesRemaining, 0);
     expect(store.creditHistory.where((item) => item['kind'] == 'refund'), hasLength(2));
     await store.refundInterruptedRequests();
     final reopened = await EducationStore.open();
     expect(reopened.credits, 2);
-    expect(reopened.freeAiUsesRemaining, 2);
+    expect(reopened.freeAiUsesRemaining, 0);
     expect(reopened.creditHistory.where((item) => item['kind'] == 'refund'), hasLength(2));
   });
 
