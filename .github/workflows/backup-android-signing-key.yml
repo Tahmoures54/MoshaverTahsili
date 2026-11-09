@@ -56,7 +56,7 @@ jobs:
           umask 077
           work="$RUNNER_TEMP/signing-backup"
           mkdir -p "$work/plain" "$work/output"
-          trap 'rm -rf "$work"' EXIT
+          trap 'rm -rf "$work/plain"; rm -f "$work/output/android-signing-backup.tar.gz"' EXIT
 
           printf '%s' "$KEYSTORE" | base64 --decode > "$work/plain/upload-keystore.jks"
           test -s "$work/plain/upload-keystore.jks"
@@ -99,6 +99,11 @@ jobs:
           path: ${{ runner.temp }}/signing-backup/output/android-signing-backup.tar.gz.enc
           if-no-files-found: error
           retention-days: 7
+
+      - name: Clean temporary signing backup files
+        if: always()
+        shell: bash
+        run: rm -rf "$RUNNER_TEMP/signing-backup"
 
       - name: Publish safe instructions
         run: |
