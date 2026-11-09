@@ -113,7 +113,9 @@ void main() {
     expect(store.credits, 1);
     expect(store.messages.last['status'], 'failed');
     expect(find.text('تلاش دوباره همین درخواست'), findsOneWidget);
-    final retryButton = find.widgetWithText(TextButton, 'تلاش دوباره همین درخواست');
+    final retryButton = find.byKey(const ValueKey('advisor-retry-request'));
+    expect(retryButton, findsOneWidget);
+    expect(tester.widget<TextButton>(retryButton).onPressed, isNotNull);
     await tester.ensureVisible(retryButton);
     await tester.pumpAndSettle();
     await tester.tap(retryButton);
