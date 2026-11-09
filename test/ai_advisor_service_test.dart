@@ -87,8 +87,8 @@ void main() {
     final attempts = ledger.where((entry) => entry['kind'] == 'ai' &&
         entry['id'].toString().startsWith('server-retry-attempt-')).toList();
     expect(attempts.map((entry) => entry['status']).toList(), ['refunded', 'completed']);
-    expect(ledger.where((entry) => entry['kind'] == 'refund').map((entry) => entry['id']),
-        ['server-retry-attempt-1-refund']);
+    expect(ledger.where((entry) => entry['kind'] == 'refund')
+        .map((entry) => entry['id']).toList(), ['server-retry-attempt-1-refund']);
     service.dispose();
   });
 
