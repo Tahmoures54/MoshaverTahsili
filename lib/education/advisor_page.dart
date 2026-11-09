@@ -143,7 +143,10 @@ class _AdvisorPageState extends State<AdvisorPage> {
                     message['status'] == 'pending' ? 'پاسخ این درخواست هنوز ثبت نشده است.' : 'این درخواست کامل نشد.',
                     style: const TextStyle(color: Colors.white70, fontSize: 12))),
                 if (user && failed && retryId == message['id'] && !busy)
-                  TextButton.icon(onPressed: () => request(retryId!, retryText!), icon: const Icon(Icons.refresh, color: Colors.white),
+                  TextButton.icon(
+                      key: const ValueKey('advisor-retry-request'),
+                      onPressed: () => request(retryId!, retryText!),
+                      icon: const Icon(Icons.refresh, color: Colors.white),
                       label: const Text('تلاش دوباره همین درخواست', style: TextStyle(color: Colors.white))),
               ])));
         })),
