@@ -136,7 +136,8 @@ void main() {
     await tester.scrollUntilVisible(retryButton, 300, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
     await tester.tap(retryButton);
-    await tester.pump(const Duration(seconds: 3));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(seconds: 3)));
+    await tester.pump();
     await tester.pumpAndSettle();
     expect(calls, 2);
     final completedWallet = jsonDecode((await SharedPreferences.getInstance())
