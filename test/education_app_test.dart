@@ -107,6 +107,10 @@ void main() {
     expect(store.successfulAiUses, 2);
     expect(store.freeAiUsesRemaining, 0);
     var calls = 0;
+    await store.saveMessages([
+      {'id': 'previous-failed', 'role': 'user', 'content': 'پرسش ناموفق قبلی',
+        'status': 'failed', 'createdAt': '2026-01-01T00:00:00Z'},
+    ]);
     final service = AiAdvisorService(store: store, apiKey: 'test-key', client: MockClient((_) async {
       calls++;
       return calls == 1 ? http.Response('unavailable', 503) : http.Response.bytes(
@@ -140,7 +144,9 @@ void main() {
     expect(completedWallet['credits'], 0);
     expect(store.credits, 0);
     expect(store.messages.last['status'], 'completed');
-    expect(store.messages.where((message) => message['role'] == 'user'), hasLength(1));
+    expect(store.messages.where((message) => message['role'] == 'user'), hasLength(2));
+    expect(store.messages.first['id'], 'previous-failed');
+    expect(store.messages.first['status'], 'failed');
     expect(store.messages.last['content'], contains('شبیه‌سازی‌شده در تست'));
     await tester.pumpWidget(const SizedBox());
     service.dispose();
