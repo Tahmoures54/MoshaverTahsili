@@ -132,11 +132,13 @@ void main() {
     await tester.tap(retryButton);
     await tester.pumpAndSettle();
     expect(calls, 2);
-    expect(store.credits, 0);
     final completedWallet = jsonDecode((await SharedPreferences.getInstance())
         .getString(EducationStore.walletKey)!);
     expect(completedWallet['requests'][requestId]['charge'], 'credit');
     expect(completedWallet['requests'][requestId]['status'], 'completed');
+    expect(completedWallet['credits'], 0);
+    expect(store.credits, 0);
+    expect(store.messages.last['status'], 'completed');
     expect(store.messages.where((message) => message['role'] == 'user'), hasLength(1));
     expect(store.messages.last['content'], contains('شبیه‌سازی‌شده در تست'));
   });
