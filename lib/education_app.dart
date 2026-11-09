@@ -209,7 +209,7 @@ class _DashboardState extends State<Dashboard> {
           subtitle: Text('${widget.store.profile?['grade'] ?? ''} · ${widget.store.profile?['year'] ?? 'پایه ثبت نشده'}'), onTap: () => Navigator.pop(context, 'profile')),
       ListTile(leading: const Icon(Icons.account_balance_wallet_outlined), title: const Text('کیف اعتبار و تاریخچه خرید'), onTap: () => Navigator.pop(context, 'wallet')),
       ListTile(leading: const Icon(Icons.history_edu_outlined), title: const Text('تاریخچه مشاوره‌ها'), onTap: () => Navigator.pop(context, 'reports')),
-      ListTile(leading: const Icon(Icons.info_outline), title: const Text('درباره برنامه و حریم خصوصی'), subtitle: const Text('نسخه ۱.۱.۰ · ساخت ۳'), onTap: () => Navigator.pop(context, 'about')),
+      ListTile(leading: const Icon(Icons.info_outline), title: const Text('درباره برنامه و حریم خصوصی'), subtitle: const Text('نسخه ۱.۱.۱ · ساخت ۴'), onTap: () => Navigator.pop(context, 'about')),
       ListTile(leading: const Icon(Icons.delete_outline, color: Colors.red), title: const Text('حذف اطلاعات تحصیلی این گوشی', style: TextStyle(color: Colors.red)), onTap: () => Navigator.pop(context, 'delete')),
     ])));
     if (!mounted || choice == null) return;
@@ -329,7 +329,7 @@ class AboutPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('درباره مشاور تحصیلی')),
     body: ListView(padding: const EdgeInsets.all(16), children: const [
-      NoticeCard(text: 'نسخه ۱.۱.۰ · ساخت ۳\nشناسه برنامه: ir.moshaver.tahsili', icon: Icons.school_outlined),
+      NoticeCard(text: 'نسخه ۱.۱.۱ · ساخت ۴\nشناسه برنامه: ir.moshaver.tahsili', icon: Icons.school_outlined),
       NoticeCard(text: 'اطلاعات تحصیلی و کیف اعتبار محلی هستند و به حساب کاربری یا سرور اختصاصی فرستاده نمی‌شوند. '
           'فقط درخواست‌های هوش مصنوعی و عملیات خرید بازار به اینترنت نیاز دارند. متن پرسش، بخشی از گفت‌وگو و اطلاعات تحصیلیِ اعلام‌شده در هر درخواست با سرویس هوش مصنوعی به اشتراک گذاشته می‌شوند.'),
       NoticeCard(text: 'اعتبار و خریدها با امضای بازار و دفتر محلی بررسی می‌شوند، اما این بررسی جایگزین اعتبارسنجی سمت سرور نیست. '
