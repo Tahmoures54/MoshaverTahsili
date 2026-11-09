@@ -113,9 +113,8 @@ void main() {
     ]);
     final service = AiAdvisorService(store: store, apiKey: 'test-key', client: MockClient((_) async {
       calls++;
-      return calls == 1 ? http.Response('unavailable', 503) : http.Response.bytes(
-          utf8.encode(jsonEncode({'choices': [{'message': {'content': 'پاسخ واقعیِ شبیه‌سازی‌شده در تست'}}]})), 200,
-          headers: {'content-type': 'application/json; charset=utf-8'});
+      return calls == 1 ? http.Response('unavailable', 503) : http.Response(
+          jsonEncode({'choices': [{'message': {'content': 'Recovered after retry'}}]}), 200);
     }));
     await tester.pumpWidget(frame(AdvisorPage(store: store, service: service)));
     await tester.enterText(find.byType(TextField), 'چطور بهتر مطالعه کنم؟');
@@ -147,7 +146,7 @@ void main() {
     expect(store.messages.where((message) => message['role'] == 'user'), hasLength(2));
     expect(store.messages.first['id'], 'previous-failed');
     expect(store.messages.first['status'], 'failed');
-    expect(store.messages.last['content'], contains('شبیه‌سازی‌شده در تست'));
+    expect(store.messages.last['content'], contains('Recovered after retry'));
     await tester.pumpWidget(const SizedBox());
     service.dispose();
   });
