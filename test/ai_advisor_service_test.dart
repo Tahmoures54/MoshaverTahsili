@@ -81,6 +81,14 @@ void main() {
     ), 'Recovered after 503');
     expect(store.credits, 0);
     expect(calls, 2);
+    final prefs = await SharedPreferences.getInstance();
+    final wallet = jsonDecode(prefs.getString(EducationStore.walletKey)!) as Map<String, dynamic>;
+    final ledger = (wallet['transactions'] as List).cast<Map<String, dynamic>>();
+    final attempts = ledger.where((entry) => entry['kind'] == 'ai' &&
+        entry['id'].toString().startsWith('server-retry-attempt-')).toList();
+    expect(attempts.map((entry) => entry['status']).toList(), ['refunded', 'completed']);
+    expect(ledger.where((entry) => entry['kind'] == 'refund').map((entry) => entry['id']),
+        ['server-retry-attempt-1-refund']);
     service.dispose();
   });
 
