@@ -55,6 +55,14 @@ Workflow اصلی در .github/workflows/build-apk.yml قرار دارد.
 
 ### Secrets
 
+برای بازیابی کلید تولیدشده در Workflow با نام **Generate Android signing key**، فایل‌های artifact رمزگذاری‌شده را در کنار اسکریپت زیر قرار دهید و از PowerShell در همان پوشه اجرا کنید:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\\scripts\\decrypt_android_signing_key.ps1
+```
+
+اسکریپت رمز `KEYSTORE_EXPORT_PASSPHRASE` را به‌صورت مخفی می‌گیرد، با فایل موقت محلی به OpenSSL می‌دهد، آرشیو را اعتبارسنجی و استخراج می‌کند و فایل موقت رمز را پاک می‌کند. رمز یا فایل `release-secrets.txt` را در چت، Issue یا مخزن منتشر نکنید. سپس چهار مقدار داخل `release-secrets.txt` را فقط در Settings > Secrets and variables > Actions همین مخزن ثبت کنید؛ خود اسکریپت هیچ Secretای را به GitHub ارسال نمی‌کند.
+
 | نام | کاربرد |
 |---|---|
 | AI_API_KEY یا DEEPSEEK_API_KEY | کلید سرویس هوش مصنوعی |
