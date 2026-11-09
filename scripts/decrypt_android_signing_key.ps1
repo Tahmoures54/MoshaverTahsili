@@ -30,9 +30,16 @@ try {
     # consistently. A short-lived UTF-8 password file avoids that issue.
     [System.IO.File]::WriteAllText($tempPassword, $password, [System.Text.UTF8Encoding]::new($false))
 
-    & $openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -in $encryptedPath -out $tempZip -pass "file:./.keystore-export-passphrase.tmp"
+    Push-Location -LiteralPath $workDir
+    try {
+        & $openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -in $encryptedPath -out $tempZip -pass "file:./.keystore-export-passphrase.tmp"
+        $opensslExitCode = $LASTEXITCODE
+    }
+    finally {
+        Pop-Location
+    }
 
-    if ($LASTEXITCODE -ne 0) {
+    if ($opensslExitCode -ne 0) {
         throw "Decryption failed. Check KEYSTORE_EXPORT_PASSPHRASE; no key was changed."
     }
 
