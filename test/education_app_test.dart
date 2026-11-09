@@ -113,10 +113,12 @@ void main() {
     expect(store.credits, 1);
     expect(store.messages.last['status'], 'failed');
     expect(find.text('تلاش دوباره همین درخواست'), findsOneWidget);
-    await tester.ensureVisible(find.text('تلاش دوباره همین درخواست'));
+    final retryButton = find.widgetWithText(TextButton, 'تلاش دوباره همین درخواست');
+    await tester.ensureVisible(retryButton);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('تلاش دوباره همین درخواست'));
+    await tester.tap(retryButton);
     await tester.pumpAndSettle();
+    expect(calls, 2);
     expect(store.credits, 0);
     expect(calls, 2);
     expect(store.messages.where((message) => message['role'] == 'user'), hasLength(1));
@@ -136,7 +138,7 @@ void main() {
     await tester.tap(find.text('خرید از بازار').first);
     await tester.pumpAndSettle();
     expect(store.credits, 10);
-    await tester.ensureVisible(find.text('تاریخچه اعتبار'));
+    await tester.scrollUntilVisible(find.text('تاریخچه اعتبار'), 300);
     await tester.pumpAndSettle();
     expect(find.text('تاریخچه اعتبار'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('بسته برنزی').last, 300);
