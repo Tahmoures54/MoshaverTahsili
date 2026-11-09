@@ -1,0 +1,128 @@
+name: Generate Android signing key
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type CREATE to generate the repository's first release key"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-signing-key-generation
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    if: github.ref == 'refs/heads/main' && inputs.confirm == 'CREATE'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Validate one-time setup and export password
+        id: guard
+        env:
+          EXPORT_PASSPHRASE: ${{ secrets.KEYSTORE_EXPORT_PASSPHRASE }}
+          EXISTING_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$EXPORT_PASSPHRASE" ]]; then
+            echo "::error::Create the repository Actions secret KEYSTORE_EXPORT_PASSPHRASE first."
+            exit 1
+          fi
+          if [[ -n "$EXISTING_KEYSTORE" ]]; then
+            echo "::error::RELEASE_KEYSTORE_BASE64 is already configured. Refusing to replace an existing signing identity."
+            exit 1
+          fi
+          if [[ "${#EXPORT_PASSPHRASE}" -lt 20 ]]; then
+            echo "::error::KEYSTORE_EXPORT_PASSPHRASE must be at least 20 characters."
+            exit 1
+          fi
+          echo "Preconditions passed. No secret values will be printed."
+
+      - name: Generate Android upload keystore and encrypted export
+        env:
+          EXPORT_PASSPHRASE: ${{ secrets.KEYSTORE_EXPORT_PASSPHRASE }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p output
+          STORE_PASSWORD="$(openssl rand -hex 32)"
+          KEY_PASSWORD="$(openssl rand -hex 32)"
+          KEY_ALIAS="moshaver-tahsili-upload"
+
+          keytool -genkeypair -noprompt -v \
+            -keystore output/upload-keystore.jks \
+            -storetype JKS \
+            -storepass "$STORE_PASSWORD" \
+            -keypass "$KEY_PASSWORD" \
+            -alias "$KEY_ALIAS" \
+            -keyalg RSA -keysize 4096 -validity 10000 \
+            -dname "CN=Moshaver Tahsili, OU=Android, O=Tahmoures54, L=Unknown, ST=Unknown, C=IR"
+
+          keytool -list -keystore output/upload-keystore.jks \
+            -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+
+          # This file is inside the encrypted archive; never upload it in plaintext.
+          {
+            printf 'RELEASE_KEYSTORE_PASSWORD=%s\n' "$STORE_PASSWORD"
+            printf 'RELEASE_KEY_ALIAS=%s\n' "$KEY_ALIAS"
+            printf 'RELEASE_KEY_PASSWORD=%s\n' "$KEY_PASSWORD"
+            printf 'RELEASE_KEYSTORE_BASE64='
+            base64 -w 0 output/upload-keystore.jks
+            printf '\n'
+          } > output/release-secrets.txt
+
+          cat > output/README.txt <<'EOF'
+          Android signing key export
+          --------------------------
+          1. Decrypt this archive with the KEYSTORE_EXPORT_PASSPHRASE secret
+             you created in GitHub before starting the workflow.
+          2. Store release-secrets.txt securely and copy its four values into
+             repository Settings > Secrets and variables > Actions:
+             RELEASE_KEYSTORE_BASE64
+             RELEASE_KEYSTORE_PASSWORD
+             RELEASE_KEY_ALIAS
+             RELEASE_KEY_PASSWORD
+          3. Keep a secure offline backup of upload-keystore.jks and all values.
+          4. Never commit the keystore, release-secrets.txt, or passwords.
+          5. Do not run this workflow again after configuring the signing secrets.
+          The export artifact is encrypted because this repository is public.
+          EOF
+
+          # Only ciphertext is uploaded. Public repository readers cannot decrypt it
+          # without the separately configured high-entropy passphrase.
+          zip -q output/android-signing-key.zip output/upload-keystore.jks output/release-secrets.txt output/README.txt
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 600000 \
+            -in output/android-signing-key.zip \
+            -out android-signing-key.zip.enc \
+            -pass env:EXPORT_PASSPHRASE
+          sha256sum android-signing-key.zip.enc > android-signing-key.zip.enc.sha256
+          rm -f output/upload-keystore.jks output/release-secrets.txt output/android-signing-key.zip
+          echo "Encrypted export prepared. Plaintext signing material will not be uploaded."
+
+      - name: Upload encrypted signing-key artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-signing-key-encrypted
+          path: |
+            android-signing-key.zip.enc
+            android-signing-key.zip.enc.sha256
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Publish safe retrieval instructions
+        run: |
+          {
+            echo "## Android signing key generated"
+            echo
+            echo "Download the **android-signing-key-encrypted** artifact from this workflow run."
+            echo "It is encrypted; use the KEYSTORE_EXPORT_PASSPHRASE secret to decrypt it."
+            echo "The artifact expires after one day. Save a secure backup immediately."
+            echo
+            echo "**No plaintext keystore or password was uploaded or printed.**"
+          } >> "$GITHUB_STEP_SUMMARY"
