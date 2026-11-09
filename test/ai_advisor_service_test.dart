@@ -60,6 +60,30 @@ void main() {
     service.dispose();
   });
 
+  test('retry after provider 503 reuses the paid request and charges only on success', () async {
+    final store = await paidStore(credits: 1);
+    var calls = 0;
+    final service = AiAdvisorService(
+      store: store,
+      apiKey: 'test-key',
+      client: MockClient((_) async {
+        calls++;
+        return calls == 1 ? http.Response('unavailable', 503) : answer('Recovered after 503');
+      }),
+    );
+    await expectLater(
+      service.ask(profile: null, history: const [], question: 'q', requestId: 'server-retry'),
+      throwsA(isA<AiException>()),
+    );
+    expect(store.credits, 1);
+    expect(await service.ask(
+      profile: null, history: const [], question: 'q', requestId: 'server-retry',
+    ), 'Recovered after 503');
+    expect(store.credits, 0);
+    expect(calls, 2);
+    service.dispose();
+  });
+
   test('a completed answer is returned after restart without network or another charge', () async {
     final store = await paidStore(credits: 1);
     final first = AiAdvisorService(store: store, apiKey: 'test-key', client: MockClient((_) async => answer('Saved')));
