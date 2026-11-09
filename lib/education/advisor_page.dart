@@ -145,7 +145,8 @@ class _AdvisorPageState extends State<AdvisorPage> {
                 if (user && failed && retryId == message['id'] && !busy)
                   TextButton.icon(
                       key: const ValueKey('advisor-retry-request'),
-                      onPressed: () => request(retryId!, retryText!),
+                      onPressed: () => request(
+                          message['id'].toString(), message['content'].toString()),
                       icon: const Icon(Icons.refresh, color: Colors.white),
                       label: const Text('تلاش دوباره همین درخواست', style: TextStyle(color: Colors.white))),
               ])));
