@@ -1,0 +1,113 @@
+name: Export encrypted Android signing backup
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type BACKUP_EXISTING_KEY to export the existing signing identity"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-signing-backup
+  cancel-in-progress: false
+
+jobs:
+  encrypted-backup:
+    if: github.ref == 'refs/heads/main' && inputs.confirm == 'BACKUP_EXISTING_KEY'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Validate existing signing secrets
+        env:
+          KEYSTORE: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          BACKUP_PASSPHRASE: ${{ secrets.SIGNING_BACKUP_PASSPHRASE }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in KEYSTORE STORE_PASSWORD KEY_ALIAS KEY_PASSWORD BACKUP_PASSPHRASE; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Missing required secret: ${name}"
+              exit 1
+            fi
+          done
+          if [[ "${#BACKUP_PASSPHRASE}" -lt 24 ]]; then
+            echo "::error::SIGNING_BACKUP_PASSPHRASE must contain at least 24 characters."
+            exit 1
+          fi
+          echo "All required secret inputs are present."
+
+      - name: Create encrypted backup (no plaintext artifact)
+        env:
+          KEYSTORE: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          BACKUP_PASSPHRASE: ${{ secrets.SIGNING_BACKUP_PASSPHRASE }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          work="$RUNNER_TEMP/signing-backup"
+          mkdir -p "$work/plain" "$work/output"
+          trap 'rm -rf "$work"' EXIT
+
+          printf '%s' "$KEYSTORE" | base64 --decode > "$work/plain/upload-keystore.jks"
+          test -s "$work/plain/upload-keystore.jks"
+          keytool -list -keystore "$work/plain/upload-keystore.jks" \
+            -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          root = Path(os.environ["RUNNER_TEMP"]) / "signing-backup" / "plain"
+          values = {
+              "store-password.txt": os.environ["STORE_PASSWORD"],
+              "key-password.txt": os.environ["KEY_PASSWORD"],
+              "key-alias.txt": os.environ["KEY_ALIAS"],
+          }
+          for name, value in values.items():
+              (root / name).write_text(value, encoding="utf-8")
+          (root / "RESTORE.txt").write_text(
+              "Keep this archive offline and private.\n"
+              "Decrypt the .enc file with the SIGNING_BACKUP_PASSPHRASE value.\n"
+              "Restore upload-keystore.jks and enter the three accompanying values "
+              "as RELEASE_KEYSTORE_BASE64 (base64-encode the JKS), "
+              "RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_PASSWORD and RELEASE_KEY_ALIAS.\n",
+              encoding="utf-8")
+          PY
+
+          tar -czf "$work/output/android-signing-backup.tar.gz" -C "$work/plain" .
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 600000 \
+            -in "$work/output/android-signing-backup.tar.gz" \
+            -out "$work/output/android-signing-backup.tar.gz.enc" \
+            -pass env:BACKUP_PASSPHRASE
+          rm -rf "$work/plain" "$work/output/android-signing-backup.tar.gz"
+          test -s "$work/output/android-signing-backup.tar.gz.enc"
+          echo "Encrypted signing backup created. No plaintext key or password is uploaded."
+
+      - name: Upload encrypted backup only
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-signing-backup-${{ github.run_id }}
+          path: ${{ runner.temp }}/signing-backup/output/android-signing-backup.tar.gz.enc
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Publish safe instructions
+        run: |
+          {
+            echo "## Encrypted Android signing backup"
+            echo
+            echo "- Only an AES-256-CBC encrypted archive was uploaded."
+            echo "- Download the artifact now and keep at least two offline copies."
+            echo "- The archive requires your separately stored SIGNING_BACKUP_PASSPHRASE."
+            echo "- Artifact retention is seven days; it is not a permanent backup."
+            echo "- Never share the archive or passphrase."
+          } >> "$GITHUB_STEP_SUMMARY"
