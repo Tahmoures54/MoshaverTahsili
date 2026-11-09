@@ -32,7 +32,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "$BOOTSTRAP_TOKEN" ]]; then
-            echo "::error::Add a temporary fine-grained PAT as GH_SECRETS_BOOTSTRAP_TOKEN. It needs Actions: Read and write for this repository."
+            echo "::error::Add a temporary fine-grained PAT as GH_SECRETS_BOOTSTRAP_TOKEN. It needs Secrets: Read and write for this repository."
             exit 1
           fi
           if [[ -n "$EXISTING_KEYSTORE$EXISTING_ALIAS$EXISTING_STORE_PASSWORD$EXISTING_KEY_PASSWORD" ]]; then
