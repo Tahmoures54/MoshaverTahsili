@@ -309,7 +309,12 @@ class EducationStore extends ChangeNotifier {
     for (final id in pending) {
       final request = (wallet['requests'] as Map)[id] as Map;
       request['status'] = 'refunded';
-      if (request['charge'] == 'credit') wallet['credits'] = credits + 1;
+      // Accumulate each refund against the working copy. Reading the store's
+      // original balance here loses all but the final refund when several
+      // requests were interrupted before the app was closed.
+      if (request['charge'] == 'credit') {
+        wallet['credits'] = (wallet['credits'] as int) + 1;
+      }
       _markTransaction(wallet, id, 'refunded');
       _transaction(wallet, '$id-refund', 'refund', request['charge'] == 'credit' ? 1 : 0,
           'بازگشت رزرو پس از بسته شدن برنامه', 'completed');
