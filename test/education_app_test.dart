@@ -134,6 +134,8 @@ void main() {
     expect(calls, 2);
     final completedWallet = jsonDecode((await SharedPreferences.getInstance())
         .getString(EducationStore.walletKey)!);
+    // Temporary diagnostic: the widget retry must update the same logical request.
+    print('WALLET_AFTER_RETRY requestId=$requestId data=${jsonEncode(completedWallet)}');
     expect(completedWallet['requests'][requestId]['charge'], 'credit');
     expect(completedWallet['requests'][requestId]['status'], 'completed');
     expect(completedWallet['credits'], 0);
