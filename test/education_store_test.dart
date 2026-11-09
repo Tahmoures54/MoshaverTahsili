@@ -115,6 +115,27 @@ void main() {
     expect(store.creditHistory.where((item) => item['kind'] == 'refund'), hasLength(1));
   });
 
+  test('startup refunds every interrupted paid reservation, not just one', () async {
+    SharedPreferences.setMockInitialValues({EducationStore.walletKey: jsonEncode({
+      'version': 2, 'credits': 0, 'successful_uses': 2,
+      'purchase_tokens': <String, dynamic>{}, 'transactions': <Map<String, dynamic>>[],
+      'requests': {
+        'interrupted-a': {'question': 'q1', 'status': 'pending', 'charge': 'credit', 'createdAt': '2026-01-01T00:00:00Z'},
+        'interrupted-b': {'question': 'q2', 'status': 'pending', 'charge': 'credit', 'createdAt': '2026-01-01T00:00:01Z'},
+        'interrupted-c': {'question': 'q3', 'status': 'pending', 'charge': 'free', 'createdAt': '2026-01-01T00:00:02Z'},
+      },
+    })});
+    final store = await EducationStore.open();
+    expect(store.credits, 2);
+    expect(store.freeAiUsesRemaining, 2);
+    expect(store.creditHistory.where((item) => item['kind'] == 'refund'), hasLength(2));
+    await store.refundInterruptedRequests();
+    final reopened = await EducationStore.open();
+    expect(reopened.credits, 2);
+    expect(reopened.freeAiUsesRemaining, 2);
+    expect(reopened.creditHistory.where((item) => item['kind'] == 'refund'), hasLength(2));
+  });
+
   test('damaged wallet fails closed and is never silently reset', () async {
     SharedPreferences.setMockInitialValues({EducationStore.walletKey: '{broken'});
     final store = await EducationStore.open();
