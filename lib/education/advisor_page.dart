@@ -65,11 +65,11 @@ class _AdvisorPageState extends State<AdvisorPage> {
       return;
     }
     input.clear();
-    await request(id, text);
+    await request(id, text, alreadyBusy: true);
   }
 
-  Future<void> request(String id, String text) async {
-    if (busy && retryId != null && retryId != id) return;
+  Future<void> request(String id, String text, {bool alreadyBusy = false}) async {
+    if (busy && !alreadyBusy) return;
     setState(() { busy = true; error = null; retryId = id; });
     final history = messages.where((m) => m['id'] != id).toList();
     try {
