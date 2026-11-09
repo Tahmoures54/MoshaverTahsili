@@ -23,11 +23,11 @@ jobs:
     steps:
       - name: Validate bootstrap token and prevent key replacement
         env:
-          BOOTSTRAP_TOKEN: \${{ secrets.GH_SECRETS_BOOTSTRAP_TOKEN }}
-          EXISTING_KEYSTORE: \${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-          EXISTING_ALIAS: \${{ secrets.RELEASE_KEY_ALIAS }}
-          EXISTING_STORE_PASSWORD: \${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-          EXISTING_KEY_PASSWORD: \${{ secrets.RELEASE_KEY_PASSWORD }}
+          BOOTSTRAP_TOKEN: ${{ secrets.GH_SECRETS_BOOTSTRAP_TOKEN }}
+          EXISTING_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          EXISTING_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          EXISTING_STORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          EXISTING_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         shell: bash
         run: |
           set -euo pipefail
@@ -72,13 +72,13 @@ jobs:
 
       - name: Store signing values directly as GitHub Actions secrets
         env:
-          GH_TOKEN: \${{ secrets.GH_SECRETS_BOOTSTRAP_TOKEN }}
-          OWNER: \${{ github.repository_owner }}
-          REPO: \${{ github.event.repository.name }}
-          STORE_PASSWORD: \${{ steps.generate.outputs.STORE_PASSWORD }}
-          KEY_PASSWORD: \${{ steps.generate.outputs.KEY_PASSWORD }}
-          KEY_ALIAS: \${{ steps.generate.outputs.KEY_ALIAS }}
-          KEYSTORE_BASE64: \${{ steps.generate.outputs.KEYSTORE_BASE64 }}
+          GH_TOKEN: ${{ secrets.GH_SECRETS_BOOTSTRAP_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          STORE_PASSWORD: ${{ steps.generate.outputs.STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ steps.generate.outputs.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ steps.generate.outputs.KEY_ALIAS }}
+          KEYSTORE_BASE64: ${{ steps.generate.outputs.KEYSTORE_BASE64 }}
         shell: bash
         run: |
           set -euo pipefail
