@@ -209,7 +209,7 @@ class EducationStore extends ChangeNotifier {
 
   void _transaction(Map<String, dynamic> wallet, String id, String kind,
       int amount, String title, String status) {
-    if (amount == 0) return;
+    if (amount == 0 && kind != 'ai') return;
     final history = wallet['transactions'] as List;
     history.add({'id': id, 'kind': kind, 'amount': amount, 'title': title,
       'createdAt': _now(), 'status': status});
