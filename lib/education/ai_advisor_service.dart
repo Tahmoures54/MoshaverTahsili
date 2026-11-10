@@ -31,6 +31,7 @@ class AiAdvisorService {
   final String apiKey, endpoint, model;
   final Duration timeout;
   final Map<String, Future<String>> _inFlight = {};
+  final Set<Completer<void>> _activeAborts = {};
   static const maxRequestBytes = 96 * 1024;
   static const maxResponseBytes = 512 * 1024;
   bool _disposed = false;
@@ -142,8 +143,12 @@ class AiAdvisorService {
   Future<String> _post(Uri uri, List<int> body) async {
     http.StreamedResponse? response;
     StreamSubscription<List<int>>? subscription;
+    final abort = Completer<void>();
+    _activeAborts.add(abort);
     Future<String> receive() async {
-      final request = http.Request('POST', uri)
+      // AbortableRequest lets a timeout or dispose cancel the underlying
+      // transport, not merely stop waiting for its Future.
+      final request = http.AbortableRequest('POST', uri, abortTrigger: abort.future)
         ..headers.addAll({'Authorization': 'Bearer $apiKey',
           'Content-Type': 'application/json; charset=utf-8', 'Accept': 'application/json'})
         ..bodyBytes = body;
@@ -184,6 +189,7 @@ class AiAdvisorService {
     try {
       return await receive().timeout(timeout);
     } on TimeoutException {
+      if (!abort.isCompleted) abort.complete();
       throw const AiException(AiErrorKind.timeout, 'پاسخ به‌موقع نرسید. اتصال اینترنت را بررسی کن و دوباره تلاش کن.');
     } on AiException {
       rethrow;
@@ -191,6 +197,7 @@ class AiAdvisorService {
       // Exception details may contain URLs or credentials; do not expose them.
       throw const AiException(AiErrorKind.network, 'ارتباط با مشاور برقرار نشد. اتصال اینترنت را بررسی کن.');
     } finally {
+      _activeAborts.remove(abort);
       try { await subscription?.cancel(); } on Object {
         // The safe request error above remains the user-visible result.
       }
@@ -216,7 +223,11 @@ class AiAdvisorService {
   }
 
   void dispose() {
+    if (_disposed) return;
     _disposed = true;
+    for (final abort in _activeAborts.toList()) {
+      if (!abort.isCompleted) abort.complete();
+    }
     client.close();
   }
 }
