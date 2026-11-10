@@ -12,6 +12,20 @@ http.Response answer(String text, {int status = 200}) => http.Response(
     jsonEncode({'choices': [{'message': {'content': text}}]}), status,
     headers: {'content-type': 'application/json; charset=utf-8'});
 
+class AbortSignalClient extends http.BaseClient {
+  final aborted = Completer<void>();
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    if (request is http.AbortableRequest) {
+      request.abortTrigger.then((_) {
+        if (!aborted.isCompleted) aborted.complete();
+      });
+    }
+    return Completer<http.StreamedResponse>().future;
+  }
+}
+
 Future<EducationStore> paidStore({int credits = 2}) async {
   SharedPreferences.setMockInitialValues({EducationStore.walletKey: jsonEncode({'successful_uses': 2, 'credits': credits, 'purchase_tokens': <String>[]})});
   return EducationStore.open();
@@ -190,6 +204,18 @@ void main() {
     final never = Completer<http.Response>();
     final service = AiAdvisorService(store: store, apiKey: 'test-key', timeout: const Duration(milliseconds: 20), client: MockClient((_) => never.future));
     await expectLater(service.ask(profile: null, history: const [], question: 'q'), throwsA(isA<AiException>().having((e) => e.kind, 'kind', AiErrorKind.timeout)));
+    expect(store.credits, 2);
+    service.dispose();
+  });
+
+  test('timeout signals cancellation to the underlying HTTP transport', () async {
+    final store = await paidStore();
+    final client = AbortSignalClient();
+    final service = AiAdvisorService(store: store, apiKey: 'test-key',
+        timeout: const Duration(milliseconds: 20), client: client);
+    await expectLater(service.ask(profile: null, history: const [], question: 'q'),
+        throwsA(isA<AiException>().having((e) => e.kind, 'kind', AiErrorKind.timeout)));
+    await client.aborted.future.timeout(const Duration(seconds: 1));
     expect(store.credits, 2);
     service.dispose();
   });
