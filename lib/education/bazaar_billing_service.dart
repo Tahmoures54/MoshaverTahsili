@@ -63,9 +63,11 @@ class PluginBazaarGateway implements BazaarGateway {
         connected.completeError(const BillingException('اتصال به بازار برقرار نشد. بازار را به‌روز کن و دوباره تلاش کن.'));
       }
     }
-    await CafeBazaarBilling.connect(publicKey, onSucceed: succeed, onFailed: fail,
-        onDisconnected: () { fail(); onDisconnected(); });
-    await connected.future.timeout(const Duration(seconds: 20), onTimeout: () {
+    await Future.wait<void>([
+      CafeBazaarBilling.connect(publicKey, onSucceed: succeed, onFailed: fail,
+          onDisconnected: () { fail(); onDisconnected(); }),
+      connected.future,
+    ]).timeout(const Duration(seconds: 20), onTimeout: () {
       throw const BillingException('بازار به‌موقع پاسخ نداد. اتصال اینترنت و نصب بازار را بررسی کن.');
     });
   }
