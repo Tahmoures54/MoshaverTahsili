@@ -95,7 +95,8 @@ class PluginBazaarGateway implements BazaarGateway {
 
 class BazaarBillingService {
   BazaarBillingService(this.store, {BazaarGateway? gateway, String? publicKey,
-    bool? catalogConfirmed, bool? supportedPlatform})
+    bool? catalogConfirmed, bool? supportedPlatform,
+    this.operationTimeout = const Duration(seconds: 30)})
       : gateway = gateway ?? PluginBazaarGateway(),
         publicKey = (publicKey ?? const String.fromEnvironment('BAZAAR_RSA_PUBLIC_KEY')).trim(),
         catalogConfirmed = catalogConfirmed ?? const bool.fromEnvironment('BAZAAR_CATALOG_CONFIRMED'),
@@ -105,6 +106,7 @@ class BazaarBillingService {
   final BazaarGateway gateway;
   final String publicKey;
   final bool catalogConfirmed, supportedPlatform;
+  final Duration operationTimeout;
   static const packageName = 'ir.moshaver.tahsili';
   bool _connected = false, _busy = false, _disposed = false;
   Future<void>? _connecting;
@@ -144,7 +146,7 @@ class BazaarBillingService {
   Future<List<ShopProduct>> loadProducts() => _exclusive(() async {
     await _safe(_connect);
     return _safe(() => gateway.products(CreditCatalog.products.map((p) => p.id).toList())
-        .timeout(const Duration(seconds: 20)));
+        .timeout(operationTimeout));
   });
 
   void _validate(VerifiedPurchase purchase, String expectedProduct) {
@@ -163,7 +165,7 @@ class BazaarBillingService {
     final credited = await store.grantProduct(productId: productId,
         purchaseToken: purchase.purchaseToken, creditsToAdd: product.credits);
     try {
-      final consumed = await gateway.consume(purchase.purchaseToken).timeout(const Duration(seconds: 20));
+      final consumed = await gateway.consume(purchase.purchaseToken).timeout(operationTimeout);
       return (credited: credited, consumed: consumed);
     } on Object {
       return (credited: credited, consumed: false);
@@ -173,7 +175,9 @@ class BazaarBillingService {
   Future<BillingResult> buy(String productId) => _exclusive(() async {
     if (CreditCatalog.byId(productId) == null) throw const BillingException('بسته اعتبار ناشناخته است.');
     await _safe(_connect);
-    final purchase = await _safe(() => gateway.purchase(productId));
+    // A stalled billing activity must not leave the shop busy forever. A timeout
+    // is an unknown purchase outcome, so the UI explicitly directs the user to restore.
+    final purchase = await _safe(() => gateway.purchase(productId).timeout(operationTimeout));
     _validate(purchase, productId);
     final result = await _creditAndConsume(purchase, productId);
     return BillingResult(credited: result.credited ? 1 : 0, alreadyCredited: result.credited ? 0 : 1, consumptionPending: !result.consumed);
@@ -181,7 +185,7 @@ class BazaarBillingService {
 
   Future<BillingResult> restorePurchases() => _exclusive(() async {
     await _safe(_connect);
-    final purchases = await _safe(() => gateway.purchasedProducts().timeout(const Duration(seconds: 20)));
+    final purchases = await _safe(() => gateway.purchasedProducts().timeout(operationTimeout));
     var credited = 0, existing = 0, skipped = 0;
     var pending = false;
     for (final purchase in purchases) {
