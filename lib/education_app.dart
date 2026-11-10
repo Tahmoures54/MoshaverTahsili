@@ -209,7 +209,7 @@ class _DashboardState extends State<Dashboard> {
           subtitle: Text('${widget.store.profile?['grade'] ?? ''} · ${widget.store.profile?['year'] ?? 'پایه ثبت نشده'}'), onTap: () => Navigator.pop(context, 'profile')),
       ListTile(leading: const Icon(Icons.account_balance_wallet_outlined), title: const Text('کیف اعتبار و تاریخچه خرید'), onTap: () => Navigator.pop(context, 'wallet')),
       ListTile(leading: const Icon(Icons.history_edu_outlined), title: const Text('تاریخچه مشاوره‌ها'), onTap: () => Navigator.pop(context, 'reports')),
-      ListTile(leading: const Icon(Icons.info_outline), title: const Text('درباره برنامه و حریم خصوصی'), subtitle: const Text('نسخه ۱.۱.۱ · ساخت ۴'), onTap: () => Navigator.pop(context, 'about')),
+      ListTile(leading: const Icon(Icons.info_outline), title: const Text('درباره برنامه و حریم خصوصی'), subtitle: const Text('نسخه ۱.۱.۲ · ساخت ۵'), onTap: () => Navigator.pop(context, 'about')),
       ListTile(leading: const Icon(Icons.delete_outline, color: Colors.red), title: const Text('حذف اطلاعات تحصیلی این گوشی', style: TextStyle(color: Colors.red)), onTap: () => Navigator.pop(context, 'delete')),
     ])));
     if (!mounted || choice == null) return;
