@@ -117,8 +117,10 @@ class _CreditShopPageState extends State<CreditShopPage> {
                 color: item['kind'] == 'ai' ? blue : teal),
             title: Text(item['title'].toString()),
             subtitle: Text(_date(item['createdAt'].toString()) + _status(item['status'].toString())),
-            trailing: Text('${item['kind'] == 'ai' ? '−' : '+'}${faNumber(item['amount'])}',
-                style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
+            trailing: Text(item['kind'] == 'ai' && item['amount'] == 0
+                ? 'رایگان'
+                : '${item['kind'] == 'ai' ? '−' : '+'}${faNumber(item['amount'])}',
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
           )),
           const Text('نمایش حداکثر ۲۵۰ تراکنش اخیر؛ شناسه خریدهای ثبت‌شده برای جلوگیری از شارژ تکراری نگهداری می‌شود.',
               style: TextStyle(color: Colors.blueGrey, height: 1.7)),
