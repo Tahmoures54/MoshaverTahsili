@@ -152,6 +152,26 @@ void main() {
     expect(store.credits, 10);
   });
 
+  test('a stalled purchase times out, releases the shop lock and can be retried', () async {
+    final store = await EducationStore.open();
+    final gateway = FakeGateway();
+    gateway.purchaseGate = Completer<void>();
+    final service = BazaarBillingService(store, gateway: gateway,
+        publicKey: 'test-public-key', catalogConfirmed: true,
+        supportedPlatform: true, operationTimeout: const Duration(milliseconds: 20));
+
+    await expectLater(service.buy('credit_10'), throwsA(isA<BillingException>()
+        .having((error) => error.message, 'safe timeout', contains('بازیابی خریدهای قبلی'))));
+    expect(service.isBusy, isFalse);
+    expect(store.credits, 0);
+
+    gateway.purchaseGate = null;
+    final retry = await service.buy('credit_10');
+    expect(retry.credited, 1);
+    expect(store.credits, 10);
+    expect(gateway.purchases, 2);
+  });
+
   test('loads real gateway prices without hardcoded monetary amounts', () async {
     final (_, _, service) = await setup();
     final products = await service.loadProducts();
