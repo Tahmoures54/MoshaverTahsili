@@ -270,7 +270,7 @@ class EducationStore extends ChangeNotifier {
         requests[id] = {'question': question, 'status': 'pending', 'charge': charge,
           'createdAt': previous?['createdAt'] ?? _now(),
           'attempt': attempt, 'transactionId': transactionId};
-        _transaction(wallet, transactionId, 'ai', 1, 'درخواست مشاور هوشمند', 'pending');
+        _transaction(wallet, transactionId, 'ai', charge == 'credit' ? 1 : 0, 'درخواست مشاور هوشمند', 'pending');
         _trimRequests(wallet);
         await _saveWallet(wallet);
         _activeRequests.add(id);
@@ -348,7 +348,7 @@ class EducationStore extends ChangeNotifier {
     }
     requests[id] = {'question': 'درخواست ثبت‌شده', 'status': 'completed',
       'charge': free ? 'free' : 'credit', 'createdAt': _now(), 'answer': 'پاسخ دریافت شده'};
-    _transaction(wallet, id, 'ai', 1, 'پاسخ موفق مشاور هوشمند', 'completed');
+    _transaction(wallet, id, 'ai', free ? 0 : 1, 'پاسخ موفق مشاور هوشمند', 'completed');
     _trimRequests(wallet);
     await _saveWallet(wallet);
     return true;
