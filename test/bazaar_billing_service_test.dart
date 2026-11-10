@@ -161,7 +161,7 @@ void main() {
         supportedPlatform: true, operationTimeout: const Duration(milliseconds: 20));
 
     await expectLater(service.buy('credit_10'), throwsA(isA<BillingException>()
-        .having((error) => error.message, 'safe timeout', contains('بازیابی خریدهای قبلی'))));
+        .having((error) => error.message, 'safe timeout', contains('خریدهای قبلی را بازیابی کن'))));
     expect(service.isBusy, isFalse);
     expect(store.credits, 0);
 
