@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <application
-        android:label="مشاور تحصیلی"
+        android:label="مشاور هوشمند تحصیلی"
         android:name="${applicationName}"
         android:icon="@drawable/ic_education"
         android:roundIcon="@drawable/ic_education"
