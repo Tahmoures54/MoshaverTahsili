@@ -18,7 +18,7 @@ class AbortSignalClient extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {
     if (request is http.AbortableRequest) {
-      request.abortTrigger.then((_) {
+      request.abortTrigger?.then((_) {
         if (!aborted.isCompleted) aborted.complete();
       });
     }
