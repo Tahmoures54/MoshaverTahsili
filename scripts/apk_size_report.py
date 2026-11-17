@@ -46,6 +46,6 @@ lines = ['## Actual Android artifact sizes', '', '| File | MiB | Largest section
 for item in results:
     largest = max(item['sections'].items(), key=lambda pair: pair[1]['compressed_bytes'])
     lines.append(f'| `{item["file"]}` | {item["file_bytes"] / 1048576:.2f} | `{largest[0]}`: {largest[1]["compressed_bytes"] / 1024:.1f} |')
-lines += ['', 'Native Flutter/Bazaar libraries usually dominate. Split APKs reduce installed download size; an AAB lets a store deliver the device architecture. Full per-entry measurements and SHA-256 hashes are in `sizes.json`.', '', 'These are build measurements, not a claim of installation or payment testing.']
+lines += ['', 'Native Flutter/Bazaar libraries dominate APK size. Split APKs reduce the download to one device architecture; an AAB lets a store deliver device-specific splits. AAB debug symbols are reported separately and are diagnostic metadata, not app code delivered to users. Full per-entry measurements and SHA-256 hashes are in `sizes.json`.', '', 'These are build measurements, not a claim of installation or payment testing.']
 (destination / 'summary.md').write_text('\n'.join(lines) + '\n')
 print('\n'.join(lines))
