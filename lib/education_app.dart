@@ -1,9 +1,5 @@
 import 'dart:async';
 
-const appVersion = String.fromEnvironment('APP_VERSION', defaultValue: '1.1.2');
-const appBuildNumber = String.fromEnvironment('APP_BUILD_NUMBER', defaultValue: '5');
-const appVersionLabel = 'نسخه $appVersion · ساخت $appBuildNumber';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'education/advisor_page.dart';
@@ -12,6 +8,10 @@ import 'education/credit_shop_page.dart';
 import 'education/education_store.dart';
 import 'education/study_pages.dart';
 import 'education/ui.dart';
+
+const appVersion = String.fromEnvironment('APP_VERSION', defaultValue: '1.1.2');
+const appBuildNumber = String.fromEnvironment('APP_BUILD_NUMBER', defaultValue: '5');
+const appVersionLabel = 'نسخه $appVersion · ساخت $appBuildNumber';
 
 export 'education/advisor_page.dart';
 export 'education/assessment_pages.dart';
