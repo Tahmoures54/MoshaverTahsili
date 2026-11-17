@@ -180,6 +180,29 @@ void main() {
     service.dispose();
   });
 
+  test('truncates the oldest retained history message to fit the remaining budget', () async {
+    http.Request? captured;
+    final history = List.generate(5, (index) => {
+      'role': index.isEven ? 'user' : 'assistant',
+      'content': 'm$index' + ('x' * 3998),
+      'status': 'completed',
+    });
+    final service = AiAdvisorService(apiKey: 'test-key', client: MockClient((request) async {
+      captured = request;
+      return answer('ok');
+    }));
+    await service.ask(profile: null, history: history, question: 'current question');
+    final body = jsonDecode(captured!.body) as Map<String, dynamic>;
+    final messages = (body['messages'] as List).cast<Map<String, dynamic>>();
+    final retained = messages.sublist(1, messages.length - 1);
+    expect(retained, hasLength(5));
+    expect((retained.first['content'] as String).length, 2000);
+    expect((retained.skip(1).first['content'] as String).length, 4000);
+    expect(retained.map((message) => message['content'].toString().substring(0, 2)),
+        ['m0', 'm1', 'm2', 'm3', 'm4']);
+    service.dispose();
+  });
+
   test('accepts legacy full endpoint but rejects insecure or credential-bearing URLs', () async {
     final valid = AiAdvisorService(apiKey: 'test-key', endpoint: 'https://example.test/v1/chat/completions/', client: MockClient((request) async {
       expect(request.url.path, '/v1/chat/completions'); return answer('ok');
