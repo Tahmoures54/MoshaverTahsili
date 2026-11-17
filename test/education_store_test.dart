@@ -154,6 +154,59 @@ void main() {
     expect(store.credits, 7);
   });
 
+  test('wallet size limit counts UTF-8 bytes and preserves oversized stored data', () async {
+    final tokens = <String, dynamic>{};
+    for (var index = 0; index < 4100; index++) {
+      final id = index.toString().padLeft(12, '0') + ('م' * 500);
+      tokens[id] = {'productId': 'credit_10', 'credits': 10};
+    }
+    final raw = jsonEncode({
+      'version': 2,
+      'credits': 10,
+      'successful_uses': 2,
+      'purchase_tokens': tokens,
+      'requests': <String, dynamic>{},
+      'transactions': <Map<String, dynamic>>[],
+    });
+    expect(raw.length, lessThan(EducationStore.maxWalletBytes));
+    expect(utf8.encode(raw).length, greaterThan(EducationStore.maxWalletBytes));
+    SharedPreferences.setMockInitialValues({EducationStore.walletKey: raw});
+    final store = await EducationStore.open();
+    expect(store.walletError, isNotNull);
+    expect(store.canUseAi, isFalse);
+    expect(store.prefs.getString(EducationStore.walletKey), raw);
+  });
+
+  test('does not exceed the stored request cap when every existing request is pending', () async {
+    final requests = <String, dynamic>{
+      for (var index = 0; index < EducationStore.maxStoredRequests + 1; index++)
+        'pending-$index': {
+          'question': 'question $index',
+          'status': 'pending',
+          'charge': 'credit',
+          'createdAt': '2026-01-01T00:00:00Z',
+        },
+    };
+    final raw = jsonEncode({
+      'version': 2,
+      'credits': 1000,
+      'successful_uses': 2,
+      'purchase_tokens': <String, dynamic>{},
+      'requests': requests,
+      'transactions': <Map<String, dynamic>>[],
+    });
+    SharedPreferences.setMockInitialValues({EducationStore.walletKey: raw});
+    final store = await EducationStore.open();
+    await expectLater(
+      store.prepareAiRequest(id: 'new-request', question: 'new question'),
+      throwsA(isA<LocalDataException>()),
+    );
+    expect(store.credits, 1000);
+    final saved = jsonDecode(store.prefs.getString(EducationStore.walletKey)!) as Map;
+    expect((saved['requests'] as Map).length, EducationStore.maxStoredRequests + 1);
+    expect((saved['requests'] as Map).containsKey('new-request'), isFalse);
+  });
+
   test('workspace reset preserves wallet and financial history', () async {
     final store = await EducationStore.open();
     await store.grantProduct(productId: 'credit_10', purchaseToken: 't', creditsToAdd: 10);
