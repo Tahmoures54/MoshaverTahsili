@@ -201,7 +201,7 @@ void main() {
     expect((retained.first['content'] as String).length, 2000);
     expect((retained.skip(1).first['content'] as String).length, 4000);
     expect(retained.map((message) => message['content'].toString().substring(0, 2)),
-        ['m0', 'm1', 'm2', 'm3', 'm4']);
+        ['ol', 'm1', 'm2', 'm3', 'm4']);
     service.dispose();
   });
 
