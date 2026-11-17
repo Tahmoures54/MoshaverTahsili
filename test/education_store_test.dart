@@ -196,7 +196,7 @@ void main() {
       'transactions': <Map<String, dynamic>>[],
     });
     SharedPreferences.setMockInitialValues({EducationStore.walletKey: raw});
-    final store = await EducationStore.open();
+    final store = EducationStore(await SharedPreferences.getInstance());
     await expectLater(
       store.prepareAiRequest(id: 'new-request', question: 'new question'),
       throwsA(isA<LocalDataException>()),
