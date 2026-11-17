@@ -9,14 +9,14 @@ import 'education/education_store.dart';
 import 'education/study_pages.dart';
 import 'education/ui.dart';
 
-const appVersion = String.fromEnvironment('APP_VERSION', defaultValue: '1.1.2');
-const appBuildNumber = String.fromEnvironment('APP_BUILD_NUMBER', defaultValue: '5');
-const appVersionLabel = 'نسخه $appVersion · ساخت $appBuildNumber';
-
 export 'education/advisor_page.dart';
 export 'education/assessment_pages.dart';
 export 'education/study_pages.dart';
 export 'education/ui.dart' show EmptyState;
+
+const appVersion = String.fromEnvironment('APP_VERSION', defaultValue: '1.1.2');
+const appBuildNumber = String.fromEnvironment('APP_BUILD_NUMBER', defaultValue: '5');
+const appVersionLabel = 'نسخه $appVersion · ساخت $appBuildNumber';
 
 class EducationApp extends StatefulWidget {
   const EducationApp({super.key, this.store});
