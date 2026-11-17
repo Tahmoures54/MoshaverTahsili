@@ -23,6 +23,10 @@ for path in sorted(source.iterdir()):
                 group = 'native/' + name.split('/')[2]
             elif name.endswith('.dex'):
                 group = 'dex'
+            elif name.startswith('BUNDLE-METADATA/com.android.tools.build.debugsymbols/'):
+                group = 'debug_symbols'
+            elif name.startswith('BUNDLE-METADATA/com.android.tools.build.obfuscation/'):
+                group = 'obfuscation_metadata'
             elif name.startswith(('assets/', 'res/', 'resources.arsc')) or name.startswith('base/assets/'):
                 group = 'assets_resources'
             elif name.startswith('META-INF/') or name.endswith(('.RSA', '.SF', '.MF')):
