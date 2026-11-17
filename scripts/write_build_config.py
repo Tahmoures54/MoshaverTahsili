@@ -2,12 +2,19 @@
 """Write compiler inputs outside the repository; never log their contents."""
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
 path = Path(sys.argv[1])
 path.parent.mkdir(parents=True, exist_ok=True)
+version = re.search(r'^version:\\s*([^\\s+]+)\\+(\\d+)', Path('pubspec.yaml').read_text(), re.M)
+if not version:
+    raise SystemExit('Invalid pubspec version')
+
 config = {
+    'APP_VERSION': version.group(1),
+    'APP_BUILD_NUMBER': version.group(2),
     'AI_API_KEY': os.environ.get('AI_API_KEY', '') or os.environ.get('DEEPSEEK_API_KEY', ''),
     'AI_API_ENDPOINT': os.environ.get('AI_API_ENDPOINT', '') or os.environ.get('DEEPSEEK_API_ENDPOINT', '') or 'https://api.avalai.ir/v1',
     'AI_MODEL': os.environ.get('AI_MODEL', '') or os.environ.get('DEEPSEEK_MODEL', '') or 'deepseek-chat',
