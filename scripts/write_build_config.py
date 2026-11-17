@@ -8,7 +8,7 @@ from pathlib import Path
 
 path = Path(sys.argv[1])
 path.parent.mkdir(parents=True, exist_ok=True)
-version = re.search(r'^version:\\s*([^\\s+]+)\\+(\\d+)', Path('pubspec.yaml').read_text(), re.M)
+version = re.search(r'^version:\s*([^\s+]+)\+(\d+)', Path('pubspec.yaml').read_text(), re.M)
 if not version:
     raise SystemExit('Invalid pubspec version')
 
