@@ -183,8 +183,10 @@ void main() {
   test('truncates the oldest retained history message to fit the remaining budget', () async {
     http.Request? captured;
     final history = List.generate(5, (index) => {
-      'role': index.isEven ? 'user' : 'assistant',
-      'content': 'm$index' + ('x' * 3998),
+      'role': index == 0 ? 'assistant' : (index.isEven ? 'user' : 'assistant'),
+      'content': index == 0
+          ? 'old-answer-' + ('x' * 19989)
+          : 'm$index' + ('x' * 3998),
       'status': 'completed',
     });
     final service = AiAdvisorService(apiKey: 'test-key', client: MockClient((request) async {
