@@ -19,6 +19,8 @@ for path in sorted(source.iterdir()):
             name = entry.filename
             if name.startswith('lib/'):
                 group = 'native/' + name.split('/')[1]
+            elif name.startswith('base/lib/'):
+                group = 'native/' + name.split('/')[2]
             elif name.endswith('.dex'):
                 group = 'dex'
             elif name.startswith(('assets/', 'res/', 'resources.arsc')) or name.startswith('base/assets/'):
