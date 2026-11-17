@@ -79,13 +79,17 @@ class AiAdvisorService {
       throw const AiException(AiErrorKind.input, 'حجم درخواست زیاد است. پرسش یا اطلاعات گفت‌وگو را کوتاه‌تر کن.');
     }
     var reserved = false;
+    var requestStarted = false;
+    var answerReceived = false;
     try {
       if (store != null) {
         final reservation = await store!.prepareAiRequest(id: id, question: question);
         if (reservation.isCompleted) return reservation.cachedAnswer!;
         reserved = true;
       }
+      requestStarted = true;
       final answer = await _post(uri, body);
+      answerReceived = true;
       if (store != null) await store!.completeAiRequest(id, answer);
       return answer;
     } on Object catch (error) {
@@ -96,7 +100,10 @@ class AiAdvisorService {
         }
       }
       if (error is AiException || error is LocalDataException) rethrow;
-      throw const AiException(AiErrorKind.storage, 'ذخیره نتیجه درخواست انجام نشد. کمی بعد دوباره تلاش کن.');
+      if (!requestStarted || answerReceived) {
+        throw const AiException(AiErrorKind.storage, 'ذخیره نتیجه درخواست انجام نشد. کمی بعد دوباره تلاش کن.');
+      }
+      throw const AiException(AiErrorKind.network, 'ارتباط با مشاور برقرار نشد. اتصال اینترنت را بررسی کن.');
     }
   }
 
@@ -113,16 +120,20 @@ class AiAdvisorService {
     for (final message in history.reversed) {
       final role = message['role'];
       final content = message['content'];
+      final maxMessageLength = role == 'assistant'
+          ? EducationStore.maxAnswerLength
+          : EducationStore.maxQuestionLength;
       if ((role != 'user' && role != 'assistant') || content is! String ||
-          content.isEmpty || content.length > EducationStore.maxQuestionLength ||
+          content.isEmpty || content.length > maxMessageLength ||
           message['status'] == 'failed' || message['status'] == 'pending') {
         continue;
       }
-      if (content.length > budget) {
-        continue;
-      }
-      budget -= content.length;
-      recent.add({'role': role as String, 'content': content});
+      if (budget <= 0) break;
+      final retainedContent = content.length > budget
+          ? content.substring(0, budget)
+          : content;
+      budget -= retainedContent.length;
+      recent.add({'role': role as String, 'content': retainedContent});
       if (recent.length == 24) break;
     }
     return [

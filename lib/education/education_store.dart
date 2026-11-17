@@ -37,6 +37,7 @@ class EducationStore extends ChangeNotifier {
   static const maxAnswerLength = 24000;
   static const maxHistoryEntries = 250;
   static const maxStoredRequests = 100;
+  static const maxWalletBytes = 4 * 1024 * 1024;
   static const workspaceKeys = [
     'edu.profile', 'edu.tasks', 'edu.exams', 'edu.cards',
     'edu.messages', 'edu.reports', 'edu.career.draft',
@@ -92,7 +93,9 @@ class EducationStore extends ChangeNotifier {
   /// Migrates v1 wallets without discarding balances or previously used tokens.
   static Map<String, dynamic> _decodeWallet(String? raw) {
     if (raw == null) return _emptyWallet();
-    if (raw.length > 4000000) throw const FormatException('Wallet too large');
+    if (utf8.encode(raw).length > maxWalletBytes) {
+      throw const FormatException('Wallet too large');
+    }
     final source = _map(jsonDecode(raw));
     final result = _emptyWallet();
     result['credits'] = _nonNegativeInt(source['credits'] ?? 0);
@@ -232,6 +235,11 @@ class EducationStore extends ChangeNotifier {
     final removable = requests.entries.where((entry) => entry.value['status'] != 'pending').toList();
     while (requests.length > maxStoredRequests && removable.isNotEmpty) {
       requests.remove(removable.removeAt(0).key);
+    }
+    if (requests.length > maxStoredRequests) {
+      throw const LocalDataException(
+        'درخواست‌های در حال انجام بیش از ظرفیت دفتر محلی هستند. پس از پایان یا بازیابی آن‌ها دوباره تلاش کن.',
+      );
     }
   }
 
