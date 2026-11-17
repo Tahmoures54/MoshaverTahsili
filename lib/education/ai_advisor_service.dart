@@ -120,8 +120,11 @@ class AiAdvisorService {
     for (final message in history.reversed) {
       final role = message['role'];
       final content = message['content'];
+      final maxMessageLength = role == 'assistant'
+          ? EducationStore.maxAnswerLength
+          : EducationStore.maxQuestionLength;
       if ((role != 'user' && role != 'assistant') || content is! String ||
-          content.isEmpty || content.length > EducationStore.maxQuestionLength ||
+          content.isEmpty || content.length > maxMessageLength ||
           message['status'] == 'failed' || message['status'] == 'pending') {
         continue;
       }
