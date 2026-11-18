@@ -97,7 +97,7 @@ class EducationStore extends ChangeNotifier {
           if (!await prefs.setString(key, encrypted)) throw const LocalDataException('مهاجرت امن اطلاعات ذخیره نشد؛ داده قبلی حفظ شد.');
           _secureData[key] = stored;
         }
-      } on Object catch (error) {
+      } on Object {
         if (key == walletKey) {
           _walletError = 'کیف پول رمزگشایی نشد؛ برای جلوگیری از تغییر اعتبار، داده قبلی حفظ شد.';
         } else {
