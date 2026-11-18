@@ -111,6 +111,24 @@ ReviewState sm2Next(ReviewState state, int quality) {
 
 Entry applyCardReview(Entry card, int quality, DateTime now) {
   final next = sm2Next(reviewStateOf(card), quality);
+  final reviewedAt = now.toIso8601String();
+  final history = card['reviewHistory'] is List
+      ? (card['reviewHistory'] as List)
+          .whereType<Map>()
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .toList()
+      : <Map<String, dynamic>>[];
+  history.add({
+    'quality': quality,
+    'reviewedAt': reviewedAt,
+    'interval': next.interval,
+    'ease': next.ease,
+    'reps': next.reps,
+    'lapses': next.lapses,
+  });
+  if (history.length > 100) {
+    history.removeRange(0, history.length - 100);
+  }
   return {
     ...card,
     'ease': next.ease,
@@ -118,7 +136,8 @@ Entry applyCardReview(Entry card, int quality, DateTime now) {
     'reps': next.reps,
     'lapses': next.lapses,
     'dueAt': now.add(Duration(days: next.interval)).toIso8601String(),
-    'lastReviewedAt': now.toIso8601String(),
+    'lastReviewedAt': reviewedAt,
+    'reviewHistory': history,
   };
 }
 

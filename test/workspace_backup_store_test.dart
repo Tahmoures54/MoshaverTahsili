@@ -38,13 +38,31 @@ void main() {
 
   test('applyPlanDates stores planner dates on the matching tasks only', () async {
     final store = await EducationStore.open();
-    await store.addTask({'id': 'a', 'title': 'الف', 'subject': 'ریاضی', 'minutes': 20, 'done': false});
+    await store.addTask({
+      'id': 'a', 'title': 'الف', 'subject': 'ریاضی', 'minutes': 20,
+      'done': false, 'dueDate': '2026-11-10',
+    });
     await store.addTask({'id': 'b', 'title': 'ب', 'subject': 'ریاضی', 'minutes': 20, 'done': false});
 
-    await store.applyPlanDates({'a': '2026-11-18'});
+    await store.applyPlanDates(
+      {'a': '2026-11-18'},
+      changes: const [
+        PlanChange(
+          taskId: 'a',
+          title: 'الف',
+          newDate: '2026-11-18',
+          reason: 'به‌دلیل عقب‌افتادگی جابه‌جا شد.',
+        ),
+      ],
+      now: DateTime(2026, 11, 18, 12),
+    );
 
     final byId = {for (final task in store.tasks) task['id']: task};
     expect(byId['a']!['dueDate'], '2026-11-18');
+    final history = byId['a']!['planHistory'] as List;
+    expect(history.single['previousDate'], '2026-11-10');
+    expect(history.single['newDate'], '2026-11-18');
+    expect(history.single['reason'], contains('عقب‌افتادگی'));
     expect(byId['b']!.containsKey('dueDate'), isFalse);
   });
 

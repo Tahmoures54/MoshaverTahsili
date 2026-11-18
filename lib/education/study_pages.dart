@@ -67,7 +67,7 @@ class _PlannerPageState extends State<PlannerPage> {
       restWeekdays: const {DateTime.friday},
     );
     try {
-      await widget.store.applyPlanDates(plan.assignments);
+      await widget.store.applyPlanDates(plan.assignments, changes: plan.changes, now: DateTime.now());
       widget.changed();
     } on Object catch (error) {
       if (mounted) showMessage(context, friendlyError(error));

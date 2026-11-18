@@ -504,21 +504,55 @@ class EducationStore extends ChangeNotifier {
   Future<void> deleteDeadline(String id) =>
       _mutateList('edu.deadlines', (all) => all.where((e) => e['id'] != id).toList());
 
-  /// Applies spaced-repetition scoring (SM-2) to one card.
+  /// Applies spaced-repetition scoring (SM-2) and persists a bounded review history.
   Future<void> reviewCard(String id, int quality, DateTime now) =>
-      _mutateList('edu.cards', (all) => [
-        for (final card in all) if (card['id'] == id) applyCardReview(card, quality, now) else card,
-      ]);
+      _mutateList('edu.cards', (all) {
+        final index = all.indexWhere((card) => card['id'] == id);
+        if (index < 0) throw const LocalDataException('فلش‌کارت پیدا نشد.');
+        all[index] = applyCardReview(all[index], quality, now);
+        return all;
+      });
 
-  /// Stores the dates produced by the adaptive planner.
-  Future<void> applyPlanDates(Map<String, String> assignments) =>
-      _mutateList('edu.tasks', (all) => [
-        for (final task in all)
-          if (assignments.containsKey(task['id'].toString()))
-            {...task, 'dueDate': assignments[task['id'].toString()]}
-          else
-            task,
-      ]);
+  /// Stores assigned dates and an auditable reason for every changed task.
+  Future<void> applyPlanDates(
+    Map<String, String> assignments, {
+    List<PlanChange> changes = const [],
+    DateTime? now,
+  }) =>
+      _mutateList('edu.tasks', (all) {
+        final changesById = {for (final change in changes) change.taskId: change};
+        final changedAt = (now ?? DateTime.now()).toIso8601String();
+        return [
+          for (final task in all)
+            if (assignments.containsKey(task['id'].toString()))
+              _applyPlanDate(task, assignments[task['id'].toString()]!, changesById[task['id'].toString()], changedAt)
+            else
+              task,
+        ];
+      });
+
+  Map<String, dynamic> _applyPlanDate(
+    Map<String, dynamic> task,
+    String newDate,
+    PlanChange? change,
+    String changedAt,
+  ) {
+    if (change == null) return {...task, 'dueDate': newDate};
+    final history = task['planHistory'] is List
+        ? (task['planHistory'] as List)
+            .whereType<Map>()
+            .map((entry) => Map<String, dynamic>.from(entry))
+            .toList()
+        : <Map<String, dynamic>>[];
+    history.add({
+      'previousDate': task['dueDate'],
+      'newDate': newDate,
+      'reason': change.reason,
+      'changedAt': changedAt,
+    });
+    if (history.length > 100) history.removeRange(0, history.length - 100);
+    return {...task, 'dueDate': newDate, 'planHistory': history};
+  }
 
   /// Serialises the study workspace. The AI wallet is never included.
   Future<String> exportBackup() => _serialized(() async {

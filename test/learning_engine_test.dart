@@ -76,6 +76,16 @@ void main() {
       expect(card['interval'], 1);
       expect(card['q'], 'x');
       expect(DateTime.parse(card['dueAt'] as String), now.add(const Duration(days: 1)));
+      expect(card['reviewHistory'], [
+        {
+          'quality': 4,
+          'reviewedAt': now.toIso8601String(),
+          'interval': 1,
+          'ease': 2.5,
+          'reps': 1,
+          'lapses': 0,
+        },
+      ]);
     });
 
     test('cards without a due date or with a past due date are due', () {
@@ -332,11 +342,11 @@ void main() {
 
     test('rejects unknown sections, other apps and unsupported formats', () {
       expect(
-        () => WorkspaceBackup.decode(jsonEncode({'app': 'simorgh', 'format': 1, 'data': {'edu.unknown': []}})),
+        () => WorkspaceBackup.decode(jsonEncode({'app': 'simorgh', 'format': 1, 'data': <String, Object?>{'edu.unknown': <Object>[]}})),
         throwsA(isA<BackupFormatException>()),
       );
       expect(
-        () => WorkspaceBackup.decode(jsonEncode({'app': 'other', 'format': 1, 'data': {}})),
+        () => WorkspaceBackup.decode(jsonEncode({'app': 'other', 'format': 1, 'data': <String, Object?>{}})),
         throwsA(isA<BackupFormatException>()),
       );
       expect(
