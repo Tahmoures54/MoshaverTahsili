@@ -4,7 +4,7 @@
     <!-- پس‌زمینه: آبی برند اپ -->
     <item android:drawable="@color/splash_bg" />
 
-    <!-- آیکون مرکزی: کلاه فارغ‌التحصیلی -->
+    <!-- نشان سیمرغ -->
     <item
         android:gravity="center"
         android:width="120dp"
