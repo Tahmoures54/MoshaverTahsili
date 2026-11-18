@@ -60,7 +60,7 @@ void main() {
   test('credits a valid pack once, including concurrent duplicate delivery', () async {
     final store = await EducationStore.open();
     final results = await Future.wait(List.generate(2, (_) => store.grantProduct(
-        productId: 'credit_10', purchaseToken: 'token-1', creditsToAdd: 10)));
+        productId: 'credit_10', purchaseToken: 'token-1', creditsToAdd: 100)));
     expect(results.where((value) => value), hasLength(1));
     expect(store.credits, 105);
     expect(store.creditHistory, hasLength(2));
@@ -69,9 +69,9 @@ void main() {
 
   test('rejects guessed products, mismatched amounts and empty tokens', () async {
     final store = await EducationStore.open();
-    await expectLater(store.grantProduct(productId: 'guessed', purchaseToken: 't', creditsToAdd: 10), throwsA(isA<LocalDataException>()));
+    await expectLater(store.grantProduct(productId: 'guessed', purchaseToken: 't', creditsToAdd: 100), throwsA(isA<LocalDataException>()));
     await expectLater(store.grantProduct(productId: 'credit_10', purchaseToken: 't', creditsToAdd: 999), throwsA(isA<LocalDataException>()));
-    await expectLater(store.grantProduct(productId: 'credit_10', purchaseToken: '', creditsToAdd: 10), throwsA(isA<LocalDataException>()));
+    await expectLater(store.grantProduct(productId: 'credit_10', purchaseToken: '', creditsToAdd: 100), throwsA(isA<LocalDataException>()));
     expect(store.credits, 5);
     expect(store.creditHistory, hasLength(1));
   });
@@ -162,7 +162,7 @@ void main() {
     final store = await EducationStore.open();
     expect(store.walletError, isNotNull);
     expect(store.canUseAi, isFalse);
-    await expectLater(store.grantProduct(productId: 'credit_10', purchaseToken: 't', creditsToAdd: 10), throwsA(isA<LocalDataException>()));
+    await expectLater(store.grantProduct(productId: 'credit_10', purchaseToken: 't', creditsToAdd: 100), throwsA(isA<LocalDataException>()));
     expect(store.walletRaw, '{broken');
     expect(store.prefs.getString(EducationStore.walletKey), startsWith(EducationStore.encryptedPrefix));
   });
@@ -172,7 +172,7 @@ void main() {
     final store = await EducationStore.open();
     expect(store.credits, 7);
     expect(store.freeAiUsesRemaining, 0);
-    expect(await store.grantProduct(productId: 'credit_10', purchaseToken: 'old-token', creditsToAdd: 10), isFalse);
+    expect(await store.grantProduct(productId: 'credit_10', purchaseToken: 'old-token', creditsToAdd: 100), isFalse);
     expect(store.credits, 7);
   });
 
@@ -233,7 +233,7 @@ void main() {
 
   test('workspace reset preserves wallet and financial history', () async {
     final store = await EducationStore.open();
-    await store.grantProduct(productId: 'credit_10', purchaseToken: 't', creditsToAdd: 10);
+    await store.grantProduct(productId: 'credit_10', purchaseToken: 't', creditsToAdd: 100);
     await store.recordSuccessfulAiUse();
     await store.saveProfile({'grade': 'ابتدایی'});
     await store.addTask({'id': 'task'});
