@@ -31,7 +31,7 @@ void main() {
     String? exported;
     channel.setMockMethodCallHandler((call) async {
       expect(call.method, 'saveBackup');
-      final arguments = call.arguments as Map;
+      final arguments = call.arguments as Map<Object?, Object?>;
       expect(arguments['fileName'], startsWith('simorgh-backup-'));
       exported = arguments['content'] as String;
       return true;
@@ -43,8 +43,8 @@ void main() {
 
     expect(exported, isNotNull);
     final decoded = WorkspaceBackup.decode(exported!);
-    final tasks = decoded['edu.tasks'] as List;
-    expect(tasks.single['title'], 'مرور ریاضی');
+    final tasks = decoded['edu.tasks'] as List<Object?>;
+    expect((tasks.single as Map<Object?, Object?>)['title'], 'مرور ریاضی');
     expect(exported, isNot(contains('edu.ai.wallet')));
     expect(find.text('فایل پشتیبان ذخیره شد.'), findsOneWidget);
   });
