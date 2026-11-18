@@ -17,14 +17,25 @@ void main() {
     expect(find.text('کپی متن و لینک'), findsOneWidget);
   });
 
-  testWidgets('copy action confirms that the referral text was copied',
+  testWidgets('copy action writes the complete referral message to the clipboard',
       (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ReferralPage()));
-    await tester.scrollUntilVisible(find.text('کپی متن و لینک'), 250, scrollable: find.byType(Scrollable).first);
-    await tester.tap(find.text('کپی متن و لینک'));
-    await tester.pumpAndSettle();
+    final clipboardCalls = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        clipboardCalls.add(call);
+      }
+      return null;
+    });
 
-    final clipboard = await Clipboard.getData('text/plain');
-    expect(clipboard?.text, simorghReferralMessage);
+    await tester.pumpWidget(const MaterialApp(home: ReferralPage()));
+    await tester.scrollUntilVisible(find.text('کپی متن و لینک'), 250,
+        scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.text('کپی متن و لینک'));
+    await tester.pump();
+
+    expect(clipboardCalls, hasLength(1));
+    expect((clipboardCalls.single.arguments as Map)['text'],
+        simorghReferralMessage);
   });
 }
