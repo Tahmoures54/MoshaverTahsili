@@ -50,6 +50,32 @@ void main() {
     expect(store.profile?['year'], 'هفتم');
   });
 
+  testWidgets('home weekly progress uses completion date rather than creation date', (tester) async {
+    final store = await EducationStore.open();
+    final now = DateTime.now();
+    await store.addTask({
+      'id': 'completed-recently',
+      'title': 'مرور فصل اول',
+      'subject': 'ریاضی',
+      'minutes': 35,
+      'done': true,
+      'createdAt': now.subtract(const Duration(days: 20)).toIso8601String(),
+      'completedAt': now.subtract(const Duration(days: 2)).toIso8601String(),
+    });
+    await store.addTask({
+      'id': 'completed-long-ago',
+      'title': 'تمرین قدیمی',
+      'subject': 'فیزیک',
+      'minutes': 50,
+      'done': true,
+      'createdAt': now.subtract(const Duration(days: 20)).toIso8601String(),
+      'completedAt': now.subtract(const Duration(days: 12)).toIso8601String(),
+    });
+    await tester.pumpWidget(frame(HomePage(store: store, go: (_) {})));
+    expect(find.textContaining('هفت روز اخیر: ۱ کار تکمیل شده؛ ۳۵ دقیقه'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('dashboard fits compact and regular phones and navigates locally', (tester) async {
     for (final size in [const Size(320, 568), const Size(390, 844)]) {
       tester.view.physicalSize = size;

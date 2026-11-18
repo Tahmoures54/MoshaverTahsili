@@ -23,6 +23,22 @@ void main() {
     expect(store.tasks.single['done'], isTrue);
   });
 
+  test('task completion timestamp is recorded and cleared when reopened', () async {
+    final store = await EducationStore.open();
+    await store.addTask({'id': 'task-time', 'title': 'مرور فیزیک', 'done': false});
+    await store.toggleTask('task-time');
+    final completed = store.tasks.single;
+    expect(completed['done'], isTrue);
+    final completedAt = DateTime.tryParse(completed['completedAt']?.toString() ?? '');
+    expect(completedAt, isNotNull);
+    expect(completedAt!.isAfter(DateTime.now().subtract(const Duration(minutes: 1))), isTrue);
+
+    await store.toggleTask('task-time');
+    final reopened = store.tasks.single;
+    expect(reopened['done'], isFalse);
+    expect(reopened.containsKey('completedAt'), isFalse);
+  });
+
   test('concurrent local additions do not overwrite one another', () async {
     final store = await EducationStore.open();
     await Future.wait([store.addTask({'id': 'a'}), store.addTask({'id': 'b'})]);
