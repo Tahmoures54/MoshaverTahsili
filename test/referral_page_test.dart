@@ -10,13 +10,16 @@ void main() {
     expect(find.text('معرفی سیمرغ به دوستان'), findsOneWidget);
     expect(find.text(simorghBazaarUrl), findsOneWidget);
     expect(find.textContaining('سیمرغ؛ مشاور هوشمند تحصیلی'), findsOneWidget);
+    await tester.ensureVisible(find.text('معرفی به دوستان'));
     expect(find.text('معرفی به دوستان'), findsOneWidget);
+    await tester.ensureVisible(find.text('کپی متن و لینک'));
     expect(find.text('کپی متن و لینک'), findsOneWidget);
   });
 
   testWidgets('copy action confirms that the referral text was copied',
       (tester) async {
     await tester.pumpWidget(const MaterialApp(home: ReferralPage()));
+    await tester.ensureVisible(find.text('کپی متن و لینک'));
     await tester.tap(find.text('کپی متن و لینک'));
     await tester.pump();
 
