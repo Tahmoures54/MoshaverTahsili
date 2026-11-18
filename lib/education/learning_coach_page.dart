@@ -51,7 +51,7 @@ LearningCoachPlan buildLearningCoachPlan({
       task['done'] != true && task['dueDate']?.toString() == todayKey)
       .fold<int>(0, (sum, task) {
         final value = task['minutes'];
-        return sum + (value is num && value.isFinite ? value.round().clamp(0, 1440) : 0);
+        return sum + (value is num && value.isFinite ? value.round().clamp(0, 1440).toInt() : 0);
       });
   final available = (cap - todayLoad).clamp(0, cap).toInt();
   final steps = <LearningCoachStep>[];
@@ -240,7 +240,7 @@ class _LearningCoachPageState extends State<LearningCoachPage> {
                   Text('ظرفیت آزاد امروز: ${faNumber(plan.availableMinutes)} دقیقه از ${faNumber(dailyMinutes)} دقیقه'),
                   const SizedBox(height: 6),
                   LinearProgressIndicator(
-                    value: dailyMinutes <= 0 ? 0 : (plan.plannedMinutes / dailyMinutes).clamp(0.0, 1.0),
+                    value: dailyMinutes <= 0 ? 0.0 : (plan.plannedMinutes / dailyMinutes).clamp(0.0, 1.0),
                   ),
                 ]),
               ),
