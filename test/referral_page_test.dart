@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moshaver_tahsili/education/referral_page.dart';
 
@@ -21,8 +22,9 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: ReferralPage()));
     await tester.scrollUntilVisible(find.text('کپی متن و لینک'), 250, scrollable: find.byType(Scrollable).first);
     await tester.tap(find.text('کپی متن و لینک'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.text('متن معرفی و لینک کپی شد.'), findsOneWidget);
+    final clipboard = await Clipboard.getData('text/plain');
+    expect(clipboard?.text, simorghReferralMessage);
   });
 }
