@@ -125,6 +125,26 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('companion pauses its ticker when the home tab is inactive', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SimorghCompanion(
+            tasks: const [],
+            cards: const [],
+            active: false,
+            now: now,
+            onAction: (_) {},
+            onChat: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.widget<TickerMode>(find.byType(TickerMode)).enabled, isFalse);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('companion remains usable on a compact phone width', (tester) async {
     tester.view.physicalSize = const Size(320, 568);
     tester.view.devicePixelRatio = 1;
