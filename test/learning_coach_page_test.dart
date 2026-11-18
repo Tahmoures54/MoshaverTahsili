@@ -66,7 +66,7 @@ void main() {
       exams: const [],
       tasks: [
         {'id': 'today', 'title': 'برنامه قبلی', 'minutes': 55, 'done': false, 'dueDate': '2026-11-18'},
-        {'id': 'same', 'title': 'یک نوبت یادآوری فعال', 'minutes': 15, 'done': false, 'dueDate': '2026-11-18'},
+        {'id': 'same', 'title': 'یک نوبت یادآوری فعال', 'minutes': 0, 'done': false, 'dueDate': '2026-11-18'},
       ],
       cards: const [],
       deadlines: const [],
