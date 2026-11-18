@@ -87,8 +87,7 @@ class EducationStore extends ChangeNotifier {
   Future<void> _initializeSecureData() async {
     for (final key in [...workspaceKeys, walletKey]) {
       final stored = prefs.getString(key);
-      if (stored == null) continue;
-      try {
+      if (stored == null) continue;      try {
         if (stored.startsWith(encryptedPrefix)) {
           _secureData[key] = await cipher.decrypt(stored, key: key);
         } else {
@@ -177,8 +176,7 @@ class EducationStore extends ChangeNotifier {
         if (id.trim().isEmpty) throw const FormatException('Empty token');
         tokens[id] = {
           'productId': _string(item['productId'], 100),
-          'credits': _nonNegativeInt(item['credits']),
-          if (item['createdAt'] != null) 'createdAt': _string(item['createdAt'], 40),
+          'credits': _nonNegativeInt(item['credits']),          if (item['createdAt'] != null) 'createdAt': _string(item['createdAt'], 40),
         };
       });
     }
@@ -267,8 +265,7 @@ class EducationStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Map<String, dynamic> _copyWallet() => _decodeWallet(jsonEncode(_checkedWallet()));
-  String _now() => DateTime.now().toUtc().toIso8601String();
+  Map<String, dynamic> _copyWallet() => _decodeWallet(jsonEncode(_checkedWallet()));  String _now() => DateTime.now().toUtc().toIso8601String();
 
   void _transaction(Map<String, dynamic> wallet, String id, String kind,
       int amount, String title, String status) {
@@ -357,8 +354,7 @@ class EducationStore extends ChangeNotifier {
     request['answer'] = answer;
     if (request['charge'] == 'free') {
       wallet['successful_uses'] = successfulAiUses + 1;
-    }
-    _markTransaction(wallet, (request['transactionId'] as String?) ?? id, 'completed');
+    }    _markTransaction(wallet, (request['transactionId'] as String?) ?? id, 'completed');
     _activeRequests.remove(id);
     await _saveWallet(wallet);
   });
@@ -447,7 +443,6 @@ class EducationStore extends ChangeNotifier {
       throw const LocalDataException('شناسه محلی معتبر نیست.');
     }
   }
-
   Map<String, dynamic>? get profile {
     const key = 'edu.profile';
     final raw = _secureData[key];
@@ -537,8 +532,7 @@ class EducationStore extends ChangeNotifier {
   Future<void> saveMessages(List<Map<String, dynamic>> value) => writeList('edu.messages',
       value.length <= 80 ? value : value.sublist(value.length - 80));
 
-  List<Map<String, dynamic>> get reports => readList('edu.reports');
-  Future<void> addReport(Map<String, dynamic> value) =>
+  List<Map<String, dynamic>> get reports => readList('edu.reports');  Future<void> addReport(Map<String, dynamic> value) =>
       _mutateList('edu.reports', (all) => [value, ...all].take(50).toList());
   Future<void> deleteReport(String id) =>
       _mutateList('edu.reports', (all) => all.where((e) => e['id'] != id).toList());
@@ -627,8 +621,7 @@ class EducationStore extends ChangeNotifier {
   });
 
   /// Replaces the study workspace with a validated backup. Wallet data is never
-  /// touched. If any write fails, the previous workspace is restored.
-  Future<int> importBackup(String raw) => _serialized(() async {
+  /// touched. If any write fails, the previous workspace is restored.  Future<int> importBackup(String raw) => _serialized(() async {
     final data = WorkspaceBackup.decode(raw);
     _dataErrors.removeWhere((key, _) => workspaceKeys.contains(key));
     final previous = <String, String?>{for (final key in workspaceKeys) key: _secureData[key]};
@@ -680,9 +673,9 @@ class CreditProduct {
 /// reference project/Bazaar panel; a public key alone does not verify a catalog.
 class CreditCatalog {
   static const products = [
-    CreditProduct('credit_10', 'بسته برنزی', 10, 'برای شروع و استفاده محدود'),
-    CreditProduct('credit_35', 'بسته نقره‌ای', 25, 'برای استفاده بیشتر'),
-    CreditProduct('credit_90', 'بسته طلایی', 60, 'برای استفاده پرتکرار'),
+    CreditProduct('credit_10', 'بسته برنزی ۱۰۰ اعتبار', 100, '۱۰۰ اعتبار برای شروع و استفاده از مشاور هوشمند'),
+    CreditProduct('credit_35', 'بسته نقره‌ای ۲۶۵ اعتبار', 265, '۲۵۰ اعتبار خریداری‌شده به‌همراه ۱۵ اعتبار هدیه'),
+    CreditProduct('credit_90', 'بسته طلایی ۵۵۰ اعتبار', 550, '۵۰۰ اعتبار خریداری‌شده به‌همراه ۵۰ اعتبار هدیه'),
   ];
   static CreditProduct? byId(String id) {
     for (final product in products) {
