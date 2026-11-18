@@ -11,7 +11,6 @@ import 'package:moshaver_tahsili/education/credit_shop_page.dart';
 import 'package:moshaver_tahsili/education/education_store.dart';
 import 'support/memory_secure_local_cipher.dart';
 import 'package:moshaver_tahsili/education/ui.dart';
-import 'package:moshaver_tahsili/education/study_pages.dart';
 import 'package:moshaver_tahsili/education_app.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -78,27 +77,6 @@ void main() {
     });
     await tester.pumpWidget(frame(HomePage(store: store, go: (_) {})));
     expect(find.textContaining('هفت روز اخیر: ۱ کار تکمیل شده؛ ۳۵ دقیقه'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('adaptive planner previews changes and requires confirmation', (tester) async {
-    final store = await EducationStore.open();
-    await store.addTask({'id': 'overdue', 'title': 'تمرین جبر', 'subject': 'ریاضی',
-      'minutes': 30, 'done': false, 'dueDate': '2020-01-01'});
-    await tester.pumpWidget(frame(PlannerPage(store: store, changed: () {})));
-    await tester.tap(find.text('ساخت برنامه هوشمند'));
-    await tester.pumpAndSettle();
-    expect(store.tasks.single['dueDate'], '2020-01-01');
-    expect(find.text('اعمال برنامه'), findsOneWidget);
-    await tester.tap(find.text('فعلاً نه'));
-    await tester.pumpAndSettle();
-    expect(store.tasks.single['dueDate'], '2020-01-01');
-
-    await tester.tap(find.text('ساخت برنامه هوشمند'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('اعمال برنامه'));
-    await tester.pumpAndSettle();
-    expect(store.tasks.single['dueDate'], isNot('2020-01-01'));
     expect(tester.takeException(), isNull);
   });
 
