@@ -56,6 +56,20 @@ void main() {
     service.dispose();
   });
 
+  test('crisis intent in recent user history also blocks neutral follow-up from provider', () async {
+    var called = false;
+    final service = AiAdvisorService(apiKey: 'test-key', client: MockClient((_) async {
+      called = true;
+      return answer('must not be reached');
+    }));
+    final response = await service.ask(profile: null, history: [
+      {'role': 'user', 'content': 'می‌خوام خودمو بکشم', 'status': 'completed'},
+    ], question: 'الان باید چه کار کنم؟');
+    expect(response, contains('تنها نمان'));
+    expect(called, isFalse);
+    service.dispose();
+  });
+
   test('offline crisis response remains available when provider key is absent', () async {
     var called = false;
     final service = AiAdvisorService(apiKey: '', client: MockClient((_) async {
