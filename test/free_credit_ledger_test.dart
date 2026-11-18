@@ -10,31 +10,34 @@ void main() {
     EducationStore.secureCipherOverride = MemorySecureLocalCipher();
   });
 
-  test('free advisor answers are recorded as free, not as credit deductions', () async {
-    SharedPreferences.setMockInitialValues({});
+  test('new wallet receives five welcome credits once and charges one per successful answer', () async {
     final store = await EducationStore.open();
+    expect(store.credits, 5);
+    expect(store.freeAiUsesRemaining, 0);
+    final welcome = store.creditHistory.single;
+    expect(welcome['kind'], 'bonus');
+    expect(welcome['amount'], 5);
+    final untouchedReopen = await EducationStore.open(preferences: store.prefs);
+    expect(untouchedReopen.credits, 5);
+    expect(untouchedReopen.creditHistory.where((entry) => entry['kind'] == 'bonus'), hasLength(1));
 
-    for (final id in ['free-1', 'free-2']) {
-      final reservation = await store.prepareAiRequest(id: id, question: 'پرسش رایگان');
-      expect(reservation.usesFreeUse, isTrue);
-      await store.completeAiRequest(id, 'پاسخ رایگان');
-    }
+    final reservation = await store.prepareAiRequest(id: 'first', question: 'پرسش اول');
+    expect(reservation.usesFreeUse, isFalse);
+    expect(store.credits, 4);
+    await store.completeAiRequest('first', 'پاسخ معتبر');
+    await store.refundAiRequest('first');
+    expect(store.credits, 4);
+    final reopened = await EducationStore.open(preferences: store.prefs);
+    expect(reopened.credits, 4);
+    expect(reopened.creditHistory.where((entry) => entry['kind'] == 'bonus'), hasLength(1));
+  });
 
-    expect(store.successfulAiUses, 2);
-    expect(store.credits, 0);
-    expect(store.creditHistory.where((entry) => entry['kind'] == 'ai')
-        .map((entry) => entry['amount']), everyElement(0));
-
-    await store.grantProduct(productId: 'credit_10',
-        purchaseToken: 'paid-token', creditsToAdd: 10);
-    final paid = await store.prepareAiRequest(id: 'paid-1', question: 'پرسش پولی');
-    expect(paid.usesFreeUse, isFalse);
-    await store.completeAiRequest('paid-1', 'پاسخ پولی');
-
-    final aiAmounts = store.creditHistory
-        .where((entry) => entry['kind'] == 'ai')
-        .map((entry) => entry['amount']).toList();
-    expect(aiAmounts, [1, 0, 0]);
-    expect(store.credits, 9);
+  test('legacy wallets keep their exact balance and do not receive a retroactive welcome grant', () async {
+    SharedPreferences.setMockInitialValues({
+      EducationStore.walletKey: '{"version":2,"credits":7,"successful_uses":2}',
+    });
+    final store = await EducationStore.open();
+    expect(store.credits, 7);
+    expect(store.creditHistory.where((entry) => entry['kind'] == 'bonus'), isEmpty);
   });
 }

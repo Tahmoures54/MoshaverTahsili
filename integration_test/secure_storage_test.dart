@@ -16,7 +16,7 @@ void main() {
     await store.grantProduct(
       productId: 'credit_10',
       purchaseToken: 'keystore-private-purchase-token',
-      creditsToAdd: 10,
+      creditsToAdd: 100,
     );
 
     final encryptedProfile = prefs.getString('edu.profile')!;
@@ -32,6 +32,6 @@ void main() {
     final reopened = await EducationStore.open(preferences: prefs);
     expect(reopened.profile?['nickname'], 'keystore-private-profile');
     expect(reopened.tasks.single['title'], 'keystore-private-task');
-    expect(reopened.credits, 10);
+    expect(reopened.credits, 105);
   });
 }

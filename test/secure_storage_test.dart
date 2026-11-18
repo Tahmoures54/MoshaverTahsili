@@ -47,13 +47,13 @@ void main() {
     final store = await EducationStore.open();
     await store.saveProfile({'nickname': 'secret-name'});
     await store.addTask({'id': 't2', 'title': 'secret-title'});
-    await store.grantProduct(productId: 'credit_10', purchaseToken: 'purchase-secret', creditsToAdd: 10);
+    await store.grantProduct(productId: 'credit_10', purchaseToken: 'purchase-secret', creditsToAdd: 100);
     expect(store.prefs.getString('edu.profile'), startsWith(EducationStore.encryptedPrefix));
     expect(store.prefs.getString('edu.tasks'), startsWith(EducationStore.encryptedPrefix));
     final wallet = store.prefs.getString(EducationStore.walletKey)!;
     expect(wallet, startsWith(EducationStore.encryptedPrefix));
     expect(wallet, isNot(contains('purchase-secret')));
-    expect(store.walletSnapshot['credits'], 10);
+    expect(store.walletSnapshot['credits'], 105);
   });
   test('preserves a damaged encrypted career draft instead of silently replacing it', () async {
     SharedPreferences.setMockInitialValues({'edu.career.draft': '{broken'});
