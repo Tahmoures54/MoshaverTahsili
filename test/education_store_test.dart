@@ -186,7 +186,7 @@ void main() {
     final store = await EducationStore.open();
     expect(store.credits, 7);
     expect(store.freeAiUsesRemaining, 0);
-    expect(await store.grantProduct(productId: 'credit_10', purchaseToken: 'old-token', creditsToAdd: 100), isFalse);
+    expect(await store.grantProduct(productId: 'credit_10', purchaseToken: 'old-token', creditsToAdd: 1000), isFalse);
     expect(store.credits, 7);
   });
 
