@@ -10,6 +10,7 @@ import 'education/credit_shop_page.dart';
 import 'education/education_store.dart';
 import 'education/learning_engine.dart';
 import 'education/study_pages.dart';
+import 'education/simorgh_companion.dart';
 import 'education/ui.dart';
 
 export 'education/advisor_page.dart';
@@ -251,7 +252,7 @@ class _DashboardState extends State<Dashboard> {
     return Scaffold(appBar: AppBar(title: Text(titles[index], style: const TextStyle(fontWeight: FontWeight.bold)),
         actions: [IconButton(tooltip: 'تنظیمات', onPressed: settings, icon: const Icon(Icons.settings_outlined))]),
       body: IndexedStack(index: index, children: [
-        HomePage(store: widget.store, go: go),
+        HomePage(store: widget.store, go: go, active: index == 0),
         PlannerPage(store: widget.store, changed: refresh),
         ExamsPage(store: widget.store, changed: refresh),
         CardsPage(store: widget.store, changed: refresh),
@@ -268,9 +269,10 @@ class _DashboardState extends State<Dashboard> {
 }
 
 class HomePage extends StatelessWidget {
-  const HomePage({super.key, required this.store, required this.go});
+  const HomePage({super.key, required this.store, required this.go, this.active = false});
   final EducationStore store;
   final ValueChanged<int> go;
+  final bool active;
   void push(BuildContext context, Widget page) => Navigator.push<void>(context, MaterialPageRoute(builder: (_) => page));
 
   @override
@@ -311,6 +313,19 @@ class HomePage extends StatelessWidget {
       ]),
       const SizedBox(height: 12),
       NoticeCard(text: 'هفت روز اخیر: ${faNumber(completed.length)} کار تکمیل شده؛ ${faNumber(minutes)} دقیقه زمان برای این کارها برنامه‌ریزی شده است.', icon: Icons.insights_outlined),
+      const SizedBox(height: 12),
+      SimorghCompanion(
+        tasks: tasks,
+        cards: store.cards,
+        grade: profile['grade']?.toString() ?? '',
+        active: active,
+        onAction: (action) => go(switch (action) {
+          SimorghAction.planner => 1,
+          SimorghAction.review => 3,
+          SimorghAction.advisor => 4,
+        }),
+        onChat: () => go(4),
+      ),
       for (final tip in suggestions) NoticeCard(text: tip, icon: Icons.lightbulb_outline),
       const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('از کجا شروع کنیم؟', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
       QuickTile(icon: Icons.auto_awesome, title: 'گفت‌وگو با مشاور هوشمند', subtitle: 'پرسش، برنامه مطالعه و روش بهبود', onTap: () => go(4)),
