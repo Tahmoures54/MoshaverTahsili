@@ -25,6 +25,9 @@ void main() {
     await tester.tap(find.text('ذخیره پروفایل'));
     await tester.pumpAndSettle();
     expect(find.text('سلام دانش‌آموز آزمون!'), findsOneWidget);
+    final encryptedProfile = prefs.getString('edu.profile')!;
+    expect(encryptedProfile, startsWith(EducationStore.encryptedPrefix));
+    expect(encryptedProfile, isNot(contains('دانش‌آموز آزمون')));
 
     await tester.tap(find.byIcon(Icons.calendar_month_outlined));
     await tester.pumpAndSettle();
@@ -60,6 +63,8 @@ void main() {
     final store = await EducationStore.open();
     expect(store.profile?['year'], 'هفتم');
     expect(store.tasks.single['title'], 'مرور ریاضی');
+    expect(prefs.getString('edu.tasks'), startsWith(EducationStore.encryptedPrefix));
+    expect(prefs.getString(EducationStore.walletKey), isNull);
     expect(store.exams.single['score'], 17);
     expect(store.credits, 0);
     expect(store.freeAiUsesRemaining, 2);

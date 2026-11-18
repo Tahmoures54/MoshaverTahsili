@@ -7,23 +7,23 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'learning_engine.dart';
 
 abstract interface class SecureLocalCipher {
-  Future<String> encrypt(String plaintext);
-  Future<String> decrypt(String ciphertext);
+  Future<String> encrypt(String plaintext, {required String key});
+  Future<String> decrypt(String ciphertext, {required String key});
 }
 
 class AndroidKeystoreCipher implements SecureLocalCipher {
   const AndroidKeystoreCipher();
   static const _channel = MethodChannel('ir.moshaver.tahsili/secure_storage');
   @override
-  Future<String> encrypt(String plaintext) async {
-    final value = await _channel.invokeMethod<String>('encrypt', {'plaintext': plaintext});
-    if (value == null || !value.startsWith('enc:v1:')) throw const LocalDataException('رمزنگاری اطلاعات محلی پاسخ معتبر نداد.');
+  Future<String> encrypt(String plaintext, {required String key}) async {
+    final value = await _channel.invokeMethod<String>('encrypt', {'plaintext': plaintext, 'key': key});
+    if (value == null || !value.startsWith('enc:v2:')) throw const LocalDataException('رمزنگاری اطلاعات محلی پاسخ معتبر نداد.');
     return value;
   }
   @override
-  Future<String> decrypt(String ciphertext) async {
-    if (!ciphertext.startsWith('enc:v1:')) throw const LocalDataException('نسخه رمزنگاری اطلاعات محلی پشتیبانی نمی‌شود.');
-    final value = await _channel.invokeMethod<String>('decrypt', {'ciphertext': ciphertext});
+  Future<String> decrypt(String ciphertext, {required String key}) async {
+    if (!ciphertext.startsWith('enc:v2:')) throw const LocalDataException('نسخه رمزنگاری اطلاعات محلی پشتیبانی نمی‌شود.');
+    final value = await _channel.invokeMethod<String>('decrypt', {'ciphertext': ciphertext, 'key': key});
     if (value == null) throw const LocalDataException('رمزگشایی اطلاعات محلی ناموفق بود.');
     return value;
   }
@@ -53,7 +53,7 @@ class EducationStore extends ChangeNotifier {
   final SecureLocalCipher cipher;
   final Map<String, String> _secureData = {};
   static SecureLocalCipher? secureCipherOverride;
-  static const encryptedPrefix = 'enc:v1:';
+  static const encryptedPrefix = 'enc:v2:';
   String? get walletRaw => _secureData[walletKey];
   Map<String, dynamic> get walletSnapshot => _decodeWallet(jsonEncode(_checkedWallet()));
   static const walletKey = 'edu.ai.wallet';
@@ -90,10 +90,10 @@ class EducationStore extends ChangeNotifier {
       if (stored == null) continue;
       try {
         if (stored.startsWith(encryptedPrefix)) {
-          _secureData[key] = await cipher.decrypt(stored);
+          _secureData[key] = await cipher.decrypt(stored, key: key);
         } else {
-          final encrypted = await cipher.encrypt(stored);
-          if (await cipher.decrypt(encrypted) != stored) throw const LocalDataException('اعتبارسنجی رمزنگاری اطلاعات قدیمی ناموفق بود.');
+          final encrypted = await cipher.encrypt(stored, key: key);
+          if (await cipher.decrypt(encrypted, key: key) != stored) throw const LocalDataException('اعتبارسنجی رمزنگاری اطلاعات قدیمی ناموفق بود.');
           if (!await prefs.setString(key, encrypted)) throw const LocalDataException('مهاجرت امن اطلاعات ذخیره نشد؛ داده قبلی حفظ شد.');
           _secureData[key] = stored;
         }
@@ -113,8 +113,8 @@ class EducationStore extends ChangeNotifier {
 
   Future<void> _writeSecure(String key, String plaintext) async {
     if (_dataErrors.containsKey(key)) throw LocalDataException(_dataErrors[key]!);
-    final encrypted = await cipher.encrypt(plaintext);
-    if (await cipher.decrypt(encrypted) != plaintext) throw const LocalDataException('اعتبارسنجی رمزنگاری اطلاعات ناموفق بود؛ داده قبلی حفظ شد.');
+    final encrypted = await cipher.encrypt(plaintext, key: key);
+    if (await cipher.decrypt(encrypted, key: key) != plaintext) throw const LocalDataException('اعتبارسنجی رمزنگاری اطلاعات ناموفق بود؛ داده قبلی حفظ شد.');
     if (!await prefs.setString(key, encrypted)) throw const LocalDataException('ذخیره امن اطلاعات انجام نشد. داده قبلی حفظ شد.');
     _secureData[key] = plaintext;
   }

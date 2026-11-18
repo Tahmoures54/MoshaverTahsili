@@ -31,8 +31,8 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 try {
                     when (call.method) {
-                        "encrypt" -> result.success(encryptLocalData(call.argument<String>("plaintext") ?: throw IllegalArgumentException("متن ارسال نشده است.")))
-                        "decrypt" -> result.success(decryptLocalData(call.argument<String>("ciphertext") ?: throw IllegalArgumentException("داده رمزنگاری‌شده ارسال نشده است.")))
+                        "encrypt" -> result.success(encryptLocalData(call.argument<String>("plaintext") ?: throw IllegalArgumentException("متن ارسال نشده است."), call.argument<String>("key") ?: throw IllegalArgumentException("کلید داده ارسال نشده است.")))
+                        "decrypt" -> result.success(decryptLocalData(call.argument<String>("ciphertext") ?: throw IllegalArgumentException("داده رمزنگاری‌شده ارسال نشده است."), call.argument<String>("key") ?: throw IllegalArgumentException("کلید داده ارسال نشده است.")))
                         else -> result.notImplemented()
                     }
                 } catch (error: Exception) {
@@ -88,22 +88,26 @@ class MainActivity : FlutterActivity() {
         return generator.generateKey()
     }
 
-    private fun encryptLocalData(plaintext: String): String {
+    private fun encryptLocalData(plaintext: String, storageKey: String): String {
         require(plaintext.toByteArray(Charsets.UTF_8).size <= MAX_LOCAL_VALUE_BYTES) { "اطلاعات بیش از اندازه مجاز است." }
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, localEncryptionKey())
+        require(storageKey.length <= 256) { "شناسه فضای ذخیره‌سازی معتبر نیست." }
+        cipher.updateAAD(storageKey.toByteArray(Charsets.UTF_8))
         val encrypted = cipher.doFinal(plaintext.toByteArray(Charsets.UTF_8))
-        return ENCRYPTED_PREFIX + Base64.encodeToString(byteArrayOf(1) + cipher.iv + encrypted, Base64.NO_WRAP)
+        return ENCRYPTED_PREFIX + Base64.encodeToString(byteArrayOf(2) + cipher.iv + encrypted, Base64.NO_WRAP)
     }
 
-    private fun decryptLocalData(value: String): String {
+    private fun decryptLocalData(value: String, storageKey: String): String {
         require(value.startsWith(ENCRYPTED_PREFIX)) { "نسخه داده رمزنگاری‌شده معتبر نیست." }
+        require(storageKey.length <= 256) { "شناسه فضای ذخیره‌سازی معتبر نیست." }
         val payload = Base64.decode(value.removePrefix(ENCRYPTED_PREFIX), Base64.NO_WRAP)
-        require(payload.size > 1 + GCM_IV_BYTES + GCM_TAG_BYTES && payload[0].toInt() == 1) { "ساختار داده رمزنگاری‌شده معتبر نیست." }
+        require(payload.size > 1 + GCM_IV_BYTES + GCM_TAG_BYTES && payload[0].toInt() == 2) { "ساختار داده رمزنگاری‌شده معتبر نیست." }
         val iv = payload.copyOfRange(1, 1 + GCM_IV_BYTES)
         val encrypted = payload.copyOfRange(1 + GCM_IV_BYTES, payload.size)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.DECRYPT_MODE, localEncryptionKey(), GCMParameterSpec(GCM_TAG_BITS, iv))
+        cipher.updateAAD(storageKey.toByteArray(Charsets.UTF_8))
         return String(cipher.doFinal(encrypted), Charsets.UTF_8)
     }
 
@@ -178,7 +182,7 @@ class MainActivity : FlutterActivity() {
         private const val BACKUP_CHANNEL = "ir.moshaver.tahsili/backup"
         private const val SECURE_CHANNEL = "ir.moshaver.tahsili/secure_storage"
         private const val LOCAL_DATA_KEY_ALIAS = "simorgh.local.data.aes.v1"
-        private const val ENCRYPTED_PREFIX = "enc:v1:"
+        private const val ENCRYPTED_PREFIX = "enc:v2:"
         private const val MAX_LOCAL_VALUE_BYTES = 4 * 1024 * 1024
         private const val GCM_IV_BYTES = 12
         private const val GCM_TAG_BITS = 128

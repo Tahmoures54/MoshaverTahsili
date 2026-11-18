@@ -36,7 +36,7 @@ void main() {
   });
 
   test('refuses tampered ciphertext without replacing the stored value', () async {
-    SharedPreferences.setMockInitialValues({'edu.profile': 'enc:v1:not-valid-base64!'});
+    SharedPreferences.setMockInitialValues({'edu.profile': 'enc:v2:not-valid-base64!'});
     final prefs = await SharedPreferences.getInstance();
     final before = prefs.getString('edu.profile');
     await expectLater(EducationStore.open(preferences: prefs), throwsA(isA<LocalDataException>()));
