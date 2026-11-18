@@ -76,7 +76,7 @@ void main() {
     expect(store.credits, 100);
     expect(store.creditHistory.single['kind'], 'purchase');
     expect(gateway.consumes, 1);
-    expect((await EducationStore.open(preferences: store.prefs)).credits, 10);
+    expect((await EducationStore.open(preferences: store.prefs)).credits, 100);
   });
 
   test('failed consumption keeps credit; restore retries without double credit', () async {
