@@ -27,7 +27,7 @@ for attempt in $(seq 1 20); do
 done
 if [[ -z "$pid" ]]; then
   adb logcat -d -b crash > "$report_dir/crash-log.txt"
-  echo "Release application process did not stay alive after launch" | tee "$report_dir/result.txt"
+  echo "Debug smoke-test application process did not stay alive after launch" | tee "$report_dir/result.txt"
   exit 1
 fi
 
@@ -35,8 +35,8 @@ sleep 3
 adb exec-out screencap -p > "$report_dir/launch.png"
 adb logcat -d -b crash > "$report_dir/crash-log.txt"
 if grep -q 'FATAL EXCEPTION' "$report_dir/crash-log.txt"; then
-  echo "Fatal Android exception detected" | tee "$report_dir/result.txt"
+  echo "Fatal Android exception detected during debug smoke test" | tee "$report_dir/result.txt"
   exit 1
 fi
 
-printf 'Disposable debug APK installed, launched, and remained alive on Android emulator (physical-device and payment tests remain manual).\n' | tee "$report_dir/result.txt"
+printf 'Disposable debug APK installed, launched, and remained alive on Android emulator (release APK is built and signature-verified separately) (physical-device and payment tests remain manual).\n' | tee "$report_dir/result.txt"
