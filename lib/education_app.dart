@@ -31,7 +31,7 @@ class _EducationAppState extends State<EducationApp> {
   void initState() { super.initState(); future = widget.store == null ? EducationStore.open() : Future.value(widget.store); }
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'مشاور هوشمند تحصیلی', debugShowCheckedModeBanner: false,
+    title: 'سیمرغ | مشاور هوشمند تحصیلی', debugShowCheckedModeBanner: false,
     locale: const Locale('fa'), supportedLocales: const [Locale('fa'), Locale('en')],
     localizationsDelegates: GlobalMaterialLocalizations.delegates,
     theme: buildAppTheme(),
@@ -164,12 +164,14 @@ class _EntryScreenState extends State<EntryScreen> {
     return Scaffold(body: SafeArea(child: Center(child: SingleChildScrollView(
       padding: const EdgeInsets.all(22), child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 500), child: Column(children: [
         const SizedBox(height: 16),
-        Container(width: 92, height: 92, decoration: BoxDecoration(color: blue.withValues(alpha: .1), borderRadius: BorderRadius.circular(28)),
-            child: const Icon(Icons.school_rounded, color: blue, size: 54)),
-        const SizedBox(height: 20),
-        const Text('مشاور هوشمند تحصیلی', textAlign: TextAlign.center, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: navy)),
-        const SizedBox(height: 8),
-        const Text('قدم‌های کوچک، یادگیری عمیق‌تر', textAlign: TextAlign.center, style: TextStyle(color: Colors.blueGrey)),
+        const SimorghMark(size: 116),
+        const SizedBox(height: 18),
+        const Text('سیمرغ', textAlign: TextAlign.center, style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: navy)),
+        const SizedBox(height: 6),
+        const Text('همراه دانای راه آینده', textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: teal)),
+        const SizedBox(height: 5),
+        const Text('مشاور هوشمند تحصیلی', textAlign: TextAlign.center, style: TextStyle(color: Colors.blueGrey)),
         const SizedBox(height: 24),
         Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('سخنی با اولیا و دانش‌آموزان گرامی', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
