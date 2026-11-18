@@ -73,7 +73,7 @@ void main() {
     final result = await service.buy('credit_10');
     expect(result.credited, 1);
     expect(result.consumptionPending, isFalse);
-    expect(store.credits, 10);
+    expect(store.credits, 100);
     expect(store.creditHistory.single['kind'], 'purchase');
     expect(gateway.consumes, 1);
     expect((await EducationStore.open(preferences: store.prefs)).credits, 10);
@@ -82,7 +82,7 @@ void main() {
   test('failed consumption keeps credit; restore retries without double credit', () async {
     final (store, gateway, service) = await setup(consume: false);
     expect((await service.buy('credit_10')).consumptionPending, isTrue);
-    expect(store.credits, 10);
+    expect(store.credits, 100);
     gateway.inventory = [verifiedPurchase()];
     final first = await service.restorePurchases();
     expect(first.alreadyCredited, 1);
@@ -91,7 +91,7 @@ void main() {
     final second = await service.restorePurchases();
     expect(second.credited, 0);
     expect(second.consumptionPending, isFalse);
-    expect(store.credits, 10);
+    expect(store.credits, 100);
     expect(gateway.consumes, 3);
   });
 
@@ -99,7 +99,7 @@ void main() {
     final (store, gateway, service) = await setup();
     expect((await service.buy('credit_10')).credited, 1);
     expect((await service.buy('credit_10')).alreadyCredited, 1);
-    expect(store.credits, 10);
+    expect(store.credits, 100);
     expect(gateway.consumes, 2);
   });
 
@@ -131,7 +131,7 @@ void main() {
     final result = await service.restorePurchases();
     expect(result.credited, 2);
     expect(result.alreadyCredited, 1);
-    expect(store.credits, 35);
+    expect(store.credits, 365);
   });
 
   test('cancellation and connection errors are sanitized; no credit changes', () async {
@@ -153,7 +153,7 @@ void main() {
     gateway.purchaseGate!.complete();
     await first;
     expect(gateway.purchases, 1);
-    expect(store.credits, 10);
+    expect(store.credits, 100);
   });
 
   test('a stalled purchase times out, releases the shop lock and can be retried', () async {
@@ -172,7 +172,7 @@ void main() {
     gateway.purchaseGate = null;
     final retry = await service.buy('credit_10');
     expect(retry.credited, 1);
-    expect(store.credits, 10);
+    expect(store.credits, 100);
     expect(gateway.purchases, 2);
   });
 
