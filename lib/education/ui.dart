@@ -3,10 +3,11 @@ import 'ai_advisor_service.dart';
 import 'bazaar_billing_service.dart';
 import 'education_store.dart';
 
-const navy = Color(0xFF17324D);
-const blue = Color(0xFF2867A8);
-const teal = Color(0xFF217E75);
-const pale = Color(0xFFF4F7FB);
+const navy = Color(0xFF142D4E);
+const blue = Color(0xFF236B9A);
+const teal = Color(0xFF20B8AE);
+const pale = Color(0xFFF5F8FC);
+const simorghGold = Color(0xFFF2BE58);
 
 String faNumber(Object? value) {
   var text = value?.toString() ?? '';
@@ -37,7 +38,7 @@ void showMessage(BuildContext context, String message) {
 }
 
 ThemeData buildAppTheme() {
-  final scheme = ColorScheme.fromSeed(seedColor: blue, primary: blue, secondary: teal);
+  final scheme = ColorScheme.fromSeed(seedColor: navy, primary: navy, secondary: teal, tertiary: simorghGold);
   final base = ThemeData(useMaterial3: true, colorScheme: scheme, scaffoldBackgroundColor: pale);
   return base.copyWith(
     textTheme: base.textTheme.apply(fontFamily: 'Vazirmatn', bodyColor: navy, displayColor: navy),
@@ -50,7 +51,7 @@ ThemeData buildAppTheme() {
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFD8E2ED)))),
     navigationBarTheme: NavigationBarThemeData(backgroundColor: Colors.white, indicatorColor: blue.withValues(alpha: .12),
         labelTextStyle: WidgetStatePropertyAll(base.textTheme.labelSmall?.copyWith(fontFamily: 'Vazirmatn', fontWeight: FontWeight.w600))),
-    filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(minimumSize: const Size(48, 48),
+    filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(backgroundColor: teal, foregroundColor: navy, minimumSize: const Size(48, 48),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)))),
     snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
   );
@@ -126,4 +127,83 @@ class LoadingPage extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(body: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
     const CircularProgressIndicator(), const SizedBox(height: 20), Text(message),
   ])));
+}
+
+
+/// Brand mark for Simorgh: a rising, guiding bird inspired by the Shahnameh.
+class SimorghMark extends StatelessWidget {
+  const SimorghMark({super.key, this.size = 96, this.compact = false});
+  final double size;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    padding: EdgeInsets.all(size * .13),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF1D4770), Color(0xFF10233F)],
+      ),
+      borderRadius: BorderRadius.circular(size * (compact ? .28 : .31)),
+      border: Border.all(color: simorghGold.withValues(alpha: .55), width: 1),
+      boxShadow: [BoxShadow(color: navy.withValues(alpha: .18), blurRadius: 18, offset: const Offset(0, 7))],
+    ),
+    child: CustomPaint(painter: _SimorghMarkPainter()),
+  );
+}
+
+class _SimorghMarkPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final gold = Paint()..color = simorghGold..style = PaintingStyle.fill;
+    final tealPaint = Paint()..color = teal..style = PaintingStyle.fill;
+    final cream = Paint()..color = const Color(0xFFFFE8B2)..style = PaintingStyle.fill;
+
+    final leftWing = Path()
+      ..moveTo(size.width * .48, size.height * .43)
+      ..cubicTo(size.width * .26, size.height * .04, size.width * .04, size.height * .10, size.width * .08, size.height * .27)
+      ..cubicTo(size.width * .17, size.height * .23, size.width * .23, size.height * .35, size.width * .28, size.height * .42)
+      ..cubicTo(size.width * .17, size.height * .34, size.width * .11, size.height * .43, size.width * .15, size.height * .53)
+      ..cubicTo(size.width * .27, size.height * .48, size.width * .34, size.height * .54, size.width * .45, size.height * .60)
+      ..close();
+    canvas.drawPath(leftWing, gold);
+
+    final rightWing = Path()
+      ..moveTo(size.width * .52, size.height * .43)
+      ..cubicTo(size.width * .74, size.height * .04, size.width * .96, size.height * .10, size.width * .92, size.height * .27)
+      ..cubicTo(size.width * .83, size.height * .23, size.width * .77, size.height * .35, size.width * .72, size.height * .42)
+      ..cubicTo(size.width * .83, size.height * .34, size.width * .89, size.height * .43, size.width * .85, size.height * .53)
+      ..cubicTo(size.width * .73, size.height * .48, size.width * .66, size.height * .54, size.width * .55, size.height * .60)
+      ..close();
+    canvas.drawPath(rightWing, tealPaint);
+
+    final body = Path()
+      ..moveTo(size.width * .48, size.height * .35)
+      ..cubicTo(size.width * .40, size.height * .50, size.width * .43, size.height * .70, size.width * .57, size.height * .82)
+      ..cubicTo(size.width * .57, size.height * .68, size.width * .67, size.height * .57, size.width * .64, size.height * .45)
+      ..cubicTo(size.width * .61, size.height * .35, size.width * .54, size.height * .30, size.width * .48, size.height * .35)
+      ..close();
+    canvas.drawPath(body, cream);
+
+    final head = Path()
+      ..moveTo(size.width * .48, size.height * .37)
+      ..cubicTo(size.width * .42, size.height * .25, size.width * .47, size.height * .15, size.width * .58, size.height * .17)
+      ..cubicTo(size.width * .68, size.height * .19, size.width * .68, size.height * .29, size.width * .60, size.height * .35)
+      ..lineTo(size.width * .55, size.height * .43)
+      ..close();
+    canvas.drawPath(head, gold);
+    final beak = Path()
+      ..moveTo(size.width * .65, size.height * .22)
+      ..lineTo(size.width * .79, size.height * .26)
+      ..lineTo(size.width * .65, size.height * .30)
+      ..close();
+    canvas.drawPath(beak, tealPaint);
+    canvas.drawCircle(Offset(size.width * .60, size.height * .23), size.width * .018, Paint()..color = navy);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
