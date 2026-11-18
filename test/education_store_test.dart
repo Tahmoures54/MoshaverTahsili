@@ -60,16 +60,16 @@ void main() {
   test('credits a valid pack once, including concurrent duplicate delivery', () async {
     final store = await EducationStore.open();
     final results = await Future.wait(List.generate(2, (_) => store.grantProduct(
-        productId: 'credit_10', purchaseToken: 'token-1', creditsToAdd: 10)));
+        productId: 'credit_10', purchaseToken: 'token-1', creditsToAdd: 100)));
     expect(results.where((value) => value), hasLength(1));
-    expect(store.credits, 10);
+    expect(store.credits, 100);
     expect(store.creditHistory, hasLength(1));
-    expect((await EducationStore.open(preferences: store.prefs)).credits, 10);
+    expect((await EducationStore.open(preferences: store.prefs)).credits, 100);
   });
 
   test('rejects guessed products, mismatched amounts and empty tokens', () async {
     final store = await EducationStore.open();
-    await expectLater(store.grantProduct(productId: 'guessed', purchaseToken: 't', creditsToAdd: 10), throwsA(isA<LocalDataException>()));
+    await expectLater(store.grantProduct(productId: 'guessed', purchaseToken: 't', creditsToAdd: 100), throwsA(isA<LocalDataException>()));
     await expectLater(store.grantProduct(productId: 'credit_10', purchaseToken: 't', creditsToAdd: 999), throwsA(isA<LocalDataException>()));
     await expectLater(store.grantProduct(productId: 'credit_10', purchaseToken: '', creditsToAdd: 10), throwsA(isA<LocalDataException>()));
     expect(store.credits, 0);
@@ -78,16 +78,17 @@ void main() {
 
   test('two successful free uses then one credit per success; never negative', () async {
     final store = await EducationStore.open();
-    expect(store.freeAiUsesRemaining, 2);
-    expect(await store.recordSuccessfulAiUse(requestId: 'f1'), isTrue);
-    expect(await store.recordSuccessfulAiUse(requestId: 'f2'), isTrue);
-    expect(await store.recordSuccessfulAiUse(requestId: 'f3'), isFalse);
+    expect(store.freeAiUsesRemaining, 5);
+    for (var index = 1; index <= 5; index++) {
+      expect(await store.recordSuccessfulAiUse(requestId: 'f$index'), isTrue);
+    }
+    expect(await store.recordSuccessfulAiUse(requestId: 'f6'), isFalse);
     expect(store.credits, 0);
     expect(store.canUseAi, isFalse);
-    await store.grantProduct(productId: 'credit_10', purchaseToken: 't2', creditsToAdd: 10);
+    await store.grantProduct(productId: 'credit_10', purchaseToken: 't2', creditsToAdd: 100);
     expect(await store.recordSuccessfulAiUse(requestId: 'paid'), isTrue);
     expect(await store.recordSuccessfulAiUse(requestId: 'paid'), isFalse);
-    expect(store.credits, 9);
+    expect(store.credits, 99);
   });
 
   test('concurrent reservations cannot overdraw a single credit', () async {
