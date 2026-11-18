@@ -39,4 +39,11 @@ if grep -q 'FATAL EXCEPTION' "$report_dir/crash-log.txt"; then
   exit 1
 fi
 
+device_id="$(adb devices | awk 'NR > 1 && $2 == "device" { print $1; exit }')"
+if [[ -z "$device_id" ]]; then
+  echo "No ready Android emulator was found for the secure-storage integration test" | tee "$report_dir/secure-storage-integration.txt"
+  exit 1
+fi
+flutter test integration_test/secure_storage_test.dart -d "$device_id" --reporter expanded 2>&1 | tee "$report_dir/secure-storage-integration.txt"
+
 printf 'Disposable debug APK installed, launched, and remained alive on Android emulator (release APK is built and signature-verified separately) (physical-device and payment tests remain manual).\n' | tee "$report_dir/result.txt"
