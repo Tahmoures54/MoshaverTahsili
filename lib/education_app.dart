@@ -333,9 +333,14 @@ class QuickTile extends StatelessWidget {
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('درباره مشاور تحصیلی')),
+  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('درباره سیمرغ')),
     body: ListView(padding: const EdgeInsets.all(16), children: const [
-      NoticeCard(text: '$appVersionLabel\nشناسه برنامه: ir.moshaver.tahsili', icon: Icons.school_outlined),
+      Center(child: SimorghMark(size: 104)),
+      SizedBox(height: 14),
+      Center(child: Text('سیمرغ', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: navy))),
+      Center(child: Text('همراه دانای راه آینده', style: TextStyle(color: teal, fontWeight: FontWeight.w700))),
+      SizedBox(height: 14),
+      NoticeCard(text: '$appVersionLabel\nشناسه برنامه: ir.moshaver.tahsili', icon: Icons.auto_awesome),
       NoticeCard(text: 'اطلاعات تحصیلی و کیف اعتبار محلی هستند و به حساب کاربری یا سرور اختصاصی فرستاده نمی‌شوند. '
           'فقط درخواست‌های هوش مصنوعی و عملیات خرید بازار به اینترنت نیاز دارند. متن پرسش، بخشی از گفت‌وگو و اطلاعات تحصیلیِ اعلام‌شده در هر درخواست با سرویس هوش مصنوعی به اشتراک گذاشته می‌شوند.'),
       NoticeCard(text: 'اعتبار و خریدها با امضای بازار و دفتر محلی بررسی می‌شوند، اما این بررسی جایگزین اعتبارسنجی سمت سرور نیست. '
