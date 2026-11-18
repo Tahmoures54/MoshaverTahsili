@@ -14,9 +14,9 @@ class AiSafetyPolicy {
   AiSafetyPolicy._();
 
   static final RegExp _explicitIntent = RegExp(
-    r'(?:می\s*خوام|می\s*خواهم|قصد\s*دارم|تصمیم\s*دارم|کاش)\s*.{0,35}(?:خودکشی\s*کنم|خودم\s*را\s*بکشم|خودمو\s*بکشم|به\s*خودم\s*(?:آسیب|صدمه)\s*بزنم|به\s*زندگی\s*ام\s*پایان|بمیرم)|'
-    r'(?:دیگه\s*نمی\s*خوام\s*زنده\s*باشم|نمی\s*خوام\s*زنده\s*بمونم|کاش\s*مرده\s*بودم)|'
-    r'\b(?:i\s*want\s*to\s*die|want\s*to\s*kill\s*myself|kill\s*myself|end\s*my\s*life|hurt\s*myself|self[- ]harm)\b',
+    r'(?:می\s*خوام|می\s*خواهم|قصد\s*دارم|تصمیم\s*دارم|کاش|فکر\s*می\s*کنم|به\s*این\s*فکر\s*می\s*کنم)\s*.{0,45}(?:خودکشی\s*(?:کنم|کردم)|اقدام\s*به\s*خودکشی|خودم\s*را\s*بکشم|خودمو\s*بکشم|به\s*خودم\s*(?:آسیب|صدمه)\s*(?:بزنم|می\s*زنم|زدم)|به\s*زندگی\s*(?:ام|م)\s*پایان|بمیرم)|'
+    r'(?:به\s*خودم\s*(?:آسیب|صدمه)\s*(?:می\s*زنم|زدم)|خودزنی\s*(?:کنم|می\s*کنم|کردم)|دیگه\s*نمی\s*خوام\s*زنده\s*باشم|نمی\s*خوام\s*زنده\s*بمونم|کاش\s*مرده\s*بودم)|'
+    r'\b(?:i\s*want\s*to\s*die|want\s*to\s*kill\s*myself|kill\s*myself|end\s*my\s*life|hurt\s*myself|self[- ]harm|suicidal)\b',
     caseSensitive: false,
   );
 
