@@ -277,7 +277,7 @@ class _SimorghCompanionPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final unit = math.min(size.width, size.height);
+    final unit = math.min(size.width, size.height).toDouble();
     final center = Offset(size.width * 0.5, size.height * 0.55);
     final bob = math.sin(phase * math.pi) * unit * 0.025;
     final wingLift = (math.sin(phase * math.pi * 2) * 0.12) +
