@@ -154,7 +154,7 @@ class _PlanReportDialog extends StatelessWidget {
   const _PlanReportDialog({required this.plan});
   final AdaptivePlan plan;
   @override
-  Widget build(BuildContext context) => AlertDialog(title: const Text('برنامه هوشمند ساخته شد'),
+  Widget build(BuildContext context) => AlertDialog(title: const Text('پیش‌نمایش برنامه هوشمند'),
     content: SizedBox(width: 420, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('${faNumber(plan.assignments.length)} کار زمان‌بندی شد.'),
