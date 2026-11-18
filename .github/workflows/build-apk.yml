@@ -18,7 +18,8 @@ permissions:
 
 concurrency:
   group: android-${{ github.ref }}
-  cancel-in-progress: false
+  # A newer commit supersedes older CI runs on the same ref.
+  cancel-in-progress: true
 
 jobs:
   validate-and-build:
