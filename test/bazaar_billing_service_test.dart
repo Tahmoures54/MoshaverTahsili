@@ -74,7 +74,8 @@ void main() {
     expect(result.credited, 1);
     expect(result.consumptionPending, isFalse);
     expect(store.credits, 105);
-    expect(store.creditHistory.single['kind'], 'purchase');
+    expect(store.creditHistory.first['kind'], 'purchase');
+    expect(store.creditHistory, hasLength(2));
     expect(gateway.consumes, 1);
     expect((await EducationStore.open(preferences: store.prefs)).credits, 105);
   });
@@ -180,6 +181,8 @@ void main() {
     final (_, _, service) = await setup();
     final products = await service.loadProducts();
     expect(products, hasLength(3));
+    expect(products.map((item) => item.product.id), ['credit_10', 'credit_35', 'credit_90']);
+    expect(products.map((item) => item.product.credits), [100, 265, 550]);
     expect(products.every((product) => product.price == 'قیمت آزمایشی بازار'), isTrue);
   });
 }
