@@ -30,6 +30,7 @@ SimorghGuidance buildSimorghGuidance({
   required List<Map<String, dynamic>> tasks,
   required List<Map<String, dynamic>> cards,
   DateTime? now,
+  String grade = '',
 }) {
   final today = now ?? DateTime.now();
   final day = DateTime(today.year, today.month, today.day);
@@ -55,11 +56,17 @@ SimorghGuidance buildSimorghGuidance({
   }).length;
 
   final pendingTasks = tasks.where((task) => task['done'] != true).length;
+  final isPrimary = grade == 'ابتدایی';
+  final isOlderStudent = grade == 'متوسطه دوم' || grade == 'دانش‌آموز کنکوری' || grade == 'دانشجو';
 
   if (overdueTasks > 0) {
     return SimorghGuidance(
       title: 'لازم نیست همه‌چیز را یک‌جا حل کنی',
-      message: '${faNumber(overdueTasks)} کار از زمان برنامه‌ریزی‌شده گذشته. بیا یکی را انتخاب کنیم و اگر لازم بود برنامه را واقع‌بینانه‌تر بچینیم.',
+      message: isPrimary
+          ? '${faNumber(overdueTasks)} کار هنوز مانده. بیا یکی را با هم انتخاب کنیم و قدم‌به‌قدم پیش برویم.'
+          : isOlderStudent
+              ? '${faNumber(overdueTasks)} کار از برنامه عقب مانده است. یکی را اولویت‌بندی کن یا زمان‌بندی را واقع‌بینانه‌تر تنظیم کن.'
+              : '${faNumber(overdueTasks)} کار از زمان برنامه‌ریزی‌شده گذشته. بیا یکی را انتخاب کنیم و اگر لازم بود برنامه را واقع‌بینانه‌تر بچینیم.',
       actionLabel: 'مرتب‌کردن برنامه',
       action: SimorghAction.planner,
       mood: SimorghMood.gentle,
@@ -69,7 +76,9 @@ SimorghGuidance buildSimorghGuidance({
   if (dueCards > 0) {
     return SimorghGuidance(
       title: 'وقت یک مرور کوتاه است',
-      message: '${faNumber(dueCards)} فلش‌کارت برای مرور آماده است. چند دقیقه بازیابی از حافظه می‌تواند یادگیری را ماندگارتر کند.',
+      message: isPrimary
+          ? '${faNumber(dueCards)} کارت برای مرور آماده است. بیا چندتایشان را با هم یادآوری کنیم.'
+          : '${faNumber(dueCards)} فلش‌کارت برای مرور آماده است. چند دقیقه بازیابی از حافظه می‌تواند یادگیری را ماندگارتر کند.',
       actionLabel: 'شروع مرور',
       action: SimorghAction.review,
       mood: SimorghMood.thinking,
@@ -79,7 +88,9 @@ SimorghGuidance buildSimorghGuidance({
   if (completedToday > 0) {
     return SimorghGuidance(
       title: 'یک قدم واقعی برداشتی!',
-      message: 'امروز ${faNumber(completedToday)} کار را به پایان رساندی. همین پیشرفت‌های کوچک را حفظ کن؛ حالا می‌توانی برای قدم بعدی تصمیم بگیری.',
+      message: isPrimary
+          ? 'آفرین! امروز ${faNumber(completedToday)} کار را تمام کردی. هر قدم کوچک ارزشمند است.'
+          : 'امروز ${faNumber(completedToday)} کار را به پایان رساندی. همین پیشرفت‌های کوچک را حفظ کن؛ حالا می‌توانی برای قدم بعدی تصمیم بگیری.',
       actionLabel: 'دیدن برنامه',
       action: SimorghAction.planner,
       mood: SimorghMood.celebrating,
@@ -87,9 +98,13 @@ SimorghGuidance buildSimorghGuidance({
   }
 
   if (tasks.isEmpty && cards.isEmpty) {
-    return const SimorghGuidance(
-      title: 'سفر یادگیری از یک قدم آغاز می‌شود',
-      message: 'هنوز برنامه یا فلش‌کارتی ثبت نکرده‌ای. یک هدف کوچک و شدنی انتخاب کن؛ لازم نیست از همان اول همه‌چیز کامل باشد.',
+    return SimorghGuidance(
+      title: isOlderStudent ? 'یک هدف روشن برای شروع انتخاب کن' : 'سفر یادگیری از یک قدم آغاز می‌شود',
+      message: isPrimary
+          ? 'هنوز برنامه‌ای ثبت نکرده‌ای. یک کار کوچک و دوست‌داشتنی انتخاب کنیم تا شروع کنیم.'
+          : isOlderStudent
+              ? 'هنوز برنامه یا فلش‌کارتی ثبت نکرده‌ای. یک هدف کوچک، مشخص و قابل‌اندازه‌گیری برای شروع تعیین کن.'
+              : 'هنوز برنامه یا فلش‌کارتی ثبت نکرده‌ای. یک هدف کوچک و شدنی انتخاب کن؛ لازم نیست از همان اول همه‌چیز کامل باشد.',
       actionLabel: 'ساخت اولین برنامه',
       action: SimorghAction.planner,
       mood: SimorghMood.welcome,
@@ -99,7 +114,11 @@ SimorghGuidance buildSimorghGuidance({
   if (pendingTasks > 0) {
     return SimorghGuidance(
       title: 'قدم بعدی را خودت انتخاب کن',
-      message: '${faNumber(pendingTasks)} کار ناتمام در برنامه‌ات داری. بهتر است از کاری شروع کنی که کوتاه‌تر یا برایت مهم‌تر است.',
+      message: isPrimary
+          ? '${faNumber(pendingTasks)} کار در برنامه‌ات مانده. از کاری شروع کن که کوتاه‌تر است.'
+          : isOlderStudent
+              ? '${faNumber(pendingTasks)} کار باز داری؛ قدم بعدی را بر اساس اهمیت و زمان لازم انتخاب کن.'
+              : '${faNumber(pendingTasks)} کار ناتمام در برنامه‌ات داری. بهتر است از کاری شروع کنی که کوتاه‌تر یا برایت مهم‌تر است.',
       actionLabel: 'رفتن به برنامه',
       action: SimorghAction.planner,
       mood: SimorghMood.encouraging,
@@ -125,6 +144,7 @@ class SimorghCompanion extends StatefulWidget {
     required this.onAction,
     required this.onChat,
     this.now,
+    this.grade = '',
     this.active = true,
   });
 
@@ -133,6 +153,7 @@ class SimorghCompanion extends StatefulWidget {
   final ValueChanged<SimorghAction> onAction;
   final VoidCallback onChat;
   final DateTime? now;
+  final String grade;
   final bool active;
 
   @override
@@ -164,6 +185,7 @@ class _SimorghCompanionState extends State<SimorghCompanion>
       tasks: widget.tasks,
       cards: widget.cards,
       now: widget.now,
+      grade: widget.grade,
     );
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
