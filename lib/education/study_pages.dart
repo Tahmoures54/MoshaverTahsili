@@ -66,15 +66,17 @@ class _PlannerPageState extends State<PlannerPage> {
       dailyMinutes: dailyMinutes,
       restWeekdays: const {DateTime.friday},
     );
-    try {
-      await widget.store.applyPlanDates(plan.assignments, changes: plan.changes, now: DateTime.now());
-      widget.changed();
-    } on Object catch (error) {
-      if (mounted) showMessage(context, friendlyError(error));
-      return;
-    }
     if (!mounted) return;
-    await showDialog<void>(context: context, builder: (_) => _PlanReportDialog(plan: plan));
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (_) => _PlanReportDialog(plan: plan),
+    );
+    if (accepted != true || !mounted) return;
+    await mutate(() => widget.store.applyPlanDates(
+      plan.assignments,
+      changes: plan.changes,
+      now: DateTime.now(),
+    ));
   }
 
   @override
@@ -166,7 +168,10 @@ class _PlanReportDialog extends StatelessWidget {
           '${faNumber(plan.unplacedIds.length)} کار در افق ۱۴ روزه جا نشد. مدت آن‌ها را کوتاه‌تر کن یا ساعت مطالعه روزانه را بالاتر ببر.',
           style: const TextStyle(color: Colors.red, height: 1.7))),
     ]))),
-    actions: [FilledButton(onPressed: () => Navigator.pop(context), child: const Text('باشه'))]);
+    actions: [
+      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('فعلاً نه')),
+      FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('اعمال برنامه')),
+    ]);
 }
 
 class ExamsPage extends StatefulWidget {
