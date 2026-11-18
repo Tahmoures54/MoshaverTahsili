@@ -175,6 +175,36 @@ void main() {
     );
   });
 
+  testWidgets('companion respects the system reduce-motion preference', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(disableAnimations: true),
+          child: Scaffold(
+            body: SimorghCompanion(
+              tasks: const [],
+              cards: const [],
+              active: true,
+              now: now,
+              onAction: (_) {},
+              onChat: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester.widget<TickerMode>(
+        find.byKey(const ValueKey('simorgh-animation-ticker')),
+      ).enabled,
+      isFalse,
+    );
+    await tester.pumpWidget(
+      const SizedBox(),
+    );
+  });
+
   testWidgets('companion remains usable on a compact phone width', (tester) async {
     tester.view.physicalSize = const Size(320, 568);
     tester.view.devicePixelRatio = 1;
