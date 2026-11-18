@@ -82,6 +82,13 @@ class _CreditShopPageState extends State<CreditShopPage> {
           ]),
           const SizedBox(height: 8),
           Text(product.description),
+          if (product.bonusCredits > 0) ...[
+            const SizedBox(height: 4),
+            Text(
+              'شامل ${faNumber(product.purchasedCredits)} اعتبار خرید و ${faNumber(product.bonusCredits)} اعتبار هدیه',
+              style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600),
+            ),
+          ],
           const SizedBox(height: 6),
           Text(prices[product.id] ?? 'قیمت نهایی هنگام پرداخت در بازار نمایش داده می‌شود.',
               style: const TextStyle(color: Colors.blueGrey, height: 1.6)),
