@@ -338,7 +338,7 @@ class HomePage extends StatelessWidget {
       QuickTile(icon: Icons.share_outlined, title: 'معرفی سیمرغ به دوستان', subtitle: 'ارسال لینک نصب برنامه برای هم‌کلاسی‌ها و دوستان', onTap: () => push(context, const ReferralPage())),
       QuickTile(icon: Icons.insights_outlined, title: 'بررسی وضعیت تحصیلی', subtitle: 'نقاط قوت و ضعف بر اساس نمره‌های تو', onTap: () => push(context, AcademicInsightsPage(store: store))),
       QuickTile(icon: Icons.auto_awesome, title: 'مربی یادگیری شخصی', subtitle: 'پیشنهاد قدم بعدی بر اساس برنامه، نمره‌ها و مرورها', onTap: () => push(context, LearningCoachPage(store: store))),
-      QuickTile(icon: Icons.family_restroom_outlined, title: 'گزارش برای خانواده', subtitle: 'پیش‌نمایش و کپی خلاصه پیشرفت با انتخاب خودت', onTap: () => push(context, FamilyProgressReportPage(store: store))),
+      QuickTile(icon: Icons.people_outline, title: 'گزارش برای خانواده', subtitle: 'پیش‌نمایش و کپی خلاصه پیشرفت با انتخاب خودت', onTap: () => push(context, FamilyProgressReportPage(store: store))),
       QuickTile(icon: Icons.query_stats_outlined, title: 'تحلیل عملکرد و پایبندی', subtitle: 'روند درس‌ها و ساعت مطالعه، فقط از داده‌های خودت', onTap: () => push(context, AnalyticsPage(store: store))),
       QuickTile(icon: Icons.calendar_month, title: 'برنامه مطالعه', subtitle: 'ثبت و پیگیری کارهای درسی', onTap: () => go(1)),
       QuickTile(icon: Icons.assessment_outlined, title: 'آزمون و کارنامه', subtitle: 'ثبت نمرات و مشاهده میانگین', onTap: () => go(2)),
