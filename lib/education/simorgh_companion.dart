@@ -125,6 +125,7 @@ class SimorghCompanion extends StatefulWidget {
     required this.onAction,
     required this.onChat,
     this.now,
+    this.active = true,
   });
 
   final List<Map<String, dynamic>> tasks;
@@ -132,6 +133,7 @@ class SimorghCompanion extends StatefulWidget {
   final ValueChanged<SimorghAction> onAction;
   final VoidCallback onChat;
   final DateTime? now;
+  final bool active;
 
   @override
   State<SimorghCompanion> createState() => _SimorghCompanionState();
@@ -190,7 +192,7 @@ class _SimorghCompanionState extends State<SimorghCompanion>
                     label: 'سیمرغ، همراه دانای مسیر یادگیری',
                     image: true,
                     child: TickerMode(
-                      enabled: !reduceMotion,
+                      enabled: widget.active && !reduceMotion,
                       child: AnimatedBuilder(
                         animation: _animation,
                         builder: (context, _) => CustomPaint(
