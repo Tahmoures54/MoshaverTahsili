@@ -59,7 +59,7 @@ SimorghGuidance buildSimorghGuidance({
   if (overdueTasks > 0) {
     return SimorghGuidance(
       title: 'لازم نیست همه‌چیز را یک‌جا حل کنی',
-      message: '$overdueTasks کار از زمان برنامه‌ریزی‌شده گذشته. بیا یکی را انتخاب کنیم و اگر لازم بود برنامه را واقع‌بینانه‌تر بچینیم.',
+      message: '${faNumber(overdueTasks)} کار از زمان برنامه‌ریزی‌شده گذشته. بیا یکی را انتخاب کنیم و اگر لازم بود برنامه را واقع‌بینانه‌تر بچینیم.',
       actionLabel: 'مرتب‌کردن برنامه',
       action: SimorghAction.planner,
       mood: SimorghMood.gentle,
@@ -69,7 +69,7 @@ SimorghGuidance buildSimorghGuidance({
   if (dueCards > 0) {
     return SimorghGuidance(
       title: 'وقت یک مرور کوتاه است',
-      message: '$dueCards فلش‌کارت برای مرور آماده است. چند دقیقه بازیابی از حافظه می‌تواند یادگیری را ماندگارتر کند.',
+      message: '${faNumber(dueCards)} فلش‌کارت برای مرور آماده است. چند دقیقه بازیابی از حافظه می‌تواند یادگیری را ماندگارتر کند.',
       actionLabel: 'شروع مرور',
       action: SimorghAction.review,
       mood: SimorghMood.thinking,
@@ -79,7 +79,7 @@ SimorghGuidance buildSimorghGuidance({
   if (completedToday > 0) {
     return SimorghGuidance(
       title: 'یک قدم واقعی برداشتی!',
-      message: 'امروز $completedToday کار را به پایان رساندی. همین پیشرفت‌های کوچک را حفظ کن؛ حالا می‌توانی برای قدم بعدی تصمیم بگیری.',
+      message: 'امروز ${faNumber(completedToday)} کار را به پایان رساندی. همین پیشرفت‌های کوچک را حفظ کن؛ حالا می‌توانی برای قدم بعدی تصمیم بگیری.',
       actionLabel: 'دیدن برنامه',
       action: SimorghAction.planner,
       mood: SimorghMood.celebrating,
@@ -99,7 +99,7 @@ SimorghGuidance buildSimorghGuidance({
   if (pendingTasks > 0) {
     return SimorghGuidance(
       title: 'قدم بعدی را خودت انتخاب کن',
-      message: '$pendingTasks کار ناتمام در برنامه‌ات داری. بهتر است از کاری شروع کنی که کوتاه‌تر یا برایت مهم‌تر است.',
+      message: '${faNumber(pendingTasks)} کار ناتمام در برنامه‌ات داری. بهتر است از کاری شروع کنی که کوتاه‌تر یا برایت مهم‌تر است.',
       actionLabel: 'رفتن به برنامه',
       action: SimorghAction.planner,
       mood: SimorghMood.encouraging,
