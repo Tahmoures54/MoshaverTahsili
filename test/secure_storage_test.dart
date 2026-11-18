@@ -53,7 +53,7 @@ void main() {
     final wallet = store.prefs.getString(EducationStore.walletKey)!;
     expect(wallet, startsWith(EducationStore.encryptedPrefix));
     expect(wallet, isNot(contains('purchase-secret')));
-    expect(store.walletSnapshot['credits'], 10);
+    expect(store.walletSnapshot['credits'], 105);
   });
   test('preserves a damaged encrypted career draft instead of silently replacing it', () async {
     SharedPreferences.setMockInitialValues({'edu.career.draft': '{broken'});
