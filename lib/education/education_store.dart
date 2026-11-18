@@ -103,7 +103,6 @@ class EducationStore extends ChangeNotifier {
         } else {
           _dataErrors[key] = 'اطلاعات رمزگشایی نشد؛ برای جلوگیری از بازنویسی، داده قبلی حفظ شد.';
         }
-        if (!stored.startsWith(encryptedPrefix)) continue;
         if (error is LocalDataException) rethrow;
         throw LocalDataException('دسترسی امن به اطلاعات محلی ممکن نیست: $error');
       }

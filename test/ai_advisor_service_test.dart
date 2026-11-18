@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:moshaver_tahsili/education/ai_advisor_service.dart';
 import 'package:moshaver_tahsili/education/education_store.dart';
+import 'support/memory_secure_local_cipher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 http.Response answer(String text, {int status = 200}) => http.Response(
@@ -33,7 +34,10 @@ Future<EducationStore> paidStore({int credits = 2}) async {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    EducationStore.secureCipherOverride = MemorySecureLocalCipher();
+  });
 
   test('charges once for a successful paid answer', () async {
     final store = await paidStore();
@@ -95,8 +99,7 @@ void main() {
     ), 'Recovered after 503');
     expect(store.credits, 0);
     expect(calls, 2);
-    final prefs = await SharedPreferences.getInstance();
-    final wallet = jsonDecode(prefs.getString(EducationStore.walletKey)!) as Map<String, dynamic>;
+    final wallet = store.walletSnapshot;
     final ledger = (wallet['transactions'] as List).cast<Map<String, dynamic>>();
     final attempts = ledger.where((entry) => entry['kind'] == 'ai' &&
         entry['id'].toString().startsWith('server-retry-attempt-')).toList();
