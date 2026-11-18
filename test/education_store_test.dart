@@ -218,7 +218,10 @@ void main() {
       'transactions': <Map<String, dynamic>>[],
     });
     SharedPreferences.setMockInitialValues({EducationStore.walletKey: raw});
-    final store = await EducationStore.open(preferences: await SharedPreferences.getInstance());
+    final store = await EducationStore.open(
+      preferences: await SharedPreferences.getInstance(),
+      recoverInterruptedRequests: false,
+    );
     await expectLater(
       store.prepareAiRequest(id: 'new-request', question: 'new question'),
       throwsA(isA<LocalDataException>()),
@@ -253,6 +256,6 @@ void main() {
     expect(store.tasks, isEmpty);
     expect(store.dataError('edu.tasks'), isNotNull);
     await expectLater(store.addTask({'id': 'new'}), throwsA(isA<LocalDataException>()));
-    expect(store.prefs.getString('edu.tasks'), '{broken');
+    expect(store.prefs.getString('edu.tasks'), startsWith(EducationStore.encryptedPrefix));
   });
 }

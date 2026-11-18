@@ -262,9 +262,7 @@ class EducationStore extends ChangeNotifier {
     final raw = jsonEncode(wallet);
     // Validate the exact data to be written before touching existing storage.
     _decodeWallet(raw);
-    if (!await prefs.setString(walletKey, raw)) {
-      throw const LocalDataException('ذخیره کیف پول انجام نشد. فضای خالی گوشی را بررسی کن و دوباره تلاش کن.');
-    }
+    await _writeSecure(walletKey, raw);
     _wallet = wallet;
     notifyListeners();
   }
@@ -465,14 +463,12 @@ class EducationStore extends ChangeNotifier {
   Future<void> saveProfile(Map<String, dynamic> value) => _writeMap('edu.profile', value);
   Future<void> _writeMap(String key, Map<String, dynamic> value) => _serialized(() async {
     if (_dataErrors.containsKey(key)) throw LocalDataException(_dataErrors[key]!);
-    if (!await prefs.setString(key, jsonEncode(value))) {
-      throw const LocalDataException('ذخیره اطلاعات انجام نشد. فضای خالی گوشی را بررسی کن.');
-    }
+    await _writeSecure(key, jsonEncode(value));
     notifyListeners();
   });
 
   List<Map<String, dynamic>> readList(String key) {
-    final raw = prefs.getString(key);
+    final raw = _secureData[key];
     if (raw == null) return [];
     try {
       final value = jsonDecode(raw);
@@ -486,9 +482,7 @@ class EducationStore extends ChangeNotifier {
 
   Future<void> writeList(String key, List<Map<String, dynamic>> value) => _serialized(() async {
     if (_dataErrors.containsKey(key)) throw LocalDataException(_dataErrors[key]!);
-    if (!await prefs.setString(key, jsonEncode(value))) {
-      throw const LocalDataException('ذخیره اطلاعات انجام نشد. فضای خالی گوشی را بررسی کن.');
-    }
+    await _writeSecure(key, jsonEncode(value));
     notifyListeners();
   });
 
@@ -498,9 +492,7 @@ class EducationStore extends ChangeNotifier {
         if (_dataErrors.containsKey(key)) throw LocalDataException(_dataErrors[key]!);
         final current = readList(key);
         final next = update(current);
-        if (!await prefs.setString(key, jsonEncode(next))) {
-          throw const LocalDataException('ذخیره اطلاعات انجام نشد. فضای خالی گوشی را بررسی کن.');
-        }
+        await _writeSecure(key, jsonEncode(next));
         notifyListeners();
       });
 
@@ -618,7 +610,7 @@ class EducationStore extends ChangeNotifier {
   Future<String> exportBackup() => _serialized(() async {
     final data = <String, Object?>{};
     for (final key in workspaceKeys) {
-      final raw = prefs.getString(key);
+      final raw = _secureData[key];
       if (raw == null) continue;
       try {
         data[key] = jsonDecode(raw);
