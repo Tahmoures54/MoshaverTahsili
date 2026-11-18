@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'education_store.dart';
+import 'ai_safety_policy.dart';
 
 enum AiErrorKind { configuration, input, credits, busy, network, timeout, rateLimit, server, response, storage }
 
@@ -60,12 +61,29 @@ class AiAdvisorService {
 
   Future<String> _execute(Map<String, dynamic>? profile,
       List<Map<String, dynamic>> history, String question, String id) async {
+    if (question.isEmpty || question.length > EducationStore.maxQuestionLength) {
+      throw const AiException(AiErrorKind.input, 'پرسش باید بین ۱ تا ۴۰۰۰ نویسه باشد.');
+    }
+    // Explicit crisis-intent phrases are handled locally before checking the
+    // provider key, wallet, or constructing any network request.
+    AiSafetyResult? crisis;
+    final currentSafety = AiSafetyPolicy.assess(question);
+    if (currentSafety.shouldBlockRemoteAi) {
+      crisis = currentSafety;
+    } else {
+      for (final message in history.reversed) {
+        if (message['role'] != 'user' || message['content'] is! String) continue;
+        final previousSafety = AiSafetyPolicy.assess(message['content'] as String);
+        if (previousSafety.shouldBlockRemoteAi) {
+          crisis = previousSafety;
+          break;
+        }
+      }
+    }
+    if (crisis != null) return crisis.localResponse!;
     if (!isConfigured) {
       throw const AiException(AiErrorKind.configuration,
           'سرویس هوش مصنوعی هنوز برای این نسخه پیکربندی نشده است. امکانات محلی برنامه همچنان در دسترس‌اند.');
-    }
-    if (question.isEmpty || question.length > EducationStore.maxQuestionLength) {
-      throw const AiException(AiErrorKind.input, 'پرسش باید بین ۱ تا ۴۰۰۰ نویسه باشد.');
     }
     final uri = _endpoint();
     if (store?.walletError != null) throw LocalDataException(store!.walletError!);

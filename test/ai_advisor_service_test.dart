@@ -39,6 +39,49 @@ void main() {
     EducationStore.secureCipherOverride = MemorySecureLocalCipher();
   });
 
+  test('explicit crisis intent is answered locally before network or credit reservation', () async {
+    final store = await paidStore();
+    var called = false;
+    final service = AiAdvisorService(store: store, apiKey: 'test-key', client: MockClient((_) async {
+      called = true;
+      return answer('must not be reached');
+    }));
+    final response = await service.ask(profile: null, history: const [],
+        question: 'می‌خوام خودمو بکشم', requestId: 'crisis-local');
+    expect(response, contains('پیام تو به سرویس هوش مصنوعی ارسال نشد'));
+    expect(response, contains('بزرگسال قابل اعتماد'));
+    expect(called, isFalse);
+    expect(store.credits, 2);
+    expect(store.creditHistory.where((entry) => entry['kind'] == 'ai'), isEmpty);
+    service.dispose();
+  });
+
+  test('crisis intent in recent user history also blocks neutral follow-up from provider', () async {
+    var called = false;
+    final service = AiAdvisorService(apiKey: 'test-key', client: MockClient((_) async {
+      called = true;
+      return answer('must not be reached');
+    }));
+    final response = await service.ask(profile: null, history: [
+      {'role': 'user', 'content': 'می‌خوام خودمو بکشم', 'status': 'completed'},
+    ], question: 'الان باید چه کار کنم؟');
+    expect(response, contains('تنها نمان'));
+    expect(called, isFalse);
+    service.dispose();
+  });
+
+  test('offline crisis response remains available when provider key is absent', () async {
+    var called = false;
+    final service = AiAdvisorService(apiKey: '', client: MockClient((_) async {
+      called = true;
+      return answer('must not be reached');
+    }));
+    final response = await service.ask(profile: null, history: const [], question: 'I want to end my life');
+    expect(response, contains('خدمات اضطراری محل زندگی'));
+    expect(called, isFalse);
+    service.dispose();
+  });
+
   test('charges once for a successful paid answer', () async {
     final store = await paidStore();
     final service = AiAdvisorService(store: store, apiKey: 'test-key', client: MockClient((_) async => answer('پاسخ آزمایشی در تست')));
