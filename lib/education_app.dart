@@ -111,7 +111,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
     if (!form.currentState!.validate()) return;
     setState(() { saving = true; error = null; });
     try {
-      await widget.store.saveProfile({'nickname': nickname.text.trim(), 'grade': grade, 'year': year,
+      await widget.store.saveProfile({...?widget.store.profile, 'nickname': nickname.text.trim(), 'grade': grade, 'year': year,
         'field': field.text.trim(), 'goal': goal.text.trim(), 'privacyVersion': 1});
       if (mounted) Navigator.pop(context, true);
     } on Object catch (value) {
