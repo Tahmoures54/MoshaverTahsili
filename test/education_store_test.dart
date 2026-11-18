@@ -27,6 +27,17 @@ void main() {
     expect(store.tasks.single['done'], isTrue);
   });
 
+  test('persists optional flashcard topic and SM-2 review evidence', () async {
+    final store = await EducationStore.open();
+    await store.addCard({'id': 'topic-card', 'q': 'تابع چیست؟', 'a': 'رابطه ورودی و خروجی',
+      'topic': 'تابع', 'interval': 0, 'ease': 2.5, 'reps': 0, 'lapses': 0});
+    await store.reviewCard('topic-card', 4, DateTime(2026, 11, 18));
+    final reopened = await EducationStore.open(preferences: store.prefs);
+    expect(reopened.cards.single['topic'], 'تابع');
+    expect(reopened.cards.single['reviewHistory'], hasLength(1));
+    expect((reopened.cards.single['reviewHistory'] as List).single['quality'], 4);
+  });
+
   test('task completion timestamp is recorded and cleared when reopened', () async {
     final store = await EducationStore.open();
     await store.addTask({'id': 'task-time', 'title': 'مرور فیزیک', 'done': false});
