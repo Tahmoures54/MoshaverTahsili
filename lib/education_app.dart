@@ -317,6 +317,7 @@ class HomePage extends StatelessWidget {
       SimorghCompanion(
         tasks: tasks,
         cards: store.cards,
+        grade: profile['grade']?.toString() ?? '',
         active: active,
         onAction: (action) => go(switch (action) {
           SimorghAction.planner => 1,
