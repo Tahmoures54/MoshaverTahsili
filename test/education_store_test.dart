@@ -199,7 +199,7 @@ void main() {
     expect(store.prefs.getString(EducationStore.walletKey), startsWith(EducationStore.encryptedPrefix));
   });
 
-  test('does not exceed the stored request cap when every existing request is pending', () async {
+  test('startup refunds pending requests and trims old entries to the stored request cap', () async {
     final requests = <String, dynamic>{
       for (var index = 0; index < EducationStore.maxStoredRequests + 1; index++)
         'pending-$index': {
@@ -218,18 +218,16 @@ void main() {
       'transactions': <Map<String, dynamic>>[],
     });
     SharedPreferences.setMockInitialValues({EducationStore.walletKey: raw});
-    final store = await EducationStore.open(
-      preferences: await SharedPreferences.getInstance(),
-      recoverInterruptedRequests: false,
-    );
-    await expectLater(
-      store.prepareAiRequest(id: 'new-request', question: 'new question'),
-      throwsA(isA<LocalDataException>()),
-    );
-    expect(store.credits, 1000);
+    final store = await EducationStore.open(preferences: await SharedPreferences.getInstance());
+    expect(store.credits, 1101);
+    final reservation = await store.prepareAiRequest(id: 'new-request', question: 'new question');
+    expect(reservation.usesFreeUse, isFalse);
+    expect(store.credits, 1100);
     final saved = store.walletSnapshot;
-    expect((saved['requests'] as Map).length, EducationStore.maxStoredRequests + 1);
-    expect((saved['requests'] as Map).containsKey('new-request'), isFalse);
+    final savedRequests = saved['requests'] as Map;
+    expect(savedRequests.length, EducationStore.maxStoredRequests);
+    expect(savedRequests.containsKey('new-request'), isTrue);
+    expect(savedRequests.values.every((entry) => entry['status'] == 'refunded' || entry['status'] == 'pending'), isTrue);
   });
 
   test('workspace reset preserves wallet and financial history', () async {
