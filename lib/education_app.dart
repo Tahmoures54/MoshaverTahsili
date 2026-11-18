@@ -10,6 +10,7 @@ import 'education/credit_shop_page.dart';
 import 'education/education_store.dart';
 import 'education/learning_engine.dart';
 import 'education/study_pages.dart';
+import 'education/simorgh_companion.dart';
 import 'education/ui.dart';
 
 export 'education/advisor_page.dart';
@@ -302,6 +303,17 @@ class HomePage extends StatelessWidget {
           Text('${profile['grade'] ?? ''} · پایه ${profile['year'] ?? 'ثبت‌نشده'} · ${profile['field'] ?? ''}', style: const TextStyle(color: Colors.white70, height: 1.7)),
           const SizedBox(height: 14), const Text('امروز فقط یک قدم کوچک بردار؛ استمرار از برنامه‌های سنگین مهم‌تر است.', style: TextStyle(color: Colors.white, height: 1.8)),
         ])),
+      const SizedBox(height: 14),
+      SimorghCompanion(
+        tasks: tasks,
+        cards: store.cards,
+        onAction: (action) => go(switch (action) {
+          SimorghAction.planner => 1,
+          SimorghAction.review => 3,
+          SimorghAction.advisor => 4,
+        }),
+        onChat: () => go(4),
+      ),
       const SizedBox(height: 14),
       CreditSummary(store: store, onShop: () => push(context, CreditShopPage(store: store))),
       Row(children: [
