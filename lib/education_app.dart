@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -11,6 +12,7 @@ import 'education/education_store.dart';
 import 'education/learning_engine.dart';
 import 'education/study_pages.dart';
 import 'education/simorgh_companion.dart';
+import 'education/referral_page.dart';
 import 'education/ui.dart';
 
 export 'education/advisor_page.dart';
@@ -220,6 +222,7 @@ class _DashboardState extends State<Dashboard> {
       ListTile(leading: const Icon(Icons.account_balance_wallet_outlined), title: const Text('کیف اعتبار و تاریخچه خرید'), onTap: () => Navigator.pop(context, 'wallet')),
       ListTile(leading: const Icon(Icons.history_edu_outlined), title: const Text('تاریخچه مشاوره‌ها'), onTap: () => Navigator.pop(context, 'reports')),
       ListTile(leading: const Icon(Icons.backup_outlined), title: const Text('پشتیبان‌گیری و بازیابی'), onTap: () => Navigator.pop(context, 'backup')),
+      ListTile(leading: const Icon(Icons.share_outlined), title: const Text('معرفی سیمرغ به دوستان'), subtitle: const Text('ارسال لینک نصب از کافه‌بازار'), onTap: () => Navigator.pop(context, 'referral')),
       ListTile(leading: const Icon(Icons.info_outline), title: const Text('درباره برنامه و حریم خصوصی'), subtitle: Text(appVersionLabel), onTap: () => Navigator.pop(context, 'about')),
       ListTile(leading: const Icon(Icons.delete_outline, color: Colors.red), title: const Text('حذف اطلاعات تحصیلی این گوشی', style: TextStyle(color: Colors.red)), onTap: () => Navigator.pop(context, 'delete')),
     ])));
@@ -230,6 +233,7 @@ class _DashboardState extends State<Dashboard> {
       case 'reports': push(ReportsPage(store: widget.store));
       case 'backup': push(BackupPage(store: widget.store));
       case 'about': push(const AboutPage());
+      case 'referral': push(const ReferralPage());
       case 'delete': await deleteWorkspace();
     }
   }
@@ -329,6 +333,7 @@ class HomePage extends StatelessWidget {
       for (final tip in suggestions) NoticeCard(text: tip, icon: Icons.lightbulb_outline),
       const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('از کجا شروع کنیم؟', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
       QuickTile(icon: Icons.auto_awesome, title: 'گفت‌وگو با مشاور هوشمند', subtitle: 'پرسش، برنامه مطالعه و روش بهبود', onTap: () => go(4)),
+      QuickTile(icon: Icons.share_outlined, title: 'معرفی سیمرغ به دوستان', subtitle: 'ارسال لینک نصب برنامه برای هم‌کلاسی‌ها و دوستان', onTap: () => push(context, const ReferralPage())),
       QuickTile(icon: Icons.insights_outlined, title: 'بررسی وضعیت تحصیلی', subtitle: 'نقاط قوت و ضعف بر اساس نمره‌های تو', onTap: () => push(context, AcademicInsightsPage(store: store))),
       QuickTile(icon: Icons.query_stats_outlined, title: 'تحلیل عملکرد و پایبندی', subtitle: 'روند درس‌ها و ساعت مطالعه، فقط از داده‌های خودت', onTap: () => push(context, AnalyticsPage(store: store))),
       QuickTile(icon: Icons.calendar_month, title: 'برنامه مطالعه', subtitle: 'ثبت و پیگیری کارهای درسی', onTap: () => go(1)),

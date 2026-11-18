@@ -40,6 +40,30 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SHARE_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "shareText" -> {
+                        val message = call.argument<String>("text")
+                        if (message.isNullOrBlank() || message.length > 4000) {
+                            result.error("invalid_share_text", "متن معرفی معتبر نیست.", null)
+                        } else {
+                            try {
+                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, message)
+                                }
+                                startActivity(Intent.createChooser(sendIntent, "معرفی سیمرغ به دوستان"))
+                                result.success(true)
+                            } catch (error: Exception) {
+                                result.error("share_unavailable", error.message ?: "اشتراک‌گذاری در دسترس نیست.", null)
+                            }
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, BACKUP_CHANNEL)
             .setMethodCallHandler { call, result ->
                 if (pendingBackupResult != null) {
@@ -181,6 +205,7 @@ class MainActivity : FlutterActivity() {
     companion object {
         private const val ENGINE_ID = "moshaver_tahsili_engine"
         private const val BACKUP_CHANNEL = "ir.moshaver.tahsili/backup"
+        private const val SHARE_CHANNEL = "ir.moshaver.tahsili/share"
         private const val SECURE_CHANNEL = "ir.moshaver.tahsili/secure_storage"
         private const val LOCAL_DATA_KEY_ALIAS = "simorgh.local.data.aes.v1"
         private const val ENCRYPTED_PREFIX = "enc:v2:"
