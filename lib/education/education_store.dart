@@ -447,7 +447,15 @@ class EducationStore extends ChangeNotifier {
       _mutateList('edu.tasks', (all) => [value, ...all]);
   Future<void> toggleTask(String id) => _mutateList('edu.tasks', (all) {
     for (final item in all) {
-      if (item['id'] == id) item['done'] = !(item['done'] as bool? ?? false);
+      if (item['id'] == id) {
+        final completed = !(item['done'] as bool? ?? false);
+        item['done'] = completed;
+        if (completed) {
+          item['completedAt'] = _now();
+        } else {
+          item.remove('completedAt');
+        }
+      }
     }
     return all;
   });
