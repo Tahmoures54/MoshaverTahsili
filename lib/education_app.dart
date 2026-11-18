@@ -3,9 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'education/advisor_page.dart';
+import 'education/analytics_page.dart';
 import 'education/assessment_pages.dart';
+import 'education/backup_page.dart';
 import 'education/credit_shop_page.dart';
 import 'education/education_store.dart';
+import 'education/learning_engine.dart';
 import 'education/study_pages.dart';
 import 'education/ui.dart';
 
@@ -215,6 +218,7 @@ class _DashboardState extends State<Dashboard> {
           subtitle: Text('${widget.store.profile?['grade'] ?? ''} · ${widget.store.profile?['year'] ?? 'پایه ثبت نشده'}'), onTap: () => Navigator.pop(context, 'profile')),
       ListTile(leading: const Icon(Icons.account_balance_wallet_outlined), title: const Text('کیف اعتبار و تاریخچه خرید'), onTap: () => Navigator.pop(context, 'wallet')),
       ListTile(leading: const Icon(Icons.history_edu_outlined), title: const Text('تاریخچه مشاوره‌ها'), onTap: () => Navigator.pop(context, 'reports')),
+      ListTile(leading: const Icon(Icons.backup_outlined), title: const Text('پشتیبان‌گیری و بازیابی'), onTap: () => Navigator.pop(context, 'backup')),
       ListTile(leading: const Icon(Icons.info_outline), title: const Text('درباره برنامه و حریم خصوصی'), subtitle: Text(appVersionLabel), onTap: () => Navigator.pop(context, 'about')),
       ListTile(leading: const Icon(Icons.delete_outline, color: Colors.red), title: const Text('حذف اطلاعات تحصیلی این گوشی', style: TextStyle(color: Colors.red)), onTap: () => Navigator.pop(context, 'delete')),
     ])));
@@ -223,6 +227,7 @@ class _DashboardState extends State<Dashboard> {
       case 'profile': await showProfileSheet(context, widget.store); refresh();
       case 'wallet': push(CreditShopPage(store: widget.store));
       case 'reports': push(ReportsPage(store: widget.store));
+      case 'backup': push(BackupPage(store: widget.store));
       case 'about': push(const AboutPage());
       case 'delete': await deleteWorkspace();
     }
@@ -282,6 +287,11 @@ class HomePage extends StatelessWidget {
       return date != null && !date.isBefore(weekStart);
     }).toList();
     final minutes = completed.fold<int>(0, (sum, task) => sum + ((task['minutes'] as num?)?.toInt() ?? 0));
+    final now = DateTime.now();
+    final dailyValue = profile['dailyMinutes'];
+    final dailyMinutes = dailyValue is int ? dailyValue : 120;
+    final report = buildLearningReport(exams: store.exams, tasks: tasks, cards: store.cards, now: now);
+    final suggestions = dailySuggestions(report: report, tasks: tasks, deadlines: store.deadlines, now: now, dailyMinutes: dailyMinutes);
     final nickname = profile['nickname']?.toString() ?? '';
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
       Container(width: double.infinity, padding: const EdgeInsets.all(22),
@@ -301,9 +311,11 @@ class HomePage extends StatelessWidget {
       ]),
       const SizedBox(height: 12),
       NoticeCard(text: 'هفت روز اخیر: ${faNumber(completed.length)} کار تکمیل شده؛ ${faNumber(minutes)} دقیقه زمان برای این کارها برنامه‌ریزی شده است.', icon: Icons.insights_outlined),
+      for (final tip in suggestions) NoticeCard(text: tip, icon: Icons.lightbulb_outline),
       const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('از کجا شروع کنیم؟', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
       QuickTile(icon: Icons.auto_awesome, title: 'گفت‌وگو با مشاور هوشمند', subtitle: 'پرسش، برنامه مطالعه و روش بهبود', onTap: () => go(4)),
       QuickTile(icon: Icons.insights_outlined, title: 'بررسی وضعیت تحصیلی', subtitle: 'نقاط قوت و ضعف بر اساس نمره‌های تو', onTap: () => push(context, AcademicInsightsPage(store: store))),
+      QuickTile(icon: Icons.query_stats_outlined, title: 'تحلیل عملکرد و پایبندی', subtitle: 'روند درس‌ها و ساعت مطالعه، فقط از داده‌های خودت', onTap: () => push(context, AnalyticsPage(store: store))),
       QuickTile(icon: Icons.calendar_month, title: 'برنامه مطالعه', subtitle: 'ثبت و پیگیری کارهای درسی', onTap: () => go(1)),
       QuickTile(icon: Icons.assessment_outlined, title: 'آزمون و کارنامه', subtitle: 'ثبت نمرات و مشاهده میانگین', onTap: () => go(2)),
       QuickTile(icon: Icons.style_outlined, title: 'مرور و فلش‌کارت', subtitle: 'یادگیری ماندگار با مرور فاصله‌دار', onTap: () => go(3)),

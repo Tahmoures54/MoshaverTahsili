@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'learning_engine.dart';
+
 /// Thrown instead of silently resetting a damaged local wallet or workspace.
 class LocalDataException implements Exception {
   const LocalDataException(this.message);
@@ -40,7 +42,7 @@ class EducationStore extends ChangeNotifier {
   static const maxWalletBytes = 4 * 1024 * 1024;
   static const workspaceKeys = [
     'edu.profile', 'edu.tasks', 'edu.exams', 'edu.cards',
-    'edu.messages', 'edu.reports', 'edu.career.draft',
+    'edu.messages', 'edu.reports', 'edu.career.draft', 'edu.deadlines',
   ];
 
   Future<void> _tail = Future<void>.value();
@@ -496,6 +498,74 @@ class EducationStore extends ChangeNotifier {
   Future<void> saveCareerDraft(Map<String, dynamic> value) => _writeMap('edu.career.draft', value);
 
   /// Does NOT delete purchased credits, purchase tokens or financial history.
+  List<Map<String, dynamic>> get deadlines => readList('edu.deadlines');
+  Future<void> addDeadline(Map<String, dynamic> value) =>
+      _mutateList('edu.deadlines', (all) => [value, ...all]);
+  Future<void> deleteDeadline(String id) =>
+      _mutateList('edu.deadlines', (all) => all.where((e) => e['id'] != id).toList());
+
+  /// Applies spaced-repetition scoring (SM-2) to one card.
+  Future<void> reviewCard(String id, int quality, DateTime now) =>
+      _mutateList('edu.cards', (all) => [
+        for (final card in all) if (card['id'] == id) applyCardReview(card, quality, now) else card,
+      ]);
+
+  /// Stores the dates produced by the adaptive planner.
+  Future<void> applyPlanDates(Map<String, String> assignments) =>
+      _mutateList('edu.tasks', (all) => [
+        for (final task in all)
+          if (assignments.containsKey(task['id'].toString()))
+            {...task, 'dueDate': assignments[task['id'].toString()]}
+          else
+            task,
+      ]);
+
+  /// Serialises the study workspace. The AI wallet is never included.
+  Future<String> exportBackup() => _serialized(() async {
+    final data = <String, Object?>{};
+    for (final key in workspaceKeys) {
+      final raw = prefs.getString(key);
+      if (raw == null) continue;
+      try {
+        data[key] = jsonDecode(raw);
+      } on FormatException {
+        throw LocalDataException('بخش «$key» خوانده نمی‌شود؛ پشتیبان ناقص ساخته نشد.');
+      }
+    }
+    return WorkspaceBackup.encode(data, DateTime.now());
+  });
+
+  /// Replaces the study workspace with a validated backup. Wallet data is never
+  /// touched. If any write fails, the previous workspace is restored.
+  Future<int> importBackup(String raw) => _serialized(() async {
+    final data = WorkspaceBackup.decode(raw);
+    final previous = <String, String?>{
+      for (final key in workspaceKeys) key: prefs.getString(key),
+    };
+    try {
+      for (final key in workspaceKeys) {
+        final value = data[key];
+        final ok = value == null
+            ? await prefs.remove(key)
+            : await prefs.setString(key, jsonEncode(value));
+        if (!ok) throw const LocalDataException('بازیابی انجام نشد. دوباره تلاش کن.');
+      }
+    } on Object {
+      for (final entry in previous.entries) {
+        final original = entry.value;
+        if (original == null) {
+          await prefs.remove(entry.key);
+        } else {
+          await prefs.setString(entry.key, original);
+        }
+      }
+      rethrow;
+    }
+    _dataErrors.removeWhere((key, _) => workspaceKeys.contains(key));
+    notifyListeners();
+    return data.length;
+  });
+
   Future<void> clear() => _serialized(() async {
     for (final key in workspaceKeys) {
       if (!await prefs.remove(key)) {
