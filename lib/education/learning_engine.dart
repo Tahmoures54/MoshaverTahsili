@@ -114,7 +114,7 @@ Entry applyCardReview(Entry card, int quality, DateTime now) {
   final reviewedAt = now.toIso8601String();
   final history = card['reviewHistory'] is List
       ? (card['reviewHistory'] as List)
-          .whereType<Map>()
+          .whereType<Map<Object?, Object?>>()
           .map((entry) => Map<String, dynamic>.from(entry))
           .toList()
       : <Map<String, dynamic>>[];

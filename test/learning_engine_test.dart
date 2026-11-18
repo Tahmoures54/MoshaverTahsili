@@ -333,7 +333,7 @@ void main() {
       final raw = jsonEncode({
         'app': 'simorgh',
         'format': 1,
-        'data': {
+        'data': <String, Object?>{
           'edu.ai.wallet': {'credits': 999999},
         },
       });
@@ -350,7 +350,7 @@ void main() {
         throwsA(isA<BackupFormatException>()),
       );
       expect(
-        () => WorkspaceBackup.decode(jsonEncode({'app': 'simorgh', 'format': 9, 'data': {}})),
+        () => WorkspaceBackup.decode(jsonEncode({'app': 'simorgh', 'format': 9, 'data': <String, Object?>{}})),
         throwsA(isA<BackupFormatException>()),
       );
     });
@@ -359,11 +359,11 @@ void main() {
       expect(() => WorkspaceBackup.decode('not json'), throwsA(isA<BackupFormatException>()));
       expect(() => WorkspaceBackup.decode('   '), throwsA(isA<BackupFormatException>()));
       expect(
-        () => WorkspaceBackup.decode(jsonEncode({'app': 'simorgh', 'format': 1, 'data': {'edu.tasks': 'bad'}})),
+        () => WorkspaceBackup.decode(jsonEncode({'app': 'simorgh', 'format': 1, 'data': <String, Object?>{'edu.tasks': 'bad'}})),
         throwsA(isA<BackupFormatException>()),
       );
       expect(
-        () => WorkspaceBackup.decode(jsonEncode({'app': 'simorgh', 'format': 1, 'data': {'edu.tasks': [1, 2]}})),
+        () => WorkspaceBackup.decode(jsonEncode({'app': 'simorgh', 'format': 1, 'data': <String, Object?>{'edu.tasks': [1, 2]}})),
         throwsA(isA<BackupFormatException>()),
       );
     });

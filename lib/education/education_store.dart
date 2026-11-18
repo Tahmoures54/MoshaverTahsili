@@ -540,7 +540,7 @@ class EducationStore extends ChangeNotifier {
     if (change == null) return {...task, 'dueDate': newDate};
     final history = task['planHistory'] is List
         ? (task['planHistory'] as List)
-            .whereType<Map>()
+            .whereType<Map<Object?, Object?>>()
             .map((entry) => Map<String, dynamic>.from(entry))
             .toList()
         : <Map<String, dynamic>>[];
