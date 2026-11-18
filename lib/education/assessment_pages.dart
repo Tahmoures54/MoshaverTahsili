@@ -56,7 +56,7 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
         for (final entry in entries) Card(child: ListTile(
           leading: Icon(entry.value.average >= 75 ? Icons.trending_up : Icons.flag_outlined, color: entry.value.average >= 75 ? teal : blue),
           title: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Text('${faNumber(entry.value.count)} آزمون · ${entry.value.average >= 75 ? 'نقطه قوت فعلی' : entry.value.average < 60 ? 'نیازمند تمرین بیشتر' : 'در حال پیشرفت'}'),
+          subtitle: Text('${faNumber(entry.value.count)} آزمون · ${entry.value.count < 2 ? 'شواهد اولیه؛ برای نتیجه‌گیری آزمون بیشتری لازم است' : entry.value.average >= 75 ? 'نقطه قوت فعلی' : entry.value.average < 60 ? 'نیازمند تمرین بیشتر' : 'در حال پیشرفت'}'),
           trailing: Text('${faNumber(entry.value.average.toStringAsFixed(0))}٪', style: const TextStyle(fontWeight: FontWeight.bold)),
         )),
         if (tasks.isNotEmpty) NoticeCard(text: '${faNumber(done)} کار از ${faNumber(tasks.length)} کار مطالعه انجام شده است. این نسبت، میزان تلاش واقعی یا یادگیری را به‌تنهایی اندازه نمی‌گیرد.', icon: Icons.task_alt),
@@ -107,11 +107,17 @@ class _CareerPageState extends State<CareerPage> {
       setState(() => error = friendlyError(value)); return;
     }
     if (!mounted) return;
-    setState(() { error = null; question = 'برای راهنمای انتخاب رشته، این اطلاعات را بررسی کن: '
+    setState(() { error = null; question = 'برای راهنمای انتخاب رشته، این اطلاعات خوداظهاری را بررسی کن: '
         'علاقه‌ها: ${draft['interests']}. توانایی‌های خوداظهاری: ${draft['strengths']}. '
         'درس‌های مورد علاقه: ${draft['favorites']}. سبک فعالیت مورد علاقه: ${draft['workStyle']}. '
-        'چند مسیر تحصیلی متناسب را با دلیل، نقاط قوت و ضعف، دشواری‌ها و قدم بعدی معرفی کن. '
-        'سؤال تکمیلی بپرس، هیچ رشته‌ای را قطعی تجویز نکن و بررسی با مشاور مدرسه و منابع رسمی را یادآوری کن.'; });
+        'این گفت‌وگو آزمون استاندارد RIASEC یا سنجش استعداد نیست. از منطق CIP برای تعریف مسئله، شناخت گزینه‌ها، مقایسه و برنامه اقدام استفاده کن؛ '
+        'از پرسش‌های علاقه‌محور الهام‌گرفته از RIASEC فقط برای کاوش فعالیت‌ها استفاده کن، نه نمره‌سازی یا برچسب شخصیت. '
+        'خودکارآمدی، تجربه موفقیت، حمایت‌های موجود و موانع احتمالی را با احتیاط بررسی کن و اگر داده کم است سؤال تکمیلی بپرس. '
+        '۲ تا ۴ گزینه شامل مسیرهای نظری، فنی‌وحرفه‌ای و مهارتیِ مرتبط را در صورت تناسب معرفی کن. '
+        'برای هر گزینه دلیل ارتباط با گفته‌های من، مزایا، دشواری‌ها، اطلاعات نامعلوم و یک آزمایش کوچک مانند پروژه یا گفت‌وگو با فرد آگاه پیشنهاد بده. '
+        'علاقه را با توانایی یکی نگیر؛ نمره را معادل استعداد ندان؛ از کلیشه جنسیتی، طبقاتی و منطقه‌ای پرهیز کن. '
+        'شرایط رسمی هدایت تحصیلی، ظرفیت منطقه، بازار کار و مقررات متغیر را حدس نزن؛ اگر منبع رسمی به‌روز در اختیار نداری، آن را نیازمند بررسی اعلام کن. '
+        'در پایان یک تصمیم موقت و قابل بازنگری بده، نه حکم قطعی؛ بررسی با مشاور مدرسه و خانواده را یادآوری کن.'; });
   }
 
   @override
