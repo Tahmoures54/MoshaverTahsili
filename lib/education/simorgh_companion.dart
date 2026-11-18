@@ -169,8 +169,31 @@ class _SimorghCompanionState extends State<SimorghCompanion>
     super.initState();
     _animation = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2200),
-    )..repeat(reverse: true);
+      duration: const Duration(milliseconds: 1800),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncAnimation();
+  }
+
+  @override
+  void didUpdateWidget(covariant SimorghCompanion oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.active != widget.active) _syncAnimation();
+  }
+
+  void _syncAnimation() {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    if (!widget.active || reduceMotion) {
+      _animation.stop();
+      return;
+    }
+    if (_animation.status != AnimationStatus.forward) {
+      _animation.forward(from: 0);
+    }
   }
 
   @override
