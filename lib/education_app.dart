@@ -273,8 +273,14 @@ class HomePage extends StatelessWidget {
     final profile = store.profile ?? {};
     final tasks = store.tasks;
     final weekStart = DateTime.now().subtract(const Duration(days: 7));
-    final recent = tasks.where((task) { final date = DateTime.tryParse(task['createdAt']?.toString() ?? ''); return date != null && !date.isBefore(weekStart); }).toList();
-    final completed = recent.where((task) => task['done'] == true).toList();
+    // Completion progress must use the completion timestamp, not task creation.
+    // Older tasks without completedAt are intentionally excluded from this
+    // time-bounded metric because their completion date cannot be inferred.
+    final completed = tasks.where((task) {
+      if (task['done'] != true) return false;
+      final date = DateTime.tryParse(task['completedAt']?.toString() ?? '');
+      return date != null && !date.isBefore(weekStart);
+    }).toList();
     final minutes = completed.fold<int>(0, (sum, task) => sum + ((task['minutes'] as num?)?.toInt() ?? 0));
     final nickname = profile['nickname']?.toString() ?? '';
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
@@ -294,7 +300,7 @@ class HomePage extends StatelessWidget {
         const SizedBox(width: 8), Expanded(child: StatCard(title: 'فلش‌کارت', value: faNumber(store.cards.length), icon: Icons.style_outlined)),
       ]),
       const SizedBox(height: 12),
-      NoticeCard(text: 'هفت روز اخیر: ${faNumber(completed.length)} کار از ${faNumber(recent.length)} کار ثبت‌شده انجام شده؛ ${faNumber(minutes)} دقیقه مطالعه برنامه‌ریزی‌شده در کارهای انجام‌شده.', icon: Icons.insights_outlined),
+      NoticeCard(text: 'هفت روز اخیر: ${faNumber(completed.length)} کار تکمیل شده؛ ${faNumber(minutes)} دقیقه زمان برای این کارها برنامه‌ریزی شده است.', icon: Icons.insights_outlined),
       const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('از کجا شروع کنیم؟', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
       QuickTile(icon: Icons.auto_awesome, title: 'گفت‌وگو با مشاور هوشمند', subtitle: 'پرسش، برنامه مطالعه و روش بهبود', onTap: () => go(4)),
       QuickTile(icon: Icons.insights_outlined, title: 'بررسی وضعیت تحصیلی', subtitle: 'نقاط قوت و ضعف بر اساس نمره‌های تو', onTap: () => push(context, AcademicInsightsPage(store: store))),
