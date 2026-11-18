@@ -9,6 +9,7 @@ import 'package:moshaver_tahsili/education/ai_advisor_service.dart';
 import 'package:moshaver_tahsili/education/bazaar_billing_service.dart';
 import 'package:moshaver_tahsili/education/credit_shop_page.dart';
 import 'package:moshaver_tahsili/education/education_store.dart';
+import 'support/memory_secure_local_cipher.dart';
 import 'package:moshaver_tahsili/education/ui.dart';
 import 'package:moshaver_tahsili/education_app.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,7 +24,10 @@ Widget frame(Widget child) => MaterialApp(locale: const Locale('fa'),
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    EducationStore.secureCipherOverride = MemorySecureLocalCipher();
+  });
 
   testWidgets('Persian welcome requires privacy acknowledgement before profile', (tester) async {
     await tester.pumpWidget(const EducationApp());
@@ -150,8 +154,7 @@ void main() {
     expect(store.credits, 1);
     expect(store.messages.last['status'], 'failed');
     final requestId = store.messages.last['id'].toString();
-    final failedWallet = jsonDecode((await SharedPreferences.getInstance())
-        .getString(EducationStore.walletKey)!);
+    final failedWallet = store.walletSnapshot;
     expect(failedWallet['requests'][requestId]['charge'], 'credit');
     expect(failedWallet['requests'][requestId]['status'], 'refunded');
     expect(find.text('تلاش دوباره همین درخواست'), findsNWidgets(2));
@@ -165,8 +168,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
     expect(calls, 2);
-    final completedWallet = jsonDecode((await SharedPreferences.getInstance())
-        .getString(EducationStore.walletKey)!);
+    final completedWallet = store.walletSnapshot;
     expect(completedWallet['requests'][requestId]['charge'], 'credit');
     expect(completedWallet['requests'][requestId]['status'], 'completed');
     expect(completedWallet['credits'], 0);

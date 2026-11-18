@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moshaver_tahsili/education/bazaar_billing_service.dart';
 import 'package:moshaver_tahsili/education/education_store.dart';
+import 'support/memory_secure_local_cipher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 VerifiedPurchase verifiedPurchase({String id = 'credit_10', String token = 'verified-token',
@@ -44,7 +45,10 @@ class FakeGateway implements BazaarGateway {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    EducationStore.secureCipherOverride = MemorySecureLocalCipher();
+  });
   Future<(EducationStore, FakeGateway, BazaarBillingService)> setup({bool consume = true}) async {
     final store = await EducationStore.open();
     final gateway = FakeGateway(consumeSucceeds: consume);
@@ -72,7 +76,7 @@ void main() {
     expect(store.credits, 10);
     expect(store.creditHistory.single['kind'], 'purchase');
     expect(gateway.consumes, 1);
-    expect(EducationStore(store.prefs).credits, 10);
+    expect((await EducationStore.open(preferences: store.prefs)).credits, 10);
   });
 
   test('failed consumption keeps credit; restore retries without double credit', () async {

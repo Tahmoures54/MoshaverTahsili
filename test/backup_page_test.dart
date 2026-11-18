@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moshaver_tahsili/education/backup_page.dart';
 import 'package:moshaver_tahsili/education/education_store.dart';
+import 'support/memory_secure_local_cipher.dart';
 import 'package:moshaver_tahsili/education/learning_engine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -12,6 +13,7 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    EducationStore.secureCipherOverride = MemorySecureLocalCipher();
   });
 
   tearDown(() {

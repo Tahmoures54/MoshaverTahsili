@@ -1,9 +1,33 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'learning_engine.dart';
+
+abstract interface class SecureLocalCipher {
+  Future<String> encrypt(String plaintext, {required String key});
+  Future<String> decrypt(String ciphertext, {required String key});
+}
+
+class AndroidKeystoreCipher implements SecureLocalCipher {
+  const AndroidKeystoreCipher();
+  static const _channel = MethodChannel('ir.moshaver.tahsili/secure_storage');
+  @override
+  Future<String> encrypt(String plaintext, {required String key}) async {
+    final value = await _channel.invokeMethod<String>('encrypt', {'plaintext': plaintext, 'key': key});
+    if (value == null || !value.startsWith('enc:v2:')) throw const LocalDataException('رمزنگاری اطلاعات محلی پاسخ معتبر نداد.');
+    return value;
+  }
+  @override
+  Future<String> decrypt(String ciphertext, {required String key}) async {
+    if (!ciphertext.startsWith('enc:v2:')) throw const LocalDataException('نسخه رمزنگاری اطلاعات محلی پشتیبانی نمی‌شود.');
+    final value = await _channel.invokeMethod<String>('decrypt', {'ciphertext': ciphertext, 'key': key});
+    if (value == null) throw const LocalDataException('رمزگشایی اطلاعات محلی ناموفق بود.');
+    return value;
+  }
+}
 
 /// Thrown instead of silently resetting a damaged local wallet or workspace.
 class LocalDataException implements Exception {
@@ -24,15 +48,14 @@ class AiReservation {
 /// serialized. Balance, request state and its ledger are persisted in ONE key.
 /// This is not a tamper-proof or server-verified financial ledger.
 class EducationStore extends ChangeNotifier {
-  EducationStore(this.prefs) {
-    try {
-      _wallet = _decodeWallet(prefs.getString(walletKey));
-    } on Object {
-      _walletError = 'اطلاعات کیف پول خوانده نشد. برای جلوگیری از دست رفتن اعتبار، داده قبلی بازنویسی نمی‌شود.';
-    }
-  }
-
+  EducationStore(this.prefs, {required this.cipher}) : _wallet = _emptyWallet();
   final SharedPreferences prefs;
+  final SecureLocalCipher cipher;
+  final Map<String, String> _secureData = {};
+  static SecureLocalCipher? secureCipherOverride;
+  static const encryptedPrefix = 'enc:v2:';
+  String? get walletRaw => _secureData[walletKey];
+  Map<String, dynamic> get walletSnapshot => _decodeWallet(jsonEncode(_checkedWallet()));
   static const walletKey = 'edu.ai.wallet';
   static const freeUses = 2;
   static const maxQuestionLength = 4000;
@@ -53,10 +76,47 @@ class EducationStore extends ChangeNotifier {
   String? get walletError => _walletError;
   String? dataError(String key) => _dataErrors[key];
 
-  static Future<EducationStore> open() async {
-    final store = EducationStore(await SharedPreferences.getInstance());
+  static Future<EducationStore> open({SharedPreferences? preferences, SecureLocalCipher? cipher}) async {
+    final store = EducationStore(preferences ?? await SharedPreferences.getInstance(),
+      cipher: cipher ?? secureCipherOverride ?? const AndroidKeystoreCipher());
+    await store._initializeSecureData();
     await store.refundInterruptedRequests();
     return store;
+  }
+
+  Future<void> _initializeSecureData() async {
+    for (final key in [...workspaceKeys, walletKey]) {
+      final stored = prefs.getString(key);
+      if (stored == null) continue;
+      try {
+        if (stored.startsWith(encryptedPrefix)) {
+          _secureData[key] = await cipher.decrypt(stored, key: key);
+        } else {
+          final encrypted = await cipher.encrypt(stored, key: key);
+          if (await cipher.decrypt(encrypted, key: key) != stored) throw const LocalDataException('اعتبارسنجی رمزنگاری اطلاعات قدیمی ناموفق بود.');
+          if (!await prefs.setString(key, encrypted)) throw const LocalDataException('مهاجرت امن اطلاعات ذخیره نشد؛ داده قبلی حفظ شد.');
+          _secureData[key] = stored;
+        }
+      } on Object catch (error) {
+        if (key == walletKey) {
+          _walletError = 'کیف پول رمزگشایی نشد؛ برای جلوگیری از تغییر اعتبار، داده قبلی حفظ شد.';
+        } else {
+          _dataErrors[key] = 'اطلاعات رمزگشایی نشد؛ برای جلوگیری از بازنویسی، داده قبلی حفظ شد.';
+        }
+        if (error is LocalDataException) rethrow;
+        throw LocalDataException('دسترسی امن به اطلاعات محلی ممکن نیست: $error');
+      }
+    }
+    try { _wallet = _decodeWallet(_secureData[walletKey]); }
+    on Object { _walletError = 'اطلاعات کیف پول خوانده نشد. برای جلوگیری از دست رفتن اعتبار، داده قبلی بازنویسی نمی‌شود.'; }
+  }
+
+  Future<void> _writeSecure(String key, String plaintext) async {
+    if (_dataErrors.containsKey(key)) throw LocalDataException(_dataErrors[key]!);
+    final encrypted = await cipher.encrypt(plaintext, key: key);
+    if (await cipher.decrypt(encrypted, key: key) != plaintext) throw const LocalDataException('اعتبارسنجی رمزنگاری اطلاعات ناموفق بود؛ داده قبلی حفظ شد.');
+    if (!await prefs.setString(key, encrypted)) throw const LocalDataException('ذخیره امن اطلاعات انجام نشد. داده قبلی حفظ شد.');
+    _secureData[key] = plaintext;
   }
 
   Future<T> _serialized<T>(Future<T> Function() action) {
@@ -202,9 +262,7 @@ class EducationStore extends ChangeNotifier {
     final raw = jsonEncode(wallet);
     // Validate the exact data to be written before touching existing storage.
     _decodeWallet(raw);
-    if (!await prefs.setString(walletKey, raw)) {
-      throw const LocalDataException('ذخیره کیف پول انجام نشد. فضای خالی گوشی را بررسی کن و دوباره تلاش کن.');
-    }
+    await _writeSecure(walletKey, raw);
     _wallet = wallet;
     notifyListeners();
   }
@@ -392,7 +450,7 @@ class EducationStore extends ChangeNotifier {
 
   Map<String, dynamic>? get profile {
     const key = 'edu.profile';
-    final raw = prefs.getString(key);
+    final raw = _secureData[key];
     if (raw == null) return null;
     try {
       return _map(jsonDecode(raw));
@@ -405,14 +463,12 @@ class EducationStore extends ChangeNotifier {
   Future<void> saveProfile(Map<String, dynamic> value) => _writeMap('edu.profile', value);
   Future<void> _writeMap(String key, Map<String, dynamic> value) => _serialized(() async {
     if (_dataErrors.containsKey(key)) throw LocalDataException(_dataErrors[key]!);
-    if (!await prefs.setString(key, jsonEncode(value))) {
-      throw const LocalDataException('ذخیره اطلاعات انجام نشد. فضای خالی گوشی را بررسی کن.');
-    }
+    await _writeSecure(key, jsonEncode(value));
     notifyListeners();
   });
 
   List<Map<String, dynamic>> readList(String key) {
-    final raw = prefs.getString(key);
+    final raw = _secureData[key];
     if (raw == null) return [];
     try {
       final value = jsonDecode(raw);
@@ -426,9 +482,7 @@ class EducationStore extends ChangeNotifier {
 
   Future<void> writeList(String key, List<Map<String, dynamic>> value) => _serialized(() async {
     if (_dataErrors.containsKey(key)) throw LocalDataException(_dataErrors[key]!);
-    if (!await prefs.setString(key, jsonEncode(value))) {
-      throw const LocalDataException('ذخیره اطلاعات انجام نشد. فضای خالی گوشی را بررسی کن.');
-    }
+    await _writeSecure(key, jsonEncode(value));
     notifyListeners();
   });
 
@@ -438,9 +492,7 @@ class EducationStore extends ChangeNotifier {
         if (_dataErrors.containsKey(key)) throw LocalDataException(_dataErrors[key]!);
         final current = readList(key);
         final next = update(current);
-        if (!await prefs.setString(key, jsonEncode(next))) {
-          throw const LocalDataException('ذخیره اطلاعات انجام نشد. فضای خالی گوشی را بررسی کن.');
-        }
+        await _writeSecure(key, jsonEncode(next));
         notifyListeners();
       });
 
@@ -491,9 +543,14 @@ class EducationStore extends ChangeNotifier {
   Future<void> deleteReport(String id) =>
       _mutateList('edu.reports', (all) => all.where((e) => e['id'] != id).toList());
   Map<String, dynamic>? get careerDraft {
-    final raw = prefs.getString('edu.career.draft');
+    final raw = _secureData['edu.career.draft'];
     if (raw == null) return null;
-    try { return _map(jsonDecode(raw)); } on Object { return null; }
+    try {
+      return _map(jsonDecode(raw));
+    } on Object {
+      _dataErrors['edu.career.draft'] = 'پیش‌نویس قبلی قابل خواندن نیست و بازنویسی نشده است.';
+      return null;
+    }
   }
   Future<void> saveCareerDraft(Map<String, dynamic> value) => _writeMap('edu.career.draft', value);
 
@@ -558,7 +615,7 @@ class EducationStore extends ChangeNotifier {
   Future<String> exportBackup() => _serialized(() async {
     final data = <String, Object?>{};
     for (final key in workspaceKeys) {
-      final raw = prefs.getString(key);
+      final raw = _secureData[key];
       if (raw == null) continue;
       try {
         data[key] = jsonDecode(raw);
@@ -573,25 +630,25 @@ class EducationStore extends ChangeNotifier {
   /// touched. If any write fails, the previous workspace is restored.
   Future<int> importBackup(String raw) => _serialized(() async {
     final data = WorkspaceBackup.decode(raw);
-    final previous = <String, String?>{
-      for (final key in workspaceKeys) key: prefs.getString(key),
-    };
+    _dataErrors.removeWhere((key, _) => workspaceKeys.contains(key));
+    final previous = <String, String?>{for (final key in workspaceKeys) key: _secureData[key]};
     try {
       for (final key in workspaceKeys) {
         final value = data[key];
-        final ok = value == null
-            ? await prefs.remove(key)
-            : await prefs.setString(key, jsonEncode(value));
-        if (!ok) throw const LocalDataException('بازیابی انجام نشد. دوباره تلاش کن.');
+        if (value == null) {
+          if (!await prefs.remove(key)) throw const LocalDataException('بازیابی انجام نشد.');
+          _secureData.remove(key);
+        }
+        else { await _writeSecure(key, jsonEncode(value)); }
       }
     } on Object {
       for (final entry in previous.entries) {
         final original = entry.value;
         if (original == null) {
           await prefs.remove(entry.key);
-        } else {
-          await prefs.setString(entry.key, original);
+          _secureData.remove(entry.key);
         }
+        else { await _writeSecure(entry.key, original); }
       }
       rethrow;
     }
@@ -605,6 +662,7 @@ class EducationStore extends ChangeNotifier {
       if (!await prefs.remove(key)) {
         throw const LocalDataException('حذف کامل اطلاعات انجام نشد. دوباره تلاش کن.');
       }
+      _secureData.remove(key);
       _dataErrors.remove(key);
     }
     notifyListeners();

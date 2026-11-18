@@ -7,6 +7,14 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.plugin.common.MethodChannel
 import java.io.ByteArrayOutputStream
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
+import android.util.Base64
+import java.security.KeyStore
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
 
 class MainActivity : FlutterActivity() {
     private var pendingBackupResult: MethodChannel.Result? = null
@@ -19,6 +27,19 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SECURE_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                try {
+                    when (call.method) {
+                        "encrypt" -> result.success(encryptLocalData(call.argument<String>("plaintext") ?: throw IllegalArgumentException("متن ارسال نشده است."), call.argument<String>("key") ?: throw IllegalArgumentException("کلید داده ارسال نشده است.")))
+                        "decrypt" -> result.success(decryptLocalData(call.argument<String>("ciphertext") ?: throw IllegalArgumentException("داده رمزنگاری‌شده ارسال نشده است."), call.argument<String>("key") ?: throw IllegalArgumentException("کلید داده ارسال نشده است.")))
+                        else -> result.notImplemented()
+                    }
+                } catch (error: Exception) {
+                    result.error("secure_storage", error.message ?: "عملیات رمزنگاری ناموفق بود.", null)
+                }
+            }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, BACKUP_CHANNEL)
             .setMethodCallHandler { call, result ->
                 if (pendingBackupResult != null) {
@@ -53,6 +74,42 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    private fun localEncryptionKey(createIfMissing: Boolean = true): SecretKey {
+        val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+        (keyStore.getKey(LOCAL_DATA_KEY_ALIAS, null) as? SecretKey)?.let { return it }
+        if (!createIfMissing) throw IllegalStateException("کلید رمزنگاری محلی موجود نیست؛ داده قبلی بازنویسی نمی‌شود.")
+        val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
+        generator.init(KeyGenParameterSpec.Builder(LOCAL_DATA_KEY_ALIAS,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(256).setRandomizedEncryptionRequired(true).build())
+        return generator.generateKey()
+    }
+
+    private fun encryptLocalData(plaintext: String, storageKey: String): String {
+        require(plaintext.toByteArray(Charsets.UTF_8).size <= MAX_LOCAL_VALUE_BYTES) { "اطلاعات بیش از اندازه مجاز است." }
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, localEncryptionKey())
+        require(storageKey.length <= 256) { "شناسه فضای ذخیره‌سازی معتبر نیست." }
+        cipher.updateAAD(storageKey.toByteArray(Charsets.UTF_8))
+        val encrypted = cipher.doFinal(plaintext.toByteArray(Charsets.UTF_8))
+        return ENCRYPTED_PREFIX + Base64.encodeToString(byteArrayOf(2) + cipher.iv + encrypted, Base64.NO_WRAP)
+    }
+
+    private fun decryptLocalData(value: String, storageKey: String): String {
+        require(value.startsWith(ENCRYPTED_PREFIX)) { "نسخه داده رمزنگاری‌شده معتبر نیست." }
+        require(storageKey.length <= 256) { "شناسه فضای ذخیره‌سازی معتبر نیست." }
+        val payload = Base64.decode(value.removePrefix(ENCRYPTED_PREFIX), Base64.NO_WRAP)
+        require(payload.size > 1 + GCM_IV_BYTES + GCM_TAG_BYTES && payload[0].toInt() == 2) { "ساختار داده رمزنگاری‌شده معتبر نیست." }
+        val iv = payload.copyOfRange(1, 1 + GCM_IV_BYTES)
+        val encrypted = payload.copyOfRange(1 + GCM_IV_BYTES, payload.size)
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.DECRYPT_MODE, localEncryptionKey(createIfMissing = false), GCMParameterSpec(GCM_TAG_BITS, iv))
+        cipher.updateAAD(storageKey.toByteArray(Charsets.UTF_8))
+        return String(cipher.doFinal(encrypted), Charsets.UTF_8)
     }
 
     private fun launchBackupPicker(intent: Intent, requestCode: Int) {
@@ -124,6 +181,13 @@ class MainActivity : FlutterActivity() {
     companion object {
         private const val ENGINE_ID = "moshaver_tahsili_engine"
         private const val BACKUP_CHANNEL = "ir.moshaver.tahsili/backup"
+        private const val SECURE_CHANNEL = "ir.moshaver.tahsili/secure_storage"
+        private const val LOCAL_DATA_KEY_ALIAS = "simorgh.local.data.aes.v1"
+        private const val ENCRYPTED_PREFIX = "enc:v2:"
+        private const val MAX_LOCAL_VALUE_BYTES = 4 * 1024 * 1024
+        private const val GCM_IV_BYTES = 12
+        private const val GCM_TAG_BITS = 128
+        private const val GCM_TAG_BYTES = 16
         private const val REQUEST_SAVE = 7401
         private const val REQUEST_OPEN = 7402
         private const val MAX_BACKUP_BYTES = 5 * 1024 * 1024

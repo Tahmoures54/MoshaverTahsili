@@ -2,11 +2,15 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moshaver_tahsili/education/education_store.dart';
+import 'support/memory_secure_local_cipher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    EducationStore.secureCipherOverride = MemorySecureLocalCipher();
+  });
 
   test('stores profile, tasks, exams and flashcards locally', () async {
     final store = await EducationStore.open();
@@ -14,7 +18,7 @@ void main() {
     await store.addTask({'id': 'task-1', 'title': 'حل تمرین', 'subject': 'ریاضی', 'minutes': 45, 'done': false});
     await store.addExam({'id': 'exam-1', 'subject': 'فیزیک', 'score': 17, 'max': 20});
     await store.addCard({'id': 'card-1', 'q': 'شتاب چیست؟', 'a': 'نرخ تغییر سرعت', 'interval': 0});
-    final reopened = EducationStore(store.prefs);
+    final reopened = await EducationStore.open(preferences: store.prefs);
     expect(reopened.profile?['year'], 'دهم');
     expect(reopened.tasks.single['title'], 'حل تمرین');
     expect(reopened.exams.single['score'], 17);
@@ -60,7 +64,7 @@ void main() {
     expect(results.where((value) => value), hasLength(1));
     expect(store.credits, 10);
     expect(store.creditHistory, hasLength(1));
-    expect(EducationStore(store.prefs).credits, 10);
+    expect((await EducationStore.open(preferences: store.prefs)).credits, 10);
   });
 
   test('rejects guessed products, mismatched amounts and empty tokens', () async {
@@ -158,7 +162,8 @@ void main() {
     expect(store.walletError, isNotNull);
     expect(store.canUseAi, isFalse);
     await expectLater(store.grantProduct(productId: 'credit_10', purchaseToken: 't', creditsToAdd: 10), throwsA(isA<LocalDataException>()));
-    expect(store.prefs.getString(EducationStore.walletKey), '{broken');
+    expect(store.walletRaw, '{broken');
+    expect(store.prefs.getString(EducationStore.walletKey), startsWith(EducationStore.encryptedPrefix));
   });
 
   test('migrates v1 token ledger without losing balance or duplicate protection', () async {
@@ -190,10 +195,11 @@ void main() {
     final store = await EducationStore.open();
     expect(store.walletError, isNotNull);
     expect(store.canUseAi, isFalse);
-    expect(store.prefs.getString(EducationStore.walletKey), raw);
+    expect(store.walletRaw, raw);
+    expect(store.prefs.getString(EducationStore.walletKey), startsWith(EducationStore.encryptedPrefix));
   });
 
-  test('does not exceed the stored request cap when every existing request is pending', () async {
+  test('startup refunds pending requests and trims old entries to the stored request cap', () async {
     final requests = <String, dynamic>{
       for (var index = 0; index < EducationStore.maxStoredRequests + 1; index++)
         'pending-$index': {
@@ -212,15 +218,16 @@ void main() {
       'transactions': <Map<String, dynamic>>[],
     });
     SharedPreferences.setMockInitialValues({EducationStore.walletKey: raw});
-    final store = EducationStore(await SharedPreferences.getInstance());
-    await expectLater(
-      store.prepareAiRequest(id: 'new-request', question: 'new question'),
-      throwsA(isA<LocalDataException>()),
-    );
-    expect(store.credits, 1000);
-    final saved = jsonDecode(store.prefs.getString(EducationStore.walletKey)!) as Map;
-    expect((saved['requests'] as Map).length, EducationStore.maxStoredRequests + 1);
-    expect((saved['requests'] as Map).containsKey('new-request'), isFalse);
+    final store = await EducationStore.open(preferences: await SharedPreferences.getInstance());
+    expect(store.credits, 1101);
+    final reservation = await store.prepareAiRequest(id: 'new-request', question: 'new question');
+    expect(reservation.usesFreeUse, isFalse);
+    expect(store.credits, 1100);
+    final saved = store.walletSnapshot;
+    final savedRequests = saved['requests'] as Map;
+    expect(savedRequests.length, EducationStore.maxStoredRequests);
+    expect(savedRequests.containsKey('new-request'), isTrue);
+    expect(savedRequests.values.every((entry) => entry['status'] == 'refunded' || entry['status'] == 'pending'), isTrue);
   });
 
   test('workspace reset preserves wallet and financial history', () async {
@@ -247,6 +254,6 @@ void main() {
     expect(store.tasks, isEmpty);
     expect(store.dataError('edu.tasks'), isNotNull);
     await expectLater(store.addTask({'id': 'new'}), throwsA(isA<LocalDataException>()));
-    expect(store.prefs.getString('edu.tasks'), '{broken');
+    expect(store.prefs.getString('edu.tasks'), startsWith(EducationStore.encryptedPrefix));
   });
 }
