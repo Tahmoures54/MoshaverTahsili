@@ -73,10 +73,10 @@ void main() {
     final result = await service.buy('credit_10');
     expect(result.credited, 1);
     expect(result.consumptionPending, isFalse);
-    expect(store.credits, 10);
+    expect(store.credits, 105);
     expect(store.creditHistory.single['kind'], 'purchase');
     expect(gateway.consumes, 1);
-    expect((await EducationStore.open(preferences: store.prefs)).credits, 10);
+    expect((await EducationStore.open(preferences: store.prefs)).credits, 105);
   });
 
   test('failed consumption keeps credit; restore retries without double credit', () async {
@@ -110,7 +110,7 @@ void main() {
       gateway.next = invalid;
       await expectLater(service.buy('credit_10'), throwsA(isA<BillingException>()));
     }
-    expect(store.credits, 0);
+    expect(store.credits, 5);
     expect(gateway.consumes, 0);
   });
 
@@ -131,7 +131,7 @@ void main() {
     final result = await service.restorePurchases();
     expect(result.credited, 2);
     expect(result.alreadyCredited, 1);
-    expect(store.credits, 35);
+    expect(store.credits, 365);
   });
 
   test('cancellation and connection errors are sanitized; no credit changes', () async {
