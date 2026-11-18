@@ -57,7 +57,7 @@ class EducationStore extends ChangeNotifier {
   String? get walletRaw => _secureData[walletKey];
   Map<String, dynamic> get walletSnapshot => _decodeWallet(jsonEncode(_checkedWallet()));
   static const walletKey = 'edu.ai.wallet';
-  static const freeUses = 2;
+  static const freeUses = 0; // Welcome value is a one-time 5-credit wallet grant.
   static const maxQuestionLength = 4000;
   static const maxAnswerLength = 24000;
   static const maxHistoryEntries = 250;
@@ -127,12 +127,23 @@ class EducationStore extends ChangeNotifier {
   }
 
   static Map<String, dynamic> _emptyWallet() => {
-    'version': 2,
-    'credits': 0,
+    'version': 3,
+    // Only a genuinely new wallet receives this welcome grant. Decoding an
+    // existing wallet always restores its stored balance without top-ups.
+    'credits': 5,
     'successful_uses': 0,
     'purchase_tokens': <String, dynamic>{},
     'requests': <String, dynamic>{},
-    'transactions': <Map<String, dynamic>>[],
+    'transactions': <Map<String, dynamic>>[
+      {
+        'id': 'welcome-credits-v1',
+        'kind': 'bonus',
+        'amount': 5,
+        'title': 'هدیه شروع سیمرغ',
+        'createdAt': DateTime.utc(2026, 1, 1).toIso8601String(),
+        'status': 'completed',
+      },
+    ],
   };
 
   static int _nonNegativeInt(Object? value) {
@@ -214,7 +225,7 @@ class EducationStore extends ChangeNotifier {
       for (final Object? value in source['transactions'] as List) {
         final item = _map(value);
         final kind = _string(item['kind'], 20);
-        if (!{'purchase', 'ai', 'refund'}.contains(kind)) throw const FormatException('Invalid transaction');
+        if (!{'purchase', 'ai', 'refund', 'bonus'}.contains(kind)) throw const FormatException('Invalid transaction');
         transactions.add({
           'id': _string(item['id'], 512),
           'kind': kind,
@@ -670,9 +681,12 @@ class EducationStore extends ChangeNotifier {
 }
 
 class CreditProduct {
-  const CreditProduct(this.id, this.title, this.credits, this.description);
+  const CreditProduct(this.id, this.title, this.credits, this.description,
+      {this.purchasedCredits = 0, this.bonusCredits = 0});
   final String id, title, description;
+  /// Total credits delivered to the wallet, including any pack bonus.
   final int credits;
+  final int purchasedCredits, bonusCredits;
 }
 
 /// Existing SKUs retained from this repository, NOT guessed replacement IDs.
@@ -680,9 +694,12 @@ class CreditProduct {
 /// reference project/Bazaar panel; a public key alone does not verify a catalog.
 class CreditCatalog {
   static const products = [
-    CreditProduct('credit_10', 'بسته برنزی', 10, 'برای شروع و استفاده محدود'),
-    CreditProduct('credit_35', 'بسته نقره‌ای', 25, 'برای استفاده بیشتر'),
-    CreditProduct('credit_90', 'بسته طلایی', 60, 'برای استفاده پرتکرار'),
+    CreditProduct('credit_10', 'بسته برنزی · ۱۰۰ اعتبار', 100,
+        '۱۰۰ اعتبار؛ بدون اعتبار تشویقی', purchasedCredits: 100),
+    CreditProduct('credit_35', 'بسته نقره‌ای · ۲۶۵ اعتبار', 265,
+        '۲۵۰ اعتبار خرید + ۱۵ اعتبار هدیه', purchasedCredits: 250, bonusCredits: 15),
+    CreditProduct('credit_90', 'بسته طلایی · ۵۵۰ اعتبار', 550,
+        '۵۰۰ اعتبار خرید + ۵۰ اعتبار هدیه', purchasedCredits: 500, bonusCredits: 50),
   ];
   static CreditProduct? byId(String id) {
     for (final product in products) {
