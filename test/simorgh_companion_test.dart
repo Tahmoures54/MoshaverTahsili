@@ -71,6 +71,27 @@ void main() {
       expect(result.message, contains('۱ کار'));
     });
 
+    test('adapts wording for primary pupils and older students', () {
+      final overdue = [
+        {'id': 'late', 'done': false, 'dueDate': '2026-11-17'},
+      ];
+      final primary = buildSimorghGuidance(
+        tasks: overdue,
+        cards: [],
+        now: now,
+        grade: 'ابتدایی',
+      );
+      final older = buildSimorghGuidance(
+        tasks: overdue,
+        cards: [],
+        now: now,
+        grade: 'دانش‌آموز کنکوری',
+      );
+
+      expect(primary.message, contains('بیا یکی را با هم انتخاب کنیم'));
+      expect(older.message, contains('اولویت‌بندی کن'));
+    });
+
     test('uses pending work as a neutral next-step prompt', () {
       final result = buildSimorghGuidance(
         tasks: [
