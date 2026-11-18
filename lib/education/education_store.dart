@@ -57,7 +57,7 @@ class EducationStore extends ChangeNotifier {
   String? get walletRaw => _secureData[walletKey];
   Map<String, dynamic> get walletSnapshot => _decodeWallet(jsonEncode(_checkedWallet()));
   static const walletKey = 'edu.ai.wallet';
-  static const freeUses = 2;
+  static const freeUses = 5;
   static const maxQuestionLength = 4000;
   static const maxAnswerLength = 24000;
   static const maxHistoryEntries = 250;
@@ -670,9 +670,21 @@ class EducationStore extends ChangeNotifier {
 }
 
 class CreditProduct {
-  const CreditProduct(this.id, this.title, this.credits, this.description);
+  const CreditProduct(
+    this.id,
+    this.title,
+    this.credits,
+    this.description, {
+    this.purchasedCredits = 0,
+    this.bonusCredits = 0,
+  });
+
   final String id, title, description;
+  /// Total credits granted to the wallet for this verified purchase.
   final int credits;
+  /// Paid and promotional portions are kept separate for clear disclosure.
+  final int purchasedCredits;
+  final int bonusCredits;
 }
 
 /// Existing SKUs retained from this repository, NOT guessed replacement IDs.
@@ -680,9 +692,29 @@ class CreditProduct {
 /// reference project/Bazaar panel; a public key alone does not verify a catalog.
 class CreditCatalog {
   static const products = [
-    CreditProduct('credit_10', 'بسته برنزی', 10, 'برای شروع و استفاده محدود'),
-    CreditProduct('credit_35', 'بسته نقره‌ای', 25, 'برای استفاده بیشتر'),
-    CreditProduct('credit_90', 'بسته طلایی', 60, 'برای استفاده پرتکرار'),
+    CreditProduct(
+      'credit_10',
+      'بسته برنزی',
+      100,
+      '۱۰۰ اعتبار خرید؛ بدون اعتبار هدیه',
+      purchasedCredits: 100,
+    ),
+    CreditProduct(
+      'credit_35',
+      'بسته نقره‌ای',
+      265,
+      '۲۵۰ اعتبار خرید + ۱۵ اعتبار هدیه',
+      purchasedCredits: 250,
+      bonusCredits: 15,
+    ),
+    CreditProduct(
+      'credit_90',
+      'بسته طلایی',
+      550,
+      '۵۰۰ اعتبار خرید + ۵۰ اعتبار هدیه',
+      purchasedCredits: 500,
+      bonusCredits: 50,
+    ),
   ];
   static CreditProduct? byId(String id) {
     for (final product in products) {
