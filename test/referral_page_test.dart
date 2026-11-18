@@ -17,6 +17,7 @@ void main() {
     expect(find.text('کپی متن و لینک'), findsOneWidget);
   });
 
+  // Verify the platform payload without depending on the host clipboard.
   testWidgets('copy action writes the complete referral message to the clipboard',
       (tester) async {
     final clipboardCalls = <MethodCall>[];
