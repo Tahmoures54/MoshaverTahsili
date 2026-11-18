@@ -17,6 +17,9 @@ void main() {
     final welcome = store.creditHistory.single;
     expect(welcome['kind'], 'bonus');
     expect(welcome['amount'], 5);
+    final untouchedReopen = await EducationStore.open(preferences: store.prefs);
+    expect(untouchedReopen.credits, 5);
+    expect(untouchedReopen.creditHistory.where((entry) => entry['kind'] == 'bonus'), hasLength(1));
 
     final reservation = await store.prepareAiRequest(id: 'first', question: 'پرسش اول');
     expect(reservation.usesFreeUse, isFalse);
