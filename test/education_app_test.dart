@@ -54,6 +54,25 @@ void main() {
     expect(store.profile?['year'], 'هفتم');
   });
 
+  testWidgets('editing profile preserves unrelated existing settings', (tester) async {
+    final store = await EducationStore.open();
+    await store.saveProfile({
+      'nickname': 'دانش‌آموز', 'grade': 'متوسطه اول', 'year': 'هفتم',
+      'field': 'عمومی', 'goal': 'پیشرفت', 'dailyMinutes': 90,
+      'aiContextConsent': true, 'customPreference': 'keep-me',
+    });
+    await tester.pumpWidget(frame(Builder(builder: (context) => Center(child: ElevatedButton(
+      onPressed: () => showProfileSheet(context, store), child: const Text('ویرایش'),
+    )))));
+    await tester.tap(find.text('ویرایش'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ذخیره پروفایل'));
+    await tester.pumpAndSettle();
+    expect(store.profile?['dailyMinutes'], 90);
+    expect(store.profile?['aiContextConsent'], isTrue);
+    expect(store.profile?['customPreference'], 'keep-me');
+  });
+
   testWidgets('home weekly progress uses completion date rather than creation date', (tester) async {
     final store = await EducationStore.open();
     final now = DateTime.now();
