@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'learning_engine.dart';
 
 /// A conservative, explainable summary of flashcard retrieval evidence.
@@ -52,7 +54,7 @@ List<TopicMastery> estimateTopicMastery(List<Entry> cards) {
     final total = value.alpha + value.beta;
     final mean = value.alpha / total;
     final variance = (value.alpha * value.beta) / (total * total * (total + 1));
-    final margin = 1.64 * variance.sqrt();
+    final margin = 1.64 * math.sqrt(variance);
     result.add(TopicMastery(
       topic: entry.key,
       estimate: mean,
