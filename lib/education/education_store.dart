@@ -103,8 +103,10 @@ class EducationStore extends ChangeNotifier {
         } else {
           _dataErrors[key] = 'اطلاعات رمزگشایی نشد؛ برای جلوگیری از بازنویسی، داده قبلی حفظ شد.';
         }
-        if (error is LocalDataException) rethrow;
-        throw LocalDataException('دسترسی امن به اطلاعات محلی ممکن نیست: $error');
+        // Keep the damaged ciphertext untouched and let unrelated workspace
+        // sections remain usable. Writes to this section fail closed via
+        // _dataErrors; the wallet remains unavailable via _walletError.
+        continue;
       }
     }
     try {
@@ -633,6 +635,10 @@ class EducationStore extends ChangeNotifier {
 
   /// Serialises the study workspace. The AI wallet is never included.
   Future<String> exportBackup() => _serialized(() async {
+    final damaged = _dataErrors.keys.where(workspaceKeys.contains).toList();
+    if (damaged.isNotEmpty) {
+      throw const LocalDataException('بخشی از اطلاعات قابل خواندن نیست؛ برای جلوگیری از ساخت پشتیبان ناقص، ابتدا بازیابی یا پاک‌سازی امن را انجام بده.');
+    }
     final data = <String, Object?>{};
     for (final key in workspaceKeys) {
       final raw = _secureData[key];
