@@ -111,7 +111,7 @@ void main() {
 
     expect(find.text('همراه تو، سیمرغ'), findsOneWidget);
     expect(find.text('سفر یادگیری از یک قدم آغاز می‌شود'), findsOneWidget);
-    expect(find.byType(CustomPaint), findsOneWidget);
+    expect(find.byKey(const ValueKey('simorgh-character-painter')), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('ساخت اولین برنامه'));
