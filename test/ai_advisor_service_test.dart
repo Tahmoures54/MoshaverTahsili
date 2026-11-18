@@ -220,6 +220,11 @@ void main() {
     final messages = body['messages'] as List;
     expect(messages, hasLength(26));
     expect(Map<String, dynamic>.from(messages.first as Map)['content'], contains('هفتم'));
+    final systemPrompt = Map<String, dynamic>.from(messages.first as Map)['content'] as String;
+    expect(systemPrompt, contains('مرحله‌به‌مرحله'));
+    expect(systemPrompt, contains('پرسش کوتاه برای سنجش فهم'));
+    expect(systemPrompt, contains('عدم قطعیت'));
+    expect(systemPrompt, contains('کلیشه جنسیتی'));
     expect(Map<String, dynamic>.from(messages[1] as Map)['content'], 'turn-6');
     expect(Map<String, dynamic>.from(messages.last as Map)['content'], 'برای من برنامه بده.');
     expect(captured!.body.contains('network error'), isFalse);
