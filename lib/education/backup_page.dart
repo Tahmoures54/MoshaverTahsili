@@ -15,6 +15,7 @@ class BackupPage extends StatefulWidget {
 }
 
 class _BackupPageState extends State<BackupPage> {
+  static const backupChannel = MethodChannel('ir.moshaver.tahsili/backup');
   final input = TextEditingController();
   bool busy = false;
 
@@ -24,12 +25,52 @@ class _BackupPageState extends State<BackupPage> {
     super.dispose();
   }
 
+  Future<void> saveBackupFile() async {
+    setState(() => busy = true);
+    try {
+      final raw = await widget.store.exportBackup();
+      final date = DateTime.now().toIso8601String().substring(0, 10);
+      final saved = await backupChannel.invokeMethod<bool>('saveBackup', {
+        'content': raw,
+        'fileName': 'simorgh-backup-$date.json',
+      });
+      if (mounted && saved == true) {
+        showMessage(context, 'فایل پشتیبان ذخیره شد.');
+      }
+    } on PlatformException catch (error) {
+      if (mounted) showMessage(context, error.message ?? 'ذخیره فایل انجام نشد.');
+    } on Object catch (error) {
+      if (mounted) showMessage(context, friendlyError(error));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> openBackupFile() async {
+    setState(() => busy = true);
+    try {
+      final raw = await backupChannel.invokeMethod<String>('openBackup');
+      if (!mounted || raw == null) return;
+      WorkspaceBackup.decode(raw);
+      input.text = raw;
+      showMessage(context, 'فایل پشتیبان خوانده شد؛ برای تأیید و بازیابی اقدام کن.');
+    } on BackupFormatException catch (error) {
+      if (mounted) showMessage(context, error.toString());
+    } on PlatformException catch (error) {
+      if (mounted) showMessage(context, error.message ?? 'خواندن فایل انجام نشد.');
+    } on Object catch (error) {
+      if (mounted) showMessage(context, friendlyError(error));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> copyBackup() async {
     setState(() => busy = true);
     try {
       final raw = await widget.store.exportBackup();
       await Clipboard.setData(ClipboardData(text: raw));
-      if (mounted) showMessage(context, 'پشتیبان روی کلیپ‌بورد کپی شد. آن را در جای امنی ذخیره کن.');
+      if (mounted) showMessage(context, 'متن پشتیبان کپی شد.');
     } on Object catch (error) {
       if (mounted) showMessage(context, friendlyError(error));
     } finally {
@@ -94,9 +135,20 @@ class _BackupPageState extends State<BackupPage> {
           ),
           const SizedBox(height: 8),
           FilledButton.icon(
+            onPressed: busy ? null : saveBackupFile,
+            icon: const Icon(Icons.save_alt_outlined),
+            label: const Text('ذخیره فایل پشتیبان'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: busy ? null : openBackupFile,
+            icon: const Icon(Icons.folder_open_outlined),
+            label: const Text('انتخاب فایل پشتیبان'),
+          ),
+          TextButton.icon(
             onPressed: busy ? null : copyBackup,
             icon: const Icon(Icons.copy_outlined),
-            label: const Text('ساخت پشتیبان و کپی'),
+            label: const Text('کپی متن پشتیبان (روش جایگزین)'),
           ),
           const SizedBox(height: 24),
           const Text('بازیابی', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
