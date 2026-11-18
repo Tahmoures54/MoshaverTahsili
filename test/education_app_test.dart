@@ -73,6 +73,44 @@ void main() {
     expect(store.profile?['customPreference'], 'keep-me');
   });
 
+  testWidgets('AI profile context consent is opt-in and can be revoked', (tester) async {
+    final store = await EducationStore.open();
+    await store.saveProfile({'grade': 'متوسطه اول', 'year': 'هفتم', 'field': 'عمومی'});
+    await tester.pumpWidget(frame(Builder(builder: (context) => Center(child: ElevatedButton(
+      onPressed: () => showProfileSheet(context, store),
+      child: const Text('ویرایش پروفایل'),
+    )))));
+
+    await tester.tap(find.text('ویرایش پروفایل'));
+    await tester.pumpAndSettle();
+    final consentLabel = find.text('اجازه ارسال زمینه تحصیلی به هوش مصنوعی');
+    await tester.ensureVisible(consentLabel);
+    await tester.pumpAndSettle();
+    expect(tester.widget<CheckboxListTile>(find.ancestor(
+      of: consentLabel, matching: find.byType(CheckboxListTile),
+    )).value, isFalse);
+    await tester.tap(consentLabel);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('ذخیره پروفایل'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ذخیره پروفایل'));
+    await tester.pumpAndSettle();
+    expect(store.profile?['aiProfileContextConsent'], isTrue);
+
+    await tester.tap(find.text('ویرایش پروفایل'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(consentLabel);
+    await tester.pumpAndSettle();
+    await tester.tap(consentLabel);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('ذخیره پروفایل'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ذخیره پروفایل'));
+    await tester.pumpAndSettle();
+    expect(store.profile?['aiProfileContextConsent'], isFalse);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('home weekly progress uses completion date rather than creation date', (tester) async {
     final store = await EducationStore.open();
     final now = DateTime.now();
