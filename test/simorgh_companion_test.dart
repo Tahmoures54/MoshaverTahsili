@@ -141,7 +141,7 @@ void main() {
       ),
     );
 
-    expect(tester.widget<TickerMode>(find.byType(TickerMode)).enabled, isFalse);
+    expect(tester.widget<TickerMode>(find.byKey(const ValueKey('simorgh-animation-ticker'))).enabled, isFalse);
     await tester.pumpWidget(const SizedBox());
   });
 
