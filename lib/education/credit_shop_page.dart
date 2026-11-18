@@ -64,9 +64,9 @@ class _CreditShopPageState extends State<CreditShopPage> {
     appBar: AppBar(title: const Text('کیف اعتبار و خرید')),
     body: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
       CreditSummary(store: widget.store),
-      const NoticeCard(text: 'دو پاسخ موفق نخست رایگان است. پس از آن هر پاسخ موفق یک اعتبار مصرف می‌کند. '
-          'هنگام پردازش، یک اعتبار موقتاً رزرو می‌شود و در صورت خطا برمی‌گردد. '
-          'اطلاعات کیف پول فقط روی همین گوشی است؛ حذف برنامه یا انتقال گوشی می‌تواند اعتبار را از بین ببرد.'),
+      const NoticeCard(text: 'برای شروع ۵ اعتبار هدیه دریافت می‌کنی. هر پاسخ موفق هوش مصنوعی یک اعتبار مصرف می‌کند؛ '
+          'در صورت خطا یا دریافت‌نشدن پاسخ معتبر، اعتبار رزروشده برمی‌گردد. '
+          'اعتبارها روی همین گوشی نگهداری می‌شوند؛ حذف برنامه یا انتقال گوشی می‌تواند باعث از دست رفتن آن‌ها شود.'),
       if (!billing.isConfigured) NoticeCard(text: billing.configurationMessage, warning: true),
       if (error != null) NoticeCard(text: error!, icon: Icons.error_outline, warning: true),
       const SizedBox(height: 10),
@@ -113,7 +113,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
         if (history.isEmpty) return const EmptyState(title: 'هنوز تراکنشی ثبت نشده', subtitle: 'خریدها و مصرف اعتبار پاسخ‌های موفق اینجا نمایش داده می‌شوند.', icon: Icons.receipt_long_outlined);
         return Column(children: [
           for (final item in history) Card(child: ListTile(
-            leading: Icon(item['kind'] == 'purchase' ? Icons.add_circle_outline : item['kind'] == 'refund' ? Icons.undo : Icons.auto_awesome,
+            leading: Icon(item['kind'] == 'purchase' || item['kind'] == 'bonus' ? Icons.add_circle_outline : item['kind'] == 'refund' ? Icons.undo : Icons.auto_awesome,
                 color: item['kind'] == 'ai' ? blue : teal),
             title: Text(item['title'].toString()),
             subtitle: Text(_date(item['createdAt'].toString()) + _status(item['status'].toString())),
