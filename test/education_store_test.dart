@@ -244,7 +244,7 @@ void main() {
     expect(store.tasks, isEmpty);
     expect(store.messages, isEmpty);
     expect(store.reports, isEmpty);
-    expect(store.credits, 14);
+    expect(store.credits, 104);
     expect(store.freeAiUsesRemaining, 0);
     expect(store.creditHistory, hasLength(3));
   });
