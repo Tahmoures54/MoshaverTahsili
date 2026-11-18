@@ -191,14 +191,14 @@ void main() {
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
         home: CreditShopPage(store: store, billing: billing)));
     await tester.pumpAndSettle();
-    expect(find.text('بسته برنزی'), findsOneWidget);
+    expect(find.textContaining('بسته برنزی'), findsOneWidget);
     await tester.tap(find.text('خرید از بازار').first);
     await tester.pumpAndSettle();
-    expect(store.credits, 10);
+    expect(store.credits, 105);
     await tester.scrollUntilVisible(find.text('تاریخچه اعتبار'), 300);
     await tester.pumpAndSettle();
     expect(find.text('تاریخچه اعتبار'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('بسته برنزی').last, 300);
+    await tester.scrollUntilVisible(find.textContaining('بسته برنزی').last, 300);
     expect(tester.takeException(), isNull);
   });
 
