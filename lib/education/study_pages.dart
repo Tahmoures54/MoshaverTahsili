@@ -165,7 +165,7 @@ class _PlanReportDialog extends StatelessWidget {
       if (plan.unplacedIds.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 12), child: Text(
           '${faNumber(plan.unplacedIds.length)} کار در افق ۱۴ روزه جا نشد. مدت آن‌ها را کوتاه‌تر کن یا ساعت مطالعه روزانه را بالاتر ببر.',
           style: const TextStyle(color: Colors.red, height: 1.7))),
-    ])))),
+    ]))),
     actions: [FilledButton(onPressed: () => Navigator.pop(context), child: const Text('باشه'))]);
 }
 
