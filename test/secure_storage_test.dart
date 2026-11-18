@@ -35,12 +35,35 @@ void main() {
     expect(reopened.credits, 7);
   });
 
-  test('refuses tampered ciphertext without replacing the stored value', () async {
-    SharedPreferences.setMockInitialValues({'edu.profile': 'enc:v2:not-valid-base64!'});
+  test('keeps other workspace sections usable when one ciphertext is damaged', () async {
+    SharedPreferences.setMockInitialValues({
+      'edu.profile': 'enc:v2:not-valid-base64!',
+      'edu.tasks': '[{"id":"safe-task","title":"قابل استفاده","done":false}]',
+    });
     final prefs = await SharedPreferences.getInstance();
     final before = prefs.getString('edu.profile');
-    await expectLater(EducationStore.open(preferences: prefs), throwsA(isA<LocalDataException>()));
+    final store = await EducationStore.open(preferences: prefs);
+    expect(store.dataError('edu.profile'), isNotNull);
+    expect(store.profile, isNull);
+    expect(store.tasks.single['id'], 'safe-task');
     expect(prefs.getString('edu.profile'), before);
+    await expectLater(store.saveProfile({'grade': 'دهم'}), throwsA(isA<LocalDataException>()));
+    await expectLater(store.exportBackup(), throwsA(isA<LocalDataException>()));
+  });
+
+  test('keeps a damaged wallet unavailable without blocking local learning', () async {
+    SharedPreferences.setMockInitialValues({
+      EducationStore.walletKey: 'enc:v2:not-valid-base64!',
+      'edu.tasks': '[{"id":"offline","title":"مرور درس","done":false}]',
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final before = prefs.getString(EducationStore.walletKey);
+    final store = await EducationStore.open(preferences: prefs);
+    expect(store.walletError, isNotNull);
+    expect(store.canUseAi, isFalse);
+    expect(store.tasks.single['id'], 'offline');
+    expect(prefs.getString(EducationStore.walletKey), before);
+    await expectLater(store.prepareAiRequest(id: 'blocked', question: 'q'), throwsA(isA<LocalDataException>()));
   });
 
   test('new writes and AI ledger updates are encrypted at rest', () async {
