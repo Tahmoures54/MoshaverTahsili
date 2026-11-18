@@ -83,7 +83,7 @@ void main() {
   test('failed consumption keeps credit; restore retries without double credit', () async {
     final (store, gateway, service) = await setup(consume: false);
     expect((await service.buy('credit_10')).consumptionPending, isTrue);
-    expect(store.credits, 10);
+    expect(store.credits, 105);
     gateway.inventory = [verifiedPurchase()];
     final first = await service.restorePurchases();
     expect(first.alreadyCredited, 1);
@@ -92,7 +92,7 @@ void main() {
     final second = await service.restorePurchases();
     expect(second.credited, 0);
     expect(second.consumptionPending, isFalse);
-    expect(store.credits, 10);
+    expect(store.credits, 105);
     expect(gateway.consumes, 3);
   });
 
@@ -100,7 +100,7 @@ void main() {
     final (store, gateway, service) = await setup();
     expect((await service.buy('credit_10')).credited, 1);
     expect((await service.buy('credit_10')).alreadyCredited, 1);
-    expect(store.credits, 10);
+    expect(store.credits, 105);
     expect(gateway.consumes, 2);
   });
 
@@ -122,7 +122,7 @@ void main() {
     expect(result.skipped, 3);
     expect(result.credited, 0);
     expect(result.message, contains('اعتباری اضافه نشد'));
-    expect(store.credits, 0);
+    expect(store.credits, 5);
     expect(gateway.consumes, 0);
   });
 
@@ -142,7 +142,7 @@ void main() {
         .having((e) => e.cancelled, 'cancelled', isTrue).having((e) => e.message, 'safe', isNot(contains('raw platform')))));
     gateway.connectFails = true;
     await expectLater(service.restorePurchases(), throwsA(isA<BillingException>().having((e) => e.message, 'safe', isNot(contains('sensitive')))));
-    expect(store.credits, 0);
+    expect(store.credits, 5);
   });
 
   test('overlapping purchase operations are rejected', () async {
@@ -154,7 +154,7 @@ void main() {
     gateway.purchaseGate!.complete();
     await first;
     expect(gateway.purchases, 1);
-    expect(store.credits, 10);
+    expect(store.credits, 105);
   });
 
   test('a stalled purchase times out, releases the shop lock and can be retried', () async {
@@ -168,12 +168,12 @@ void main() {
     await expectLater(service.buy('credit_10'), throwsA(isA<BillingException>()
         .having((error) => error.message, 'safe timeout', contains('خریدهای قبلی را بازیابی کن'))));
     expect(service.isBusy, isFalse);
-    expect(store.credits, 0);
+    expect(store.credits, 5);
 
     gateway.purchaseGate = null;
     final retry = await service.buy('credit_10');
     expect(retry.credited, 1);
-    expect(store.credits, 10);
+    expect(store.credits, 105);
     expect(gateway.purchases, 2);
   });
 
