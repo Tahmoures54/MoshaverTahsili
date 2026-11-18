@@ -8,6 +8,10 @@ void main() {
       'قصد دارم به خودم آسیب بزنم',
       'دیگه نمی‌خوام زنده باشم',
       'کاش مرده بودم',
+      'فکر می‌کنم به خودم آسیب بزنم',
+      'به خودم صدمه زدم',
+      'خودزنی کردم',
+      'می‌خواهم به زندگیم پایان بدهم',
     ]) {
       final result = AiSafetyPolicy.assess(message);
       expect(result.shouldBlockRemoteAi, isTrue, reason: message);
@@ -29,6 +33,7 @@ void main() {
     for (final message in [
       'از ریاضی ناامید شدم، برای امتحان کمکم کن',
       'خودکشی در ادبیات چه معنایی دارد؟',
+      'برای مقاله درباره خودکشی مطالعه می‌کنم.',
       'چطور برای هفته آینده برنامه مطالعه بنویسم؟',
     ]) {
       expect(AiSafetyPolicy.assess(message).shouldBlockRemoteAi, isFalse, reason: message);
