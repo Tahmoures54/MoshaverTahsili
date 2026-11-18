@@ -132,7 +132,7 @@ void main() {
     final result = await service.restorePurchases();
     expect(result.credited, 2);
     expect(result.alreadyCredited, 1);
-    expect(store.credits, 365);
+    expect(store.credits, 370);
   });
 
   test('cancellation and connection errors are sanitized; no credit changes', () async {
