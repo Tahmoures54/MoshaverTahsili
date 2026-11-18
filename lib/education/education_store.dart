@@ -545,7 +545,12 @@ class EducationStore extends ChangeNotifier {
   Map<String, dynamic>? get careerDraft {
     final raw = _secureData['edu.career.draft'];
     if (raw == null) return null;
-    try { return _map(jsonDecode(raw)); } on Object { return null; }
+    try {
+      return _map(jsonDecode(raw));
+    } on Object {
+      _dataErrors['edu.career.draft'] = 'پیش‌نویس قبلی قابل خواندن نیست و بازنویسی نشده است.';
+      return null;
+    }
   }
   Future<void> saveCareerDraft(Map<String, dynamic> value) => _writeMap('edu.career.draft', value);
 

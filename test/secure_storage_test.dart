@@ -55,4 +55,13 @@ void main() {
     expect(wallet, isNot(contains('purchase-secret')));
     expect(store.walletSnapshot['credits'], 10);
   });
+  test('preserves a damaged encrypted career draft instead of silently replacing it', () async {
+    SharedPreferences.setMockInitialValues({'edu.career.draft': '{broken'});
+    final store = await EducationStore.open();
+    expect(store.careerDraft, isNull);
+    expect(store.dataError('edu.career.draft'), isNotNull);
+    await expectLater(store.saveCareerDraft({'goal': 'new'}), throwsA(isA<LocalDataException>()));
+    expect(store.prefs.getString('edu.career.draft'), startsWith(EducationStore.encryptedPrefix));
+  });
+
 }
