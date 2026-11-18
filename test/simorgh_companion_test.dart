@@ -122,7 +122,9 @@ void main() {
     await tester.pump();
     expect(chatOpened, isTrue);
 
-    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(
+      const SizedBox(),
+    );
   });
 
   testWidgets('companion pauses its ticker when the home tab is inactive', (tester) async {
@@ -141,8 +143,15 @@ void main() {
       ),
     );
 
-    expect(tester.widget<TickerMode>(find.byKey(const ValueKey('simorgh-animation-ticker'))).enabled, isFalse);
-    await tester.pumpWidget(const SizedBox());
+    expect(
+      tester.widget<TickerMode>(
+        find.byKey(const ValueKey('simorgh-animation-ticker')),
+      ).enabled,
+      isFalse,
+    );
+    await tester.pumpWidget(
+      const SizedBox(),
+    );
   });
 
   testWidgets('companion remains usable on a compact phone width', (tester) async {
@@ -174,6 +183,8 @@ void main() {
 
     expect(find.text('قدم بعدی را خودت انتخاب کن'), findsOneWidget);
     expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(
+      const SizedBox(),
+    );
   });
 }
