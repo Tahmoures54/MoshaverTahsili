@@ -57,6 +57,20 @@ void main() {
     expect(store.messages.last['content'], 'message-84');
   });
 
+  test('catalog preserves Bazaar SKUs and grants the configured purchased plus bonus credits', () async {
+    expect(CreditCatalog.products.map((product) => product.id),
+        ['credit_10', 'credit_35', 'credit_90']);
+    expect(CreditCatalog.products.map((product) => product.credits), [100, 265, 550]);
+    expect(CreditCatalog.products.map((product) => product.purchasedCredits), [100, 250, 500]);
+    expect(CreditCatalog.products.map((product) => product.bonusCredits), [0, 15, 50]);
+
+    final store = await EducationStore.open();
+    await store.grantProduct(productId: 'credit_10', purchaseToken: 'bronze', creditsToAdd: 100);
+    await store.grantProduct(productId: 'credit_35', purchaseToken: 'silver', creditsToAdd: 265);
+    await store.grantProduct(productId: 'credit_90', purchaseToken: 'gold', creditsToAdd: 550);
+    expect(store.credits, 915);
+  });
+
   test('credits a valid pack once, including concurrent duplicate delivery', () async {
     final store = await EducationStore.open();
     final results = await Future.wait(List.generate(2, (_) => store.grantProduct(
@@ -71,7 +85,7 @@ void main() {
     final store = await EducationStore.open();
     await expectLater(store.grantProduct(productId: 'guessed', purchaseToken: 't', creditsToAdd: 100), throwsA(isA<LocalDataException>()));
     await expectLater(store.grantProduct(productId: 'credit_10', purchaseToken: 't', creditsToAdd: 999), throwsA(isA<LocalDataException>()));
-    await expectLater(store.grantProduct(productId: 'credit_10', purchaseToken: '', creditsToAdd: 10), throwsA(isA<LocalDataException>()));
+    await expectLater(store.grantProduct(productId: 'credit_10', purchaseToken: '', creditsToAdd: 100), throwsA(isA<LocalDataException>()));
     expect(store.credits, 0);
     expect(store.creditHistory, isEmpty);
   });
@@ -162,7 +176,7 @@ void main() {
     final store = await EducationStore.open();
     expect(store.walletError, isNotNull);
     expect(store.canUseAi, isFalse);
-    await expectLater(store.grantProduct(productId: 'credit_10', purchaseToken: 't', creditsToAdd: 10), throwsA(isA<LocalDataException>()));
+    await expectLater(store.grantProduct(productId: 'credit_10', purchaseToken: 't', creditsToAdd: 100), throwsA(isA<LocalDataException>()));
     expect(store.walletRaw, '{broken');
     expect(store.prefs.getString(EducationStore.walletKey), startsWith(EducationStore.encryptedPrefix));
   });
@@ -172,7 +186,7 @@ void main() {
     final store = await EducationStore.open();
     expect(store.credits, 7);
     expect(store.freeAiUsesRemaining, 0);
-    expect(await store.grantProduct(productId: 'credit_10', purchaseToken: 'old-token', creditsToAdd: 10), isFalse);
+    expect(await store.grantProduct(productId: 'credit_10', purchaseToken: 'old-token', creditsToAdd: 100), isFalse);
     expect(store.credits, 7);
   });
 
@@ -233,7 +247,7 @@ void main() {
 
   test('workspace reset preserves wallet and financial history', () async {
     final store = await EducationStore.open();
-    await store.grantProduct(productId: 'credit_10', purchaseToken: 't', creditsToAdd: 10);
+    await store.grantProduct(productId: 'credit_10', purchaseToken: 't', creditsToAdd: 100);
     await store.recordSuccessfulAiUse();
     await store.saveProfile({'grade': 'ابتدایی'});
     await store.addTask({'id': 'task'});
@@ -244,8 +258,8 @@ void main() {
     expect(store.tasks, isEmpty);
     expect(store.messages, isEmpty);
     expect(store.reports, isEmpty);
-    expect(store.credits, 10);
-    expect(store.freeAiUsesRemaining, 1);
+    expect(store.credits, 100);
+    expect(store.freeAiUsesRemaining, 4);
     expect(store.creditHistory, hasLength(2));
   });
 
