@@ -269,7 +269,7 @@ class _DashboardState extends State<Dashboard> {
 }
 
 class HomePage extends StatelessWidget {
-  const HomePage({super.key, required this.store, required this.go, this.active = true});
+  const HomePage({super.key, required this.store, required this.go, this.active = false});
   final EducationStore store;
   final ValueChanged<int> go;
   final bool active;
@@ -305,6 +305,15 @@ class HomePage extends StatelessWidget {
           const SizedBox(height: 14), const Text('امروز فقط یک قدم کوچک بردار؛ استمرار از برنامه‌های سنگین مهم‌تر است.', style: TextStyle(color: Colors.white, height: 1.8)),
         ])),
       const SizedBox(height: 14),
+      CreditSummary(store: store, onShop: () => push(context, CreditShopPage(store: store))),
+      Row(children: [
+        Expanded(child: StatCard(title: 'انجام‌شده', value: '${faNumber(tasks.where((task) => task['done'] == true).length)}/${faNumber(tasks.length)}', icon: Icons.task_alt)),
+        const SizedBox(width: 8), Expanded(child: StatCard(title: 'آزمون', value: faNumber(store.exams.length), icon: Icons.assessment_outlined)),
+        const SizedBox(width: 8), Expanded(child: StatCard(title: 'فلش‌کارت', value: faNumber(store.cards.length), icon: Icons.style_outlined)),
+      ]),
+      const SizedBox(height: 12),
+      NoticeCard(text: 'هفت روز اخیر: ${faNumber(completed.length)} کار تکمیل شده؛ ${faNumber(minutes)} دقیقه زمان برای این کارها برنامه‌ریزی شده است.', icon: Icons.insights_outlined),
+      const SizedBox(height: 12),
       SimorghCompanion(
         tasks: tasks,
         cards: store.cards,
@@ -316,15 +325,6 @@ class HomePage extends StatelessWidget {
         }),
         onChat: () => go(4),
       ),
-      const SizedBox(height: 14),
-      CreditSummary(store: store, onShop: () => push(context, CreditShopPage(store: store))),
-      Row(children: [
-        Expanded(child: StatCard(title: 'انجام‌شده', value: '${faNumber(tasks.where((task) => task['done'] == true).length)}/${faNumber(tasks.length)}', icon: Icons.task_alt)),
-        const SizedBox(width: 8), Expanded(child: StatCard(title: 'آزمون', value: faNumber(store.exams.length), icon: Icons.assessment_outlined)),
-        const SizedBox(width: 8), Expanded(child: StatCard(title: 'فلش‌کارت', value: faNumber(store.cards.length), icon: Icons.style_outlined)),
-      ]),
-      const SizedBox(height: 12),
-      NoticeCard(text: 'هفت روز اخیر: ${faNumber(completed.length)} کار تکمیل شده؛ ${faNumber(minutes)} دقیقه زمان برای این کارها برنامه‌ریزی شده است.', icon: Icons.insights_outlined),
       for (final tip in suggestions) NoticeCard(text: tip, icon: Icons.lightbulb_outline),
       const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('از کجا شروع کنیم؟', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
       QuickTile(icon: Icons.auto_awesome, title: 'گفت‌وگو با مشاور هوشمند', subtitle: 'پرسش، برنامه مطالعه و روش بهبود', onTap: () => go(4)),
