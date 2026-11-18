@@ -213,16 +213,12 @@ jobs:
           cache: true
           pub-cache: true
       - run: flutter pub get --enforce-lockfile
-      - uses: actions/download-artifact@v8
-        with:
-          name: android-${{ needs.validate-and-build.outputs.version }}-${{ github.sha }}
-          path: device-artifacts
       - name: Enable emulator acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Install and launch release APK on Android emulator
+      - name: Smoke-test app on Android emulator (temporary debug build)
         uses: ReactiveCircus/android-emulator-runner@v2.38.0
         with:
           api-level: 35
