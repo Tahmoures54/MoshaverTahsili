@@ -57,7 +57,7 @@ class EducationStore extends ChangeNotifier {
   String? get walletRaw => _secureData[walletKey];
   Map<String, dynamic> get walletSnapshot => _decodeWallet(jsonEncode(_checkedWallet()));
   static const walletKey = 'edu.ai.wallet';
-  static const freeUses = 0; // Welcome value is a one-time 5-credit wallet grant.
+  static const freeUses = 2; // Retained only for pre-v3 wallets.
   static const maxQuestionLength = 4000;
   static const maxAnswerLength = 24000;
   static const maxHistoryEntries = 250;
@@ -179,6 +179,7 @@ class EducationStore extends ChangeNotifier {
     }
     final source = _map(jsonDecode(raw));
     final result = _emptyWallet();
+    result['version'] = _nonNegativeInt(source['version'] ?? 1);
     result['credits'] = _nonNegativeInt(source['credits'] ?? 0);
     result['successful_uses'] = _nonNegativeInt(source['successful_uses'] ?? 0);
     final tokens = <String, dynamic>{};
@@ -256,7 +257,7 @@ class EducationStore extends ChangeNotifier {
   int get credits => _walletError != null ? 0 : _wallet['credits'] as int;
   int get successfulAiUses => _walletError != null ? 0 : _wallet['successful_uses'] as int;
   int get freeAiUsesRemaining {
-    if (_walletError != null) return 0;
+    if (_walletError != null || (_wallet['version'] as int? ?? 1) >= 3) return 0;
     final pendingFree = (_wallet['requests'] as Map).values
         .where((Object? item) => item is Map && item['status'] == 'pending' && item['charge'] == 'free')
         .length;
