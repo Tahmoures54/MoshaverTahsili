@@ -140,7 +140,7 @@ class EducationStore extends ChangeNotifier {
         'kind': 'bonus',
         'amount': 5,
         'title': 'هدیه شروع سیمرغ',
-        'createdAt': DateTime.utc(2026, 1, 1).toIso8601String(),
+        'createdAt': DateTime.now().toUtc().toIso8601String(),
         'status': 'completed',
       },
     ],
