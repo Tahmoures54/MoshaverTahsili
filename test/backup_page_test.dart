@@ -1,0 +1,73 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:moshaver_tahsili/education/backup_page.dart';
+import 'package:moshaver_tahsili/education/education_store.dart';
+import 'package:moshaver_tahsili/education/learning_engine.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  const channel = MethodChannel('ir.moshaver.tahsili/backup');
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
+  tearDown(() {
+    channel.setMockMethodCallHandler(null);
+  });
+
+  testWidgets('exports the local study workspace through the Android file channel', (tester) async {
+    final store = await EducationStore.open();
+    await store.addTask({
+      'id': 'task-1',
+      'title': 'مرور ریاضی',
+      'subject': 'ریاضی',
+      'minutes': 30,
+      'done': false,
+    });
+
+    String? exported;
+    channel.setMockMethodCallHandler((call) async {
+      expect(call.method, 'saveBackup');
+      final arguments = call.arguments as Map<Object?, Object?>;
+      expect(arguments['fileName'], startsWith('simorgh-backup-'));
+      exported = arguments['content'] as String;
+      return true;
+    });
+
+    await tester.pumpWidget(MaterialApp(home: BackupPage(store: store)));
+    await tester.tap(find.text('ذخیره فایل پشتیبان'));
+    await tester.pumpAndSettle();
+
+    expect(exported, isNotNull);
+    final decoded = WorkspaceBackup.decode(exported!);
+    final tasks = decoded['edu.tasks'] as List<Object?>;
+    expect((tasks.single as Map<Object?, Object?>)['title'], 'مرور ریاضی');
+    expect(exported, isNot(contains('edu.ai.wallet')));
+    expect(find.text('فایل پشتیبان ذخیره شد.'), findsOneWidget);
+  });
+
+  testWidgets('loads a selected backup file into the confirmation form', (tester) async {
+    final store = await EducationStore.open();
+    final backup = WorkspaceBackup.encode({
+      'edu.tasks': [
+        {'id': 'task-2', 'title': 'تمرین فیزیک', 'subject': 'فیزیک', 'minutes': 20, 'done': false},
+      ],
+    }, DateTime(2026, 11, 18));
+
+    channel.setMockMethodCallHandler((call) async {
+      expect(call.method, 'openBackup');
+      return backup;
+    });
+
+    await tester.pumpWidget(MaterialApp(home: BackupPage(store: store)));
+    await tester.tap(find.text('انتخاب فایل پشتیبان'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('فایل پشتیبان خوانده شد؛ برای تأیید و بازیابی اقدام کن.'), findsOneWidget);
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller!.text, backup);
+  });
+}
