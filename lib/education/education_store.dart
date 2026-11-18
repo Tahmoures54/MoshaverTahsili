@@ -107,8 +107,16 @@ class EducationStore extends ChangeNotifier {
         throw LocalDataException('دسترسی امن به اطلاعات محلی ممکن نیست: $error');
       }
     }
-    try { _wallet = _decodeWallet(_secureData[walletKey]); }
-    on Object { _walletError = 'اطلاعات کیف پول خوانده نشد. برای جلوگیری از دست رفتن اعتبار، داده قبلی بازنویسی نمی‌شود.'; }
+    try {
+      _wallet = _decodeWallet(_secureData[walletKey]);
+      // Persist the first-install grant immediately so it is a durable,
+      // one-time ledger entry even before the student's first AI request.
+      if (_secureData[walletKey] == null && prefs.getString(walletKey) == null) {
+        await _writeSecure(walletKey, jsonEncode(_wallet));
+      }
+    } on Object {
+      _walletError = 'اطلاعات کیف پول خوانده نشد. برای جلوگیری از دست رفتن اعتبار، داده قبلی بازنویسی نمی‌شود.';
+    }
   }
 
   Future<void> _writeSecure(String key, String plaintext) async {
