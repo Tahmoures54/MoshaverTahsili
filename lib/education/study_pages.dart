@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'education_store.dart';
 import 'learning_engine.dart';
+import 'mastery_estimator.dart';
 import 'ui.dart';
 
 String newId(String prefix) => '$prefix-${DateTime.now().microsecondsSinceEpoch}';
@@ -246,7 +247,7 @@ class _CardsPageState extends State<CardsPage> {
     final result = await showDialog<Map<String, String>>(context: context, builder: (_) => const _CardDialog());
     if (result != null && mounted) {
       await mutate(() => widget.store.addCard({'id': newId('card'),
-        'q': result['q']!, 'a': result['a']!, 'interval': 0, 'ease': 2.5, 'reps': 0, 'lapses': 0,
+        'q': result['q']!, 'a': result['a']!, 'topic': result['topic']!, 'interval': 0, 'ease': 2.5, 'reps': 0, 'lapses': 0,
         'dueAt': DateTime.now().toIso8601String()}));
     }
   }
@@ -262,10 +263,23 @@ class _CardsPageState extends State<CardsPage> {
     final cards = widget.store.cards;
     final now = DateTime.now();
     final due = cards.where((card) => isCardDue(card, now)).length;
+    final topicEvidence = estimateTopicMastery(cards);
     return Scaffold(backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(heroTag: null, onPressed: saving ? null : add, icon: const Icon(Icons.add), label: const Text('ساخت فلش‌کارت')),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 92), children: [
         NoticeCard(text: '${faNumber(cards.length)} فلش‌کارت · ${faNumber(due)} آماده مرور. کارت‌هایی که سخت بوده‌اند زودتر و کارت‌های مسلط با فاصله بیشتر دوباره نشان داده می‌شوند.', icon: Icons.psychology_alt_outlined),
+        if (topicEvidence.isNotEmpty) Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('شواهد یادآوری بر اساس مبحث', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          const Text('این شاخص فقط از مرورهای ثبت‌شده فلش‌کارت‌ها ساخته می‌شود و اثبات تسلط در امتحان نیست.', style: TextStyle(fontSize: 12, height: 1.6)),
+          for (final item in topicEvidence) Padding(padding: const EdgeInsets.only(top: 12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [Expanded(child: Text(item.topic, style: const TextStyle(fontWeight: FontWeight.w600))), Text('${faNumber((item.estimate * 100).round())}٪')]),
+            const SizedBox(height: 5),
+            LinearProgressIndicator(value: item.estimate),
+            const SizedBox(height: 3),
+            Text('${faNumber(item.evidenceCount)} مرور · ${item.confidence} · بازه تقریبی ${faNumber((item.lowerBound * 100).round())} تا ${faNumber((item.upperBound * 100).round())}٪', style: const TextStyle(fontSize: 11, color: Colors.blueGrey)),
+          ])),
+        ]))),
         if (widget.store.dataError('edu.cards') != null) NoticeCard(text: widget.store.dataError('edu.cards')!, warning: true),
         if (cards.isEmpty) const EmptyState(title: 'یادگیری را ماندگار کنیم', subtitle: 'یک پرسش و پاسخ کوتاه بساز و در فاصله‌های مناسب مرور کن.', icon: Icons.style_outlined),
         for (final card in cards) Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -374,8 +388,9 @@ class _CardDialogState extends State<_CardDialog> {
   final form = GlobalKey<FormState>();
   final q = TextEditingController();
   final a = TextEditingController();
+  final topic = TextEditingController();
   @override
-  void dispose() { q.dispose(); a.dispose(); super.dispose(); }
+  void dispose() { q.dispose(); a.dispose(); topic.dispose(); super.dispose(); }
   @override
   Widget build(BuildContext context) => AlertDialog(title: const Text('فلش‌کارت جدید'),
     content: SizedBox(width: 420, child: SingleChildScrollView(child: Form(key: form, child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -383,7 +398,8 @@ class _CardDialogState extends State<_CardDialog> {
           validator: (v) => v == null || v.trim().isEmpty ? 'پرسش را بنویس.' : null),
       TextFormField(controller: a, maxLines: 3, maxLength: 2000, decoration: const InputDecoration(labelText: 'پاسخ'),
           validator: (v) => v == null || v.trim().isEmpty ? 'پاسخ را بنویس.' : null),
+      TextFormField(controller: topic, maxLength: 80, decoration: const InputDecoration(labelText: 'مبحث (اختیاری؛ برای گزارش یادگیری)')),
     ])))),
     actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('انصراف')),
-      FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(context, {'q': q.text.trim(), 'a': a.text.trim()}); }, child: const Text('ذخیره'))]);
+      FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(context, {'q': q.text.trim(), 'a': a.text.trim(), 'topic': topic.text.trim()}); }, child: const Text('ذخیره'))]);
 }
