@@ -3,11 +3,11 @@ set -euo pipefail
 
 mkdir -p build/reports/device
 report_dir="build/reports/device"
-apk="$(find device-artifacts -type f -name '*-x86_64.apk' -print -quit)"
-if [[ -z "$apk" ]]; then
-  echo "Release x86_64 APK artifact missing" | tee "$report_dir/result.txt"
-  exit 1
-fi
+# The release deliverable is arm64-only. Build a disposable x86_64 debug
+# APK for the hosted emulator; it is never uploaded or published.
+flutter build apk --debug --target-platform android-x64
+apk="build/app/outputs/flutter-apk/app-debug.apk"
+test -s "$apk"
 
 adb wait-for-device
 adb uninstall ir.moshaver.tahsili >/dev/null 2>&1 || true
@@ -39,4 +39,4 @@ if grep -q 'FATAL EXCEPTION' "$report_dir/crash-log.txt"; then
   exit 1
 fi
 
-printf 'Release APK installed, launched, and remained alive on Android emulator (physical-device and payment tests remain manual).\n' | tee "$report_dir/result.txt"
+printf 'Disposable debug APK installed, launched, and remained alive on Android emulator (physical-device and payment tests remain manual).\n' | tee "$report_dir/result.txt"
