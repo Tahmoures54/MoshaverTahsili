@@ -99,6 +99,27 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('adaptive planner previews changes and requires confirmation', (tester) async {
+    final store = await EducationStore.open();
+    await store.addTask({'id': 'overdue', 'title': 'تمرین جبر', 'subject': 'ریاضی',
+      'minutes': 30, 'done': false, 'dueDate': '2020-01-01'});
+    await tester.pumpWidget(frame(PlannerPage(store: store, changed: () {})));
+    await tester.tap(find.text('ساخت برنامه هوشمند'));
+    await tester.pumpAndSettle();
+    expect(store.tasks.single['dueDate'], '2020-01-01');
+    expect(find.text('اعمال برنامه'), findsOneWidget);
+    await tester.tap(find.text('فعلاً نه'));
+    await tester.pumpAndSettle();
+    expect(store.tasks.single['dueDate'], '2020-01-01');
+
+    await tester.tap(find.text('ساخت برنامه هوشمند'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('اعمال برنامه'));
+    await tester.pumpAndSettle();
+    expect(store.tasks.single['dueDate'], isNot('2020-01-01'));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('dashboard fits compact and regular phones and navigates locally', (tester) async {
     for (final size in [const Size(320, 568), const Size(390, 844)]) {
       tester.view.physicalSize = size;
