@@ -196,6 +196,7 @@ class _SimorghCompanionState extends State<SimorghCompanion>
                       child: AnimatedBuilder(
                         animation: _animation,
                         builder: (context, _) => CustomPaint(
+                          key: const ValueKey('simorgh-character-painter'),
                           painter: _SimorghCompanionPainter(
                             phase: reduceMotion ? 0.5 : _animation.value,
                             mood: guidance.mood,
