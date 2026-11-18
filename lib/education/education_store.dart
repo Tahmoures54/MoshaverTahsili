@@ -625,17 +625,24 @@ class EducationStore extends ChangeNotifier {
   /// touched. If any write fails, the previous workspace is restored.
   Future<int> importBackup(String raw) => _serialized(() async {
     final data = WorkspaceBackup.decode(raw);
+    _dataErrors.removeWhere((key, _) => workspaceKeys.contains(key));
     final previous = <String, String?>{for (final key in workspaceKeys) key: _secureData[key]};
     try {
       for (final key in workspaceKeys) {
         final value = data[key];
-        if (value == null) { await prefs.remove(key); _secureData.remove(key); }
+        if (value == null) {
+          if (!await prefs.remove(key)) throw const LocalDataException('بازیابی انجام نشد.');
+          _secureData.remove(key);
+        }
         else { await _writeSecure(key, jsonEncode(value)); }
       }
     } on Object {
       for (final entry in previous.entries) {
         final original = entry.value;
-        if (original == null) { await prefs.remove(entry.key); _secureData.remove(entry.key); }
+        if (original == null) {
+          await prefs.remove(entry.key);
+          _secureData.remove(entry.key);
+        }
         else { await _writeSecure(entry.key, original); }
       }
       rethrow;
