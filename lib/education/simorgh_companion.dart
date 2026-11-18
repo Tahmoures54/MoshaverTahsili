@@ -192,6 +192,7 @@ class _SimorghCompanionState extends State<SimorghCompanion>
                     label: 'سیمرغ، همراه دانای مسیر یادگیری',
                     image: true,
                     child: TickerMode(
+                      key: const ValueKey('simorgh-animation-ticker'),
                       enabled: widget.active && !reduceMotion,
                       child: AnimatedBuilder(
                         animation: _animation,
