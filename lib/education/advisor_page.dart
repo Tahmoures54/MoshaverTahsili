@@ -310,12 +310,12 @@ class _AdvisorPageState extends State<AdvisorPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'روش تدریس سیمرغ · ${teachingSession!.stage.name}',
+                  'روش تدریس سیمرغ · ${_teachingStageLabel(teachingSession!.stage)}',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'وضعیت جلسه روی همین گوشی نگهداری می‌شود. برای دریافت گام بعدی، دستور آموزشی را وارد گفت‌وگو کن.',
+                  'وضعیت جلسه روی همین گوشی نگهداری می‌شود. پاسخ پرسش سیمرغ را در گفت‌وگو بنویس تا مرحله بعدی تنظیم شود.',
                 ),
                 Align(
                   alignment: Alignment.centerLeft,
