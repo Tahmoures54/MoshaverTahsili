@@ -156,4 +156,59 @@ void main() {
       );
     });
   });
+  test('unclear answers do not count as negative learning evidence', () {
+    final diagnostic = SimorghTeachingEngine.start(topic: 'کسرها');
+    expect(
+      SimorghTeachingEngine.recordDiagnostic(
+        diagnostic,
+        SimorghAnswerOutcome.unclear,
+      ),
+      diagnostic,
+    );
+
+    final explanation = diagnostic.copyWith(
+      stage: SimorghTeachingStage.explanation,
+    );
+    expect(
+      SimorghTeachingEngine.recordExplanationCheck(
+        explanation,
+        SimorghAnswerOutcome.unclear,
+      ),
+      explanation,
+    );
+
+    final practice = diagnostic.copyWith(
+      stage: SimorghTeachingStage.guidedPractice,
+    );
+    expect(
+      SimorghTeachingEngine.recordPractice(
+        session: practice,
+        outcome: SimorghAnswerOutcome.unclear,
+      ),
+      practice,
+    );
+
+    final reteach = diagnostic.copyWith(
+      stage: SimorghTeachingStage.reteach,
+    );
+    expect(
+      SimorghTeachingEngine.recordReteachCheck(
+        session: reteach,
+        outcome: SimorghAnswerOutcome.unclear,
+      ),
+      reteach,
+    );
+
+    final mastery = diagnostic.copyWith(
+      stage: SimorghTeachingStage.masteryCheck,
+    );
+    expect(
+      SimorghTeachingEngine.recordMasteryCheck(
+        session: mastery,
+        outcome: SimorghAnswerOutcome.unclear,
+      ),
+      mastery,
+    );
+  });
+
 }
