@@ -155,6 +155,57 @@ void main() {
         throwsStateError,
       );
     });
+    test('treats partial diagnostic evidence as incomplete, not correct', () {
+      var session = SimorghTeachingEngine.start(topic: 'کسرها');
+      session = SimorghTeachingEngine.recordDiagnostic(
+        session,
+        SimorghAnswerOutcome.partial,
+      );
+      expect(session.diagnosticCount, 1);
+      expect(session.diagnosticCorrect, 0);
+      expect(session.stage, SimorghTeachingStage.diagnostic);
+    });
+
+    test('routes a partially correct practice answer to targeted reteaching', () {
+      final session = SimorghTeachingSession(
+        topic: 'معادله',
+        grade: 'هشتم',
+        stage: SimorghTeachingStage.guidedPractice,
+      );
+      final updated = SimorghTeachingEngine.recordPractice(
+        session: session,
+        outcome: SimorghAnswerOutcome.partial,
+        error: SimorghErrorKind.procedural,
+      );
+      expect(updated.stage, SimorghTeachingStage.reteach);
+      expect(updated.practiceAttempts, 1);
+      expect(updated.lastError, SimorghErrorKind.procedural);
+      expect(updated.masteryCount, 0);
+    });
+
+    test('does not count partial mastery evidence as a fully correct answer', () {
+      var session = SimorghTeachingSession(
+        topic: 'تابع',
+        grade: 'دهم',
+        stage: SimorghTeachingStage.masteryCheck,
+      );
+      session = SimorghTeachingEngine.recordMasteryCheck(
+        session: session,
+        outcome: SimorghAnswerOutcome.correct,
+      );
+      session = SimorghTeachingEngine.recordMasteryCheck(
+        session: session,
+        outcome: SimorghAnswerOutcome.partial,
+      );
+      session = SimorghTeachingEngine.recordMasteryCheck(
+        session: session,
+        outcome: SimorghAnswerOutcome.incorrect,
+      );
+      expect(session.stage, SimorghTeachingStage.reteach);
+      expect(session.masteryCorrect, 1);
+      expect(session.masteryCount, 3);
+    });
+
   });
   test('unclear answers do not count as negative learning evidence', () {
     final diagnostic = SimorghTeachingEngine.start(topic: 'کسرها');
