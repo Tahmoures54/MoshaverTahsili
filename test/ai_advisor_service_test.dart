@@ -385,4 +385,37 @@ void main() {
     sharedClient.close();
   });
 
+  test('rejects a different question reusing an active request ID', () async {
+    final store = await paidStore();
+    final gate = Completer<void>();
+    final service = AiAdvisorService(
+      store: store,
+      apiKey: 'test-key',
+      client: MockClient((_) async {
+        await gate.future;
+        return answer('پاسخ پرسش اول');
+      }),
+    );
+    final first = service.ask(
+      profile: null,
+      history: const [],
+      question: 'پرسش اول',
+      requestId: 'reused-id',
+    );
+    final second = service.ask(
+      profile: null,
+      history: const [],
+      question: 'پرسش دوم',
+      requestId: 'reused-id',
+    );
+    await expectLater(
+      second,
+      throwsA(isA<AiException>().having((e) => e.kind, 'kind', AiErrorKind.input)),
+    );
+    gate.complete();
+    expect(await first, 'پاسخ پرسش اول');
+    expect(store.credits, 2);
+    service.dispose();
+  });
+
 }
