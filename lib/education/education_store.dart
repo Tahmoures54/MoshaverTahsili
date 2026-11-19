@@ -477,7 +477,7 @@ class EducationStore extends ChangeNotifier {
         _validateId(purchaseToken, limit: 512);
         final product = CreditCatalog.byId(productId);
         if (product == null || product.credits != creditsToAdd) {
-          throw const LocalDataException('بسته اعتبار یا تعداد اعتبار آن معتبر نیست.');
+          throw const LocalDataException('بسته پر یا تعداد پر آن معتبر نیست.');
         }
         final wallet = _copyWallet();
         final tokens = wallet['purchase_tokens'] as Map;
