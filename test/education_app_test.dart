@@ -558,6 +558,13 @@ testWidgets('analytics tolerates malformed legacy teaching counters', (tester) a
           'dueDate': '2026-11-18',
           'done': false,
         },
+        {
+          'id': 'legacy-overdue-2',
+          'title': 'کار دوم',
+          'minutes': 15,
+          'dueDate': '2026-11-18',
+          'done': false,
+        },
       ],
       cards: const [],
       deadlines: const [],
