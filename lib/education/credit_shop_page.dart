@@ -76,7 +76,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            const Icon(Icons.bolt, color: teal), const SizedBox(width: 8),
+            const Text('🪶', style: TextStyle(fontSize: 23)), const SizedBox(width: 8),
             Expanded(child: Text(product.title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold))),
             Text('${faNumber(product.feathers)} پر', style: const TextStyle(fontWeight: FontWeight.bold)),
           ]),
