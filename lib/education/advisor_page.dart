@@ -310,6 +310,14 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
   @override
   Widget build(BuildContext context) => Column(children: [
+    Flexible(
+      fit: FlexFit.loose,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 220),
+        child: ListView(
+          shrinkWrap: true,
+          padding: EdgeInsets.zero,
+          children: [
     Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: Card(
       margin: EdgeInsets.zero,
       color: const Color(0xFFF1F8F6),
@@ -367,6 +375,9 @@ class _AdvisorPageState extends State<AdvisorPage> {
     if (!service.isConfigured) const Padding(padding: EdgeInsets.symmetric(horizontal: 16),
       child: NoticeCard(text: 'مشاور هوش مصنوعی در این نسخه پیکربندی نشده است. برنامه مطالعه، نمرات، مرور و راهنمای روش مطالعه بدون اینترنت کار می‌کنند.', warning: true)),
     if (error != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: NoticeCard(text: error!, icon: Icons.error_outline, warning: true)),
+        ],
+      ),
+    ),
     Expanded(child: messages.isEmpty ? ListView(padding: const EdgeInsets.all(20), children: [
       const SizedBox(height: 18), const Icon(Icons.auto_awesome, color: blue, size: 46),
       const SizedBox(height: 14), const Text('سلام! من سیمرغم؛ بیا با هم مسیر یادگیری‌ات را پیدا کنیم.', textAlign: TextAlign.center,
