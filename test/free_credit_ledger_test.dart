@@ -73,6 +73,7 @@ void main() {
   testWidgets('wallet summary presents the balance as Simorgh feathers', (tester) async {
     final store = await EducationStore.open();
     await tester.pumpWidget(MaterialApp(home: Scaffold(body: CreditSummary(store: store))));
+    expect(find.byType(SimorghFeatherMark), findsOneWidget);
     expect(find.text('پرهای سیمرغ'), findsOneWidget);
     expect(find.text('۵ پر'), findsOneWidget);
     expect(find.text('هر پرسش جدید: یک پر · پاسخ ناموفق: بدون هزینه'), findsOneWidget);
