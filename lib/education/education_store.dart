@@ -151,7 +151,7 @@ class EducationStore extends ChangeNotifier {
         'id': 'welcome-credits-v1',
         'kind': 'bonus',
         'amount': 5,
-        'title': 'هدیه شروع سیمرغ',
+        'title': 'هدیه نخست · ۵ پر سیمرغ',
         'createdAt': DateTime.now().toUtc().toIso8601String(),
         'status': 'completed',
       },
@@ -364,7 +364,7 @@ class EducationStore extends ChangeNotifier {
         requests[id] = {'question': question, 'status': 'pending', 'charge': charge,
           'createdAt': previous?['createdAt'] ?? _now(),
           'attempt': attempt, 'transactionId': transactionId};
-        _transaction(wallet, transactionId, 'ai', charge == 'credit' ? 1 : 0, 'فراخوان سیمرغ · یک پر', 'pending');
+        _transaction(wallet, transactionId, 'ai', charge == 'credit' ? questionFeatherCost : 0, 'فراخوان سیمرغ · یک پر', 'pending');
         _trimRequests(wallet);
         await _saveWallet(wallet);
         _activeRequests.add(id);
@@ -415,7 +415,7 @@ class EducationStore extends ChangeNotifier {
     if (request['charge'] == 'credit') {
       wallet['credits'] = (wallet['credits'] as int) + questionFeatherCost;
     } else if (request['charge'] == 'free') {
-      wallet['successful_uses'] = ((wallet['successful_uses'] as int) - 1).clamp(0, 1000000000);
+      wallet['successful_uses'] = ((wallet['successful_uses'] as int) - 1).clamp(0, 1000000000).toInt();
     }
     final transactionId = (request['transactionId'] as String?) ?? id;
     _markTransaction(wallet, transactionId, 'refunded');
@@ -464,7 +464,7 @@ class EducationStore extends ChangeNotifier {
     }
     requests[id] = {'question': 'درخواست ثبت‌شده', 'status': 'completed',
       'charge': free ? 'free' : 'credit', 'createdAt': _now(), 'answer': 'پاسخ دریافت شده'};
-    _transaction(wallet, id, 'ai', free ? 0 : 1, 'فراخوان سیمرغ · یک پر', 'completed');
+    _transaction(wallet, id, 'ai', free ? 0 : questionFeatherCost, 'فراخوان سیمرغ · یک پر', 'completed');
     _trimRequests(wallet);
     await _saveWallet(wallet);
     return true;
