@@ -479,6 +479,7 @@ void main() {
         return http.Response(
           jsonEncode({'choices': [{'message': {'content': 'پاسخ آزمایشی'}}]}),
           200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
         );
       }),
     );
