@@ -245,7 +245,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(retryButton, findsOneWidget);
     expect(tester.widget<TextButton>(retryButton).onPressed, isNotNull);
-    await tester.tap(retryButton);
+    await tester.ensureVisible(retryButton);
+    await tester.tap(retryButton, warnIfMissed: false);
+    await tester.pump();
     await tester.runAsync(() => Future<void>.delayed(const Duration(seconds: 3)));
     await tester.pump();
     await tester.pumpAndSettle();
@@ -300,7 +302,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(store.teachingSessions.single['stage'], 'diagnostic');
     await tester.enterText(find.byType(TextField).last, 'یک دوم');
-    await tester.tap(find.byTooltip('ارسال پرسش'));
+    final sendButton = find.byTooltip('ارسال پرسش');
+    await tester.ensureVisible(sendButton);
+    await tester.pumpAndSettle();
+    await tester.tap(sendButton, warnIfMissed: false);
+    await tester.pump();
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await tester.pumpAndSettle();
     expect(store.teachingSessions.single['diagnosticCount'], 1);
