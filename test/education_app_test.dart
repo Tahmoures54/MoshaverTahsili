@@ -260,6 +260,53 @@ void main() {
     service.dispose();
   });
 
+  testWidgets('Simorgh teaching evaluates a student answer and persists lesson progress', (tester) async {
+    final store = await EducationStore.open();
+    final service = AiAdvisorService(
+      store: store,
+      apiKey: 'test-key',
+      client: MockClient((request) async {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        final messages = body['messages'] as List;
+        expect(messages.first['content'], contains('ساختار دقیق'));
+        return http.Response(
+          jsonEncode({
+            'choices': [
+              {
+                'message': {
+                  'content': jsonEncode({
+                    'feedback': 'آفرین؛ پاسخ تو درست بود.',
+                    'outcome': 'correct',
+                    'error': 'unknown',
+                    'nextQuestion': 'یک مثال دیگر حل کن.',
+                  }),
+                },
+              },
+            ],
+          }),
+          200,
+        );
+      }),
+    );
+    await tester.pumpWidget(frame(AdvisorPage(store: store, service: service)));
+    await tester.tap(find.byKey(const ValueKey('simorgh-start-teaching')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, 'کسرها');
+    await tester.tap(find.widgetWithText(FilledButton, 'شروع ارزیابی'));
+    await tester.pumpAndSettle();
+    expect(store.teachingSessions.single['stage'], 'diagnostic');
+    await tester.enterText(find.byType(TextField).last, 'یک دوم');
+    await tester.tap(find.byTooltip('ارسال پرسش'));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await tester.pumpAndSettle();
+    expect(store.teachingSessions.single['diagnosticCount'], 1);
+    expect(store.teachingSessions.single['diagnosticCorrect'], 1);
+    expect(find.textContaining('آفرین؛ پاسخ تو درست بود.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    service.dispose();
+  });
+
   testWidgets('shop shows balance, packages, purchase result and history', (tester) async {
     final store = await EducationStore.open();
     final gateway = FakeGateway();
