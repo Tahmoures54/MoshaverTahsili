@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'education_store.dart';
 import 'learning_engine.dart';
+import 'mastery_estimator.dart';
 import 'ui.dart';
 
 /// Local performance analytics. Every figure comes from the student's own
@@ -18,6 +19,7 @@ class AnalyticsPage extends StatelessWidget {
       cards: store.cards,
       now: DateTime.now(),
     );
+    final topicMastery = estimateTopicMastery(store.cards);
     var maxMinutes = 1;
     for (final week in report.weeks) {
       if (week.plannedMinutes > maxMinutes) maxMinutes = week.plannedMinutes;
@@ -65,6 +67,42 @@ class AnalyticsPage extends StatelessWidget {
               Text(_trendText(subject), style: const TextStyle(fontSize: 13, height: 1.6)),
             ],
           ))),
+        _section('شواهد یادگیری به تفکیک مبحث'),
+        if (topicMastery.isEmpty)
+          const EmptyState(
+            title: 'هنوز شواهد موضوعی ثبت نشده',
+            subtitle: 'برای هر فلش‌کارت، نام مبحث را ثبت کن و پس از مرور، نتیجه یادآوری را ارزیابی کن.',
+            icon: Icons.school_outlined,
+          ),
+        for (final item in topicMastery)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: Text(item.topic, style: const TextStyle(fontWeight: FontWeight.bold))),
+                      Text('${faNumber((item.estimate * 100).round())}٪',
+                          style: const TextStyle(color: blue, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(value: item.estimate, minHeight: 7),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${item.confidence} · ${faNumber(item.evidenceCount)} مرور ثبت‌شده · بازه برآورد ${faNumber((item.lowerBound * 100).round())} تا ${faNumber((item.upperBound * 100).round())} درصد',
+                    style: const TextStyle(fontSize: 12, height: 1.6),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        const NoticeCard(
+          text: 'این درصد، برآورد محافظه‌کارانه از سابقه یادآوری فلش‌کارت‌هاست؛ نمره امتحان یا احتمال قطعی موفقیت نیست. شواهد بیشتر، برآورد را قابل اتکاتر می‌کند.',
+          icon: Icons.info_outline,
+        ),
         _section('پایبندی به برنامه'),
         Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(
           report.adherence == null
