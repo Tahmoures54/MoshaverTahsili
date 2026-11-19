@@ -490,12 +490,20 @@ class WorkspaceBackup {
 
   static Set<String> get allowedKeys => {...objectKeys, ...listKeys};
 
-  static String encode(Map<String, Object?> data, DateTime now) => jsonEncode({
-        'app': app,
-        'format': format,
-        'createdAt': now.toUtc().toIso8601String(),
-        'data': data,
-      });
+  static String encode(Map<String, Object?> data, DateTime now) {
+    final raw = jsonEncode({
+      'app': app,
+      'format': format,
+      'createdAt': now.toUtc().toIso8601String(),
+      'data': data,
+    });
+    if (utf8.encode(raw).length > maxBytes) {
+      throw const BackupFormatException('حجم پشتیبان از حد مجاز بیشتر است؛ داده‌ها را به چند بخش تقسیم کن.');
+    }
+    // Export must never create a document that this same version cannot read.
+    decode(raw);
+    return raw;
+  }
 
   static Map<String, Object?> decode(String raw) {
     if (raw.trim().isEmpty) throw const BackupFormatException('متنی برای بازیابی وارد نشده است.');
