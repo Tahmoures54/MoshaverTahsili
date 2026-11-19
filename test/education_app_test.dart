@@ -471,17 +471,10 @@ void main() {
   });
   testWidgets('ConsultationRunner does not dispose an injected shared AI service', (tester) async {
     final store = await EducationStore.open();
-    var calls = 0;
+    final sharedClient = _TrackingHttpClient();
     final sharedService = AiAdvisorService(
       apiKey: 'test-key',
-      client: MockClient((request) async {
-        calls++;
-        return http.Response(
-          jsonEncode({'choices': [{'message': {'content': 'پاسخ آزمایشی'}}]}),
-          200,
-          headers: {'content-type': 'application/json; charset=utf-8'},
-        );
-      }),
+      client: sharedClient,
     );
 
     await tester.pumpWidget(frame(ConsultationRunner(
@@ -493,6 +486,7 @@ void main() {
       autoStart: false,
     )));
     await tester.pumpWidget(frame(const SizedBox.shrink()));
+    expect(sharedClient.closed, isFalse);
 
     final answer = await sharedService.ask(
       profile: null,
@@ -500,8 +494,36 @@ void main() {
       question: 'سرویس هنوز فعال است؟',
     );
     expect(answer, 'پاسخ آزمایشی');
-    expect(calls, 1);
+    expect(sharedClient.calls, 1);
     sharedService.dispose();
+    expect(sharedClient.closed, isFalse);
+    sharedClient.close();
   });
 
+}
+
+class _TrackingHttpClient extends http.BaseClient {
+  bool closed = false;
+  int calls = 0;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (closed) throw StateError('shared client was closed');
+    calls++;
+    final body = jsonEncode({
+      'choices': [
+        {'message': {'content': 'پاسخ آزمایشی'}},
+      ],
+    });
+    return http.StreamedResponse(
+      Stream<List<int>>.value(utf8.encode(body)),
+      200,
+      headers: {'content-type': 'application/json; charset=utf-8'},
+    );
+  }
+
+  @override
+  void close() {
+    closed = true;
+  }
 }
