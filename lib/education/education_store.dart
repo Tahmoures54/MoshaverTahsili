@@ -711,16 +711,16 @@ class EducationStore extends ChangeNotifier {
         }
       }
     } on Object {
-      var rollbackFailed = false;
+      final rollbackFailures = <String>[];
       for (final key in workspaceKeys) {
         try {
           final original = previousStored[key];
           final restored = original == null
               ? await prefs.remove(key)
               : await prefs.setString(key, original);
-          if (!restored) rollbackFailed = true;
+          if (!restored) rollbackFailures.add(key);
         } on Object {
-          rollbackFailed = true;
+          rollbackFailures.add(key);
         }
         final plaintext = previousSecure[key];
         if (plaintext == null) {
@@ -731,7 +731,11 @@ class EducationStore extends ChangeNotifier {
       }
       _dataErrors.removeWhere((key, _) => workspaceKeys.contains(key));
       _dataErrors.addAll(previousErrors);
-      if (rollbackFailed) {
+      for (final key in rollbackFailures) {
+        _secureData.remove(key);
+        _dataErrors[key] = 'بازگردانی این بخش پس از خطای واردسازی کامل نشد.';
+      }
+      if (rollbackFailures.isNotEmpty) {
         throw const LocalDataException(
           'بازیابی ناموفق بود و بازگردانی کامل داده‌های قبلی تأیید نشد؛ پیش از تلاش دوباره از داده‌های محلی نسخه پشتیبان بگیر.',
         );
