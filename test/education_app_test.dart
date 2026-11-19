@@ -527,7 +527,11 @@ testWidgets('analytics tolerates malformed legacy teaching counters', (tester) a
       },
     ]);
     await tester.pumpWidget(frame(AnalyticsPage(store: store)));
-    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('درس قدیمی'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('درس قدیمی'), findsOneWidget);
     expect(find.textContaining('۰ ارزیابی آغازین'), findsOneWidget);
     expect(find.textContaining('۱ پاسخ درست در سنجش پایانی'), findsOneWidget);
