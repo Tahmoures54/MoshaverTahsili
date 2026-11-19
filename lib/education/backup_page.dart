@@ -126,7 +126,7 @@ class _BackupPageState extends State<BackupPage> {
           const NoticeCard(
             text: 'پشتیبان شامل پروفایل، برنامه‌ها، امتحان‌ها، فلش‌کارت‌ها، گفت‌وگوها، جلسه‌های تدریس، '
                 'یادآورها و گزارش‌های مشاوره است. '
-                'کیف اعتبار و سابقه خرید در پشتیبان نیستند.',
+                'کیسه پرهای سیمرغ و سابقه خرید در پشتیبان نیستند.',
             icon: Icons.backup_outlined,
           ),
           const NoticeCard(
