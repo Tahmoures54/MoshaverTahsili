@@ -34,7 +34,7 @@ class AiAdvisorService {
   final http.Client client;
   final String apiKey, endpoint, model;
   final Duration timeout;
-  final Map<String, Future<String>> _inFlight = {};
+  final Map<String, ({String question, Future<String> future})> _inFlight = {};
   final Set<Completer<void>> _activeAborts = {};
   static const maxRequestBytes = 96 * 1024;
   static const maxResponseBytes = 512 * 1024;
@@ -55,11 +55,22 @@ class AiAdvisorService {
     required List<Map<String, dynamic>> history, required String question, String? requestId, String? systemInstruction}) {
     if (_disposed) throw const AiException(AiErrorKind.configuration, 'سرویس مشاور بسته شده است.');
     final id = requestId ?? 'ai-${DateTime.now().microsecondsSinceEpoch}-${identityHashCode(question)}';
+    final normalizedQuestion = question.trim();
     final active = _inFlight[id];
-    if (active != null) return active;
-    final future = _execute(profile, history, question.trim(), id, systemInstruction: systemInstruction);
-    _inFlight[id] = future;
-    return future.whenComplete(() => _inFlight.remove(id));
+    if (active != null) {
+      if (active.question != normalizedQuestion) {
+        return Future<String>.error(const AiException(
+          AiErrorKind.input,
+          'شناسه این درخواست هم‌زمان برای پرسش دیگری استفاده شده است.',
+        ));
+      }
+      return active.future;
+    }
+    final future = _execute(profile, history, normalizedQuestion, id,
+        systemInstruction: systemInstruction);
+    final tracked = future.whenComplete(() => _inFlight.remove(id));
+    _inFlight[id] = (question: normalizedQuestion, future: tracked);
+    return tracked;
   }
 
   Future<String> _execute(Map<String, dynamic>? profile,
