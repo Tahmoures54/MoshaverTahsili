@@ -6,6 +6,7 @@ import 'credit_shop_page.dart';
 import 'education_store.dart';
 import 'study_pages.dart' show newId;
 import 'simorgh_companion.dart';
+import 'simorgh_teaching_engine.dart';
 import 'ui.dart';
 
 class AdvisorPage extends StatefulWidget {
@@ -23,11 +24,13 @@ class _AdvisorPageState extends State<AdvisorPage> {
   late List<Map<String, dynamic>> messages;
   bool busy = false;
   String? error;
+  SimorghTeachingSession? teachingSession;
 
   @override
   void initState() {
     super.initState();
     messages = widget.store.messages;
+    teachingSession = _restoreTeachingSession(widget.store.teachingSessions);
   }
 
   @override
@@ -35,6 +38,74 @@ class _AdvisorPageState extends State<AdvisorPage> {
     input.dispose();
     if (_ownsService) service.dispose();
     super.dispose();
+  }
+
+  SimorghTeachingSession? _restoreTeachingSession(List<Map<String, dynamic>> saved) {
+    if (saved.isEmpty) return null;
+    final data = saved.last;
+    try {
+      if (data['active'] != true) return null;
+      final session = SimorghTeachingEngine.start(
+        topic: data['topic']?.toString() ?? '',
+        grade: data['grade']?.toString() ?? '',
+      );
+      return session.copyWith(
+        stage: SimorghTeachingStage.values.byName(data['stage']?.toString() ?? 'diagnostic'),
+        diagnosticCount: data['diagnosticCount'] as int? ?? 0,
+        diagnosticCorrect: data['diagnosticCorrect'] as int? ?? 0,
+        practiceAttempts: data['practiceAttempts'] as int? ?? 0,
+        masteryCount: data['masteryCount'] as int? ?? 0,
+        masteryCorrect: data['masteryCorrect'] as int? ?? 0,
+        reteachCount: data['reteachCount'] as int? ?? 0,
+        explanationVariant: data['explanationVariant'] as int? ?? 0,
+        lastError: data['lastError'] == null ? null : SimorghErrorKind.values.byName(data['lastError'].toString()),
+      );
+    } on Object { return null; }
+  }
+
+  Map<String, dynamic> _sessionRecord(SimorghTeachingSession session, {bool active = true}) => {
+    'id': 'simorgh-teaching-active', 'active': active, 'topic': session.topic,
+    'grade': session.grade, 'stage': session.stage.name,
+    'diagnosticCount': session.diagnosticCount, 'diagnosticCorrect': session.diagnosticCorrect,
+    'practiceAttempts': session.practiceAttempts, 'masteryCount': session.masteryCount,
+    'masteryCorrect': session.masteryCorrect, 'reteachCount': session.reteachCount,
+    'explanationVariant': session.explanationVariant, 'lastError': session.lastError?.name,
+    'updatedAt': DateTime.now().toIso8601String(),
+  };
+
+  Future<void> _persistTeachingSession(SimorghTeachingSession session, {bool active = true}) async {
+    await widget.store.saveTeachingSessions([_sessionRecord(session, active: active)]);
+  }
+
+  Future<void> startTeaching() async {
+    final topic = TextEditingController();
+    final selected = await showDialog<String>(context: context, builder: (dialogContext) => AlertDialog(
+      title: const Text('شروع تدریس با سیمرغ'),
+      content: TextField(controller: topic, autofocus: true, maxLength: 120,
+        decoration: const InputDecoration(labelText: 'امروز چه مبحثی را یاد بگیریم؟', hintText: 'مثلاً کسرها، تابع یا فتوسنتز')),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('انصراف')),
+        FilledButton(onPressed: () => Navigator.pop(dialogContext, topic.text.trim()), child: const Text('شروع ارزیابی'))],
+    ));
+    topic.dispose();
+    if (selected == null || selected.trim().isEmpty || !mounted) return;
+    final profile = widget.store.profile ?? const <String, dynamic>{};
+    final grade = [profile['grade'], profile['year']].whereType<String>().where((v) => v.trim().isNotEmpty).join(' · ');
+    final session = SimorghTeachingEngine.start(topic: selected, grade: grade);
+    try {
+      await _persistTeachingSession(session);
+      if (!mounted) return;
+      setState(() { teachingSession = session; input.text = SimorghTeachingEngine.instructionFor(session); });
+      showMessage(context, 'جلسه آموزشی روی گوشی ذخیره شد. پرسش ارزیابی را می‌توانی ارسال کنی.');
+    } on Object catch (value) { if (mounted) showMessage(context, friendlyError(value)); }
+  }
+
+  Future<void> endTeaching() async {
+    final session = teachingSession;
+    if (session == null) return;
+    try {
+      await _persistTeachingSession(session, active: false);
+      if (mounted) setState(() => teachingSession = null);
+    } on Object catch (value) { if (mounted) showMessage(context, friendlyError(value)); }
   }
 
   Future<void> openShop() async {
@@ -111,6 +182,24 @@ class _AdvisorPageState extends State<AdvisorPage> {
           state: resolveSimorghChatState(busy: busy, messages: messages),
         ),
       ),
+    )),
+    Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: Row(children: [
+      Expanded(child: OutlinedButton.icon(
+        key: const ValueKey('simorgh-start-teaching'),
+        onPressed: busy ? null : startTeaching,
+        icon: const Icon(Icons.school_outlined),
+        label: Text(teachingSession == null ? 'شروع تدریس با سیمرغ' : 'جلسه: ${teachingSession!.topic}'),
+      )),
+      if (teachingSession != null) IconButton(tooltip: 'پایان جلسه آموزشی', onPressed: busy ? null : endTeaching, icon: const Icon(Icons.close)),
+    ])),
+    if (teachingSession != null) Padding(padding: const EdgeInsets.fromLTRB(16, 6, 16, 0), child: Card(
+      child: Padding(padding: const EdgeInsets.all(10), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('روش تدریس سیمرغ · ${teachingSession!.stage.name}', style: const TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4), const Text('وضعیت جلسه روی همین گوشی نگهداری می‌شود. برای دریافت گام بعدی، دستور آموزشی را وارد گفت‌وگو کن.'),
+        Align(alignment: Alignment.centerLeft, child: TextButton.icon(
+          onPressed: busy ? null : () => setState(() => input.text = SimorghTeachingEngine.instructionFor(teachingSession!)),
+          icon: const Icon(Icons.play_arrow), label: const Text('آماده‌سازی گام آموزشی')),
+      ])),
     )),
     Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: CreditSummary(store: widget.store, onShop: busy ? null : openShop)),
     if (!service.isConfigured) const Padding(padding: EdgeInsets.symmetric(horizontal: 16),
