@@ -56,6 +56,7 @@ class SimorghTeachingSession {
   bool get isComplete => stage == SimorghTeachingStage.completed;
 
   SimorghTeachingSession copyWith({
+    String? grade,
     SimorghTeachingStage? stage,
     int? diagnosticCount,
     int? diagnosticCorrect,
@@ -68,7 +69,7 @@ class SimorghTeachingSession {
     bool clearLastError = false,
   }) => SimorghTeachingSession(
     topic: topic,
-    grade: grade,
+    grade: grade ?? this.grade,
     stage: stage ?? this.stage,
     diagnosticCount: diagnosticCount ?? this.diagnosticCount,
     diagnosticCorrect: diagnosticCorrect ?? this.diagnosticCorrect,
