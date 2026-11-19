@@ -98,5 +98,31 @@ void main() {
     expect(input.controller!.text, contains('معادله درجه دوم'));
     expect(tester.takeException(), isNull);
   });
+  testWidgets('does not resume a corrupted lesson with impossible counters', (tester) async {
+    final store = await EducationStore.open();
+    await store.saveTeachingSessions([
+      {
+        'id': 'simorgh-corrupted',
+        'active': true,
+        'topic': 'هندسه',
+        'grade': 'هشتم',
+        'stage': 'masteryCheck',
+        'diagnosticCount': 3,
+        'diagnosticCorrect': 4,
+        'practiceAttempts': 1,
+        'masteryCount': 1,
+        'masteryCorrect': 1,
+      },
+    ]);
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: AdvisorPage(store: store)),
+    ));
+    expect(find.textContaining('روش تدریس سیمرغ'), findsNothing);
+    expect(tester.takeException(), isNull);
+    // Corrupt data is ignored for resumption, not silently overwritten.
+    expect(store.teachingSessions.single['diagnosticCorrect'], 4);
+  });
+
 
 }
