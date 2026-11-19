@@ -511,33 +511,8 @@ void main() {
     sharedClient.close();
   });
 
-}
 
-class _TrackingHttpClient extends http.BaseClient {
-  bool closed = false;
-  int calls = 0;
-
-  @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    if (closed) throw StateError('shared client was closed');
-    calls++;
-    final body = jsonEncode({
-      'choices': [
-        {'message': {'content': 'پاسخ آزمایشی'}},
-      ],
-    });
-    return http.StreamedResponse(
-      Stream<List<int>>.value(utf8.encode(body)),
-      200,
-      headers: {'content-type': 'application/json; charset=utf-8'},
-    );
-  }
-
-  @override
-  void close() {
-    closed = true;
-  }
-  testWidgets('analytics tolerates malformed legacy teaching counters', (tester) async {
+testWidgets('analytics tolerates malformed legacy teaching counters', (tester) async {
     final store = await EducationStore.open();
     await store.saveTeachingSessions([
       {
@@ -592,4 +567,30 @@ class _TrackingHttpClient extends http.BaseClient {
     expect(plan.steps.first.kind, 'overdue');
   });
 
+}
+
+class _TrackingHttpClient extends http.BaseClient {
+  bool closed = false;
+  int calls = 0;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (closed) throw StateError('shared client was closed');
+    calls++;
+    final body = jsonEncode({
+      'choices': [
+        {'message': {'content': 'پاسخ آزمایشی'}},
+      ],
+    });
+    return http.StreamedResponse(
+      Stream<List<int>>.value(utf8.encode(body)),
+      200,
+      headers: {'content-type': 'application/json; charset=utf-8'},
+    );
+  }
+
+  @override
+  void close() {
+    closed = true;
+  }
 }
