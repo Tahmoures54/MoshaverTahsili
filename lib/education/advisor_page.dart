@@ -35,6 +35,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
   bool busy = false;
   String? error;
   SimorghTeachingSession? teachingSession;
+  String? teachingSessionId;
 
   @override
   void initState() {
@@ -51,8 +52,10 @@ class _AdvisorPageState extends State<AdvisorPage> {
   }
 
   SimorghTeachingSession? _restoreTeachingSession(List<Map<String, dynamic>> saved) {
-    if (saved.isEmpty) return null;
-    final data = saved.last;
+    final active = saved.where((item) => item['active'] == true).toList();
+    if (active.isEmpty) return null;
+    final data = active.last;
+    teachingSessionId = data['id']?.toString();
     try {
       if (data['active'] != true) return null;
       final session = SimorghTeachingEngine.start(
@@ -73,8 +76,8 @@ class _AdvisorPageState extends State<AdvisorPage> {
     } on Object { return null; }
   }
 
-  Map<String, dynamic> _sessionRecord(SimorghTeachingSession session, {bool active = true}) => {
-    'id': 'simorgh-teaching-active', 'active': active, 'topic': session.topic,
+  Map<String, dynamic> _sessionRecord(SimorghTeachingSession session, {required String id, bool active = true}) => {
+    'id': id, 'active': active, 'topic': session.topic,
     'grade': session.grade, 'stage': session.stage.name,
     'diagnosticCount': session.diagnosticCount, 'diagnosticCorrect': session.diagnosticCorrect,
     'practiceAttempts': session.practiceAttempts, 'masteryCount': session.masteryCount,
@@ -84,7 +87,13 @@ class _AdvisorPageState extends State<AdvisorPage> {
   };
 
   Future<void> _persistTeachingSession(SimorghTeachingSession session, {bool active = true}) async {
-    await widget.store.saveTeachingSessions([_sessionRecord(session, active: active)]);
+    final id = teachingSessionId ?? newId('simorgh-lesson');
+    teachingSessionId = id;
+    final records = widget.store.teachingSessions
+        .where((record) => record['id'] != id)
+        .toList();
+    records.add(_sessionRecord(session, id: id, active: active));
+    await widget.store.saveTeachingSessions(records);
   }
 
   Future<void> startTeaching() async {
@@ -101,6 +110,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
     final profile = widget.store.profile ?? const <String, dynamic>{};
     final grade = [profile['grade'], profile['year']].whereType<String>().where((v) => v.trim().isNotEmpty).join(' · ');
     final session = SimorghTeachingEngine.start(topic: selected, grade: grade);
+    teachingSessionId = newId('simorgh-lesson');
     try {
       await _persistTeachingSession(session);
       if (!mounted) return;
@@ -114,7 +124,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
     if (session == null) return;
     try {
       await _persistTeachingSession(session, active: false);
-      if (mounted) setState(() => teachingSession = null);
+      if (mounted) setState(() { teachingSession = null; teachingSessionId = null; });
     } on Object catch (value) { if (mounted) showMessage(context, friendlyError(value)); }
   }
 
