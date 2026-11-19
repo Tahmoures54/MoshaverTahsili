@@ -414,8 +414,11 @@ void main() {
     expect(prompts[0], contains('calculation یعنی خطای محاسبات عددی'));
     expect(prompts[0], contains('شواهد پاسخ'));
     expect(prompts[0], contains('partial وقتی'));
-    expect(store.messages.where((message) => message['role'] == 'assistant'), hasLength(5));
-    expect(store.messages[3]['content'], contains('بازخورد مرحله 4'));
+    final assistantMessages = store.messages
+        .where((message) => message['role'] == 'assistant')
+        .toList();
+    expect(assistantMessages, hasLength(5));
+    expect(assistantMessages[3]['content'], contains('بازخورد مرحله 4'));
     expect(store.teachingSessions.single['diagnosticCount'], 3);
     expect(store.teachingSessions.single['diagnosticCorrect'], 3);
     expect(store.teachingSessions.single['practiceAttempts'], 1);
