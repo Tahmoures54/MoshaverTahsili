@@ -1,4 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:moshaver_tahsili/education/advisor_page.dart';
 import 'package:moshaver_tahsili/education/education_store.dart';
 import 'support/memory_secure_local_cipher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -63,4 +65,38 @@ void main() {
     expect(reopened.teachingSessions.first['active'], isFalse);
     expect(reopened.teachingSessions.first['stage'], 'completed');
   });
+  testWidgets('advisor restores the exact lesson stage and can prepare its next step', (tester) async {
+    final store = await EducationStore.open();
+    await store.saveTeachingSessions([
+      {
+        'id': 'simorgh-resume-check',
+        'active': true,
+        'topic': 'معادله درجه دوم',
+        'grade': 'متوسطه دوم · دهم',
+        'stage': 'masteryCheck',
+        'diagnosticCount': 3,
+        'diagnosticCorrect': 1,
+        'practiceAttempts': 2,
+        'masteryCount': 1,
+        'masteryCorrect': 1,
+        'reteachCount': 1,
+        'explanationVariant': 2,
+        'lastError': null,
+      },
+    ]);
+
+    final reopened = await EducationStore.open(preferences: store.prefs);
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: AdvisorPage(store: reopened)),
+    ));
+    expect(find.text('روش تدریس سیمرغ · سنجش یادگیری'), findsOneWidget);
+    expect(find.text('جلسه: معادله درجه دوم'), findsOneWidget);
+
+    await tester.tap(find.text('آماده‌سازی گام آموزشی'));
+    await tester.pump();
+    final input = tester.widget<TextField>(find.byType(TextField));
+    expect(input.controller!.text, contains('معادله درجه دوم'));
+    expect(tester.takeException(), isNull);
+  });
+
 }
