@@ -403,6 +403,28 @@ class EducationStore extends ChangeNotifier {
     await _saveWallet(wallet);
   });
 
+  /// Refund a completed model call when its payload cannot be used by the app
+  /// (for example, malformed structured teaching feedback). This is idempotent.
+  Future<void> refundInvalidAiResponse(String id) => _serialized(() async {
+    final wallet = _copyWallet();
+    final requests = wallet['requests'] as Map<String, dynamic>;
+    final request = requests[id] as Map<String, dynamic>?;
+    if (request == null || request['status'] != 'completed') return;
+    request['status'] = 'refunded';
+    request.remove('answer');
+    if (request['charge'] == 'credit') {
+      wallet['credits'] = (wallet['credits'] as int) + questionFeatherCost;
+    } else if (request['charge'] == 'free') {
+      wallet['successful_uses'] = ((wallet['successful_uses'] as int) - 1).clamp(0, 1000000000);
+    }
+    final transactionId = (request['transactionId'] as String?) ?? id;
+    _markTransaction(wallet, transactionId, 'refunded');
+    _transaction(wallet, '$transactionId-invalid-refund', 'refund',
+        request['charge'] == 'credit' ? questionFeatherCost : 0,
+        'بازگشت پر · پاسخ ساختاری نامعتبر', 'completed');
+    await _saveWallet(wallet);
+  });
+
   /// Called once at startup, before any request can become active.
   Future<void> refundInterruptedRequests() => _serialized(() async {
     if (_walletError != null) return;
