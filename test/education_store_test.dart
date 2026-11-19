@@ -268,4 +268,46 @@ void main() {
     await expectLater(store.addTask({'id': 'new'}), throwsA(isA<LocalDataException>()));
     expect(store.prefs.getString('edu.tasks'), startsWith(EducationStore.encryptedPrefix));
   });
+  test('failed backup import preserves the exact ciphertext of a damaged section', () async {
+    final damagedCiphertext = 'enc:v2:damaged-original-envelope';
+    SharedPreferences.setMockInitialValues({
+      'edu.profile': jsonEncode({'nickname': 'قدیمی'}),
+      'edu.tasks': damagedCiphertext,
+    });
+    final cipher = _FailingTasksCipher();
+    final store = await EducationStore.open(cipher: cipher);
+    expect(store.dataError('edu.tasks'), isNotNull);
+    final beforeProfile = store.prefs.getString('edu.profile');
+
+    final backup = WorkspaceBackup.encode({
+      'edu.profile': {'nickname': 'جدید'},
+      'edu.tasks': [{'id': 'new-task', 'title': 'درس تازه'}],
+    }, DateTime(2026, 11, 19));
+
+    await expectLater(store.importBackup(backup), throwsA(isA<StateError>()));
+    expect(store.prefs.getString('edu.tasks'), damagedCiphertext);
+    expect(store.prefs.getString('edu.profile'), beforeProfile);
+    expect(store.dataError('edu.tasks'), isNotNull);
+    expect(store.profile?['nickname'], 'قدیمی');
+  });
+
+}
+
+
+class _FailingTasksCipher implements SecureLocalCipher {
+  final MemorySecureLocalCipher _delegate = MemorySecureLocalCipher();
+
+  @override
+  Future<String> encrypt(String plaintext, {required String key}) async {
+    if (key == 'edu.tasks' && plaintext.contains('new-task')) {
+      throw StateError('simulated restore write failure');
+    }
+    return _delegate.encrypt(plaintext, key: key);
+  }
+
+  @override
+  Future<String> decrypt(String ciphertext, {required String key}) async {
+    if (key == 'edu.tasks') throw const FormatException('damaged task envelope');
+    return _delegate.decrypt(ciphertext, key: key);
+  }
 }
