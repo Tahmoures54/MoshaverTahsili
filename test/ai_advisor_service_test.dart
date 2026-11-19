@@ -414,7 +414,7 @@ void main() {
     );
     gate.complete();
     expect(await first, 'پاسخ پرسش اول');
-    expect(store.credits, 2);
+    expect(store.credits, 1);
     service.dispose();
   });
 
