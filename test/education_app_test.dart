@@ -311,6 +311,7 @@ void main() {
     await tester.pump();
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await tester.pumpAndSettle();
+    print('TEACHING_DEBUG calls=$teachingProviderCalls message=${store.messages.last} wallet=${store.walletSnapshot}');
     expect(teachingProviderCalls, 1);
     expect(store.messages.last['status'], 'completed');
     expect(store.messages.last['content'], contains('آفرین؛ پاسخ تو درست بود.'));
