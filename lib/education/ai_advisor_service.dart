@@ -127,11 +127,14 @@ class AiAdvisorService {
 
   List<Map<String, String>> _messages(Map<String, dynamic>? profile,
       List<Map<String, dynamic>> history, String question) {
+    // Profile context is opt-in. Legacy profiles and backups without this flag
+    // remain private by default; nickname is never included in the AI context.
+    final approvedProfile = profile?['aiProfileContextConsent'] == true ? profile : null;
     String field(String key, int limit) {
-      final value = profile?[key]?.toString().trim() ?? '';
+      final value = approvedProfile?[key]?.toString().trim() ?? '';
       return value.length <= limit ? value : value.substring(0, limit);
     }
-    final context = profile == null ? 'پروفایل ثبت نشده' :
+    final context = approvedProfile == null ? 'ارسال زمینه پروفایل تأیید نشده است' :
         'مقطع: ${field('grade', 80)}؛ پایه: ${field('year', 80)}؛ رشته: ${field('field', 120)}؛ هدف: ${field('goal', 300)}';
     final recent = <Map<String, String>>[];
     var budget = 18000;

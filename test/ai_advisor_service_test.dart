@@ -207,7 +207,7 @@ void main() {
     http.Request? captured;
     final service = AiAdvisorService(apiKey: 'test-key', model: 'test-model',
         client: MockClient((request) async { captured = request; return answer('برای شروع برنامه واقع‌بینانه بنویس.'); }));
-    final result = await service.ask(profile: {'grade': 'متوسطه اول', 'year': 'هفتم', 'field': 'عمومی', 'goal': 'بهبود ریاضی'},
+    final result = await service.ask(profile: {'grade': 'متوسطه اول', 'year': 'هفتم', 'field': 'عمومی', 'goal': 'بهبود ریاضی', 'aiProfileContextConsent': true},
         history: [
           ...List.generate(30, (i) => {'role': 'user', 'content': 'turn-$i', 'status': 'completed'}),
           {'role': 'assistant', 'content': 'network error', 'status': 'failed'},
@@ -295,4 +295,55 @@ void main() {
     expect(store.credits, 2);
     service.dispose();
   });
+  test('profile context is omitted unless the student explicitly opts in', () async {
+    for (final consent in [false, true]) {
+      String? systemPrompt;
+      final service = AiAdvisorService(
+        apiKey: 'test-key',
+        client: MockClient((request) async {
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          final messages = (body['messages'] as List).cast<Map<String, dynamic>>();
+          systemPrompt = messages.first['content'] as String;
+          return answer('ok');
+        }),
+      );
+      await service.ask(
+        profile: {
+          'nickname': 'PRIVATE_NICKNAME',
+          'grade': 'پایه آزمایشی',
+          'year': 'یازدهم',
+          'field': 'ریاضی',
+          'goal': 'هدف آزمایشی',
+          'aiProfileContextConsent': consent,
+        },
+        history: const [],
+        question: 'یک راهنمایی آموزشی بده',
+      );
+      expect(systemPrompt, isNotNull);
+      expect(systemPrompt!.contains('PRIVATE_NICKNAME'), isFalse);
+      expect(systemPrompt!.contains('پایه آزمایشی'), consent);
+      expect(systemPrompt!.contains('هدف آزمایشی'), consent);
+      service.dispose();
+    }
+  });
+
+  test('legacy profiles without a consent flag are not sent to the provider', () async {
+    String? systemPrompt;
+    final service = AiAdvisorService(
+      apiKey: 'test-key',
+      client: MockClient((request) async {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        systemPrompt = ((body['messages'] as List).first as Map)['content'] as String;
+        return answer('ok');
+      }),
+    );
+    await service.ask(
+      profile: {'grade': 'پایه قدیمی', 'year': 'دهم', 'field': 'تجربی'},
+      history: const [],
+      question: 'سلام',
+    );
+    expect(systemPrompt, isNot(contains('پایه قدیمی')));
+    service.dispose();
+  });
+
 }

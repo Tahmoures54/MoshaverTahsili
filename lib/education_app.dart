@@ -88,12 +88,14 @@ class _ProfileSheetState extends State<_ProfileSheet> {
   late String grade;
   late String year;
   bool saving = false;
+  bool shareProfileWithAi = false;
   String? error;
 
   @override
   void initState() {
     super.initState();
     final current = widget.store.profile ?? {};
+    shareProfileWithAi = current['aiProfileContextConsent'] == true;
     nickname = TextEditingController(text: current['nickname']?.toString() ?? '');
     field = TextEditingController(text: current['field']?.toString() ?? 'عمومی');
     goal = TextEditingController(text: current['goal']?.toString() ?? '');
@@ -114,7 +116,8 @@ class _ProfileSheetState extends State<_ProfileSheet> {
     setState(() { saving = true; error = null; });
     try {
       await widget.store.saveProfile({...?widget.store.profile, 'nickname': nickname.text.trim(), 'grade': grade, 'year': year,
-        'field': field.text.trim(), 'goal': goal.text.trim(), 'privacyVersion': 1});
+        'field': field.text.trim(), 'goal': goal.text.trim(),
+        'aiProfileContextConsent': shareProfileWithAi, 'privacyVersion': 2});
       if (mounted) Navigator.pop(context, true);
     } on Object catch (value) {
       if (mounted) setState(() { saving = false; error = friendlyError(value); });
@@ -144,6 +147,15 @@ class _ProfileSheetState extends State<_ProfileSheet> {
           TextFormField(controller: field, maxLength: 80, decoration: const InputDecoration(labelText: 'رشته یا زمینه مورد علاقه'),
             validator: (value) => value == null || value.trim().isEmpty ? 'رشته یا «عمومی» را بنویس.' : null),
           TextFormField(controller: goal, maxLines: 2, maxLength: 300, decoration: const InputDecoration(labelText: 'هدف تحصیلی (اختیاری)')),
+          const SizedBox(height: 8),
+          CheckboxListTile(
+            value: shareProfileWithAi,
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            onChanged: saving ? null : (value) => setState(() => shareProfileWithAi = value ?? false),
+            title: const Text('اجازه ارسال زمینه تحصیلی به هوش مصنوعی'),
+            subtitle: const Text('در صورت فعال‌سازی، مقطع، پایه، رشته و هدف تحصیلی برای شخصی‌سازی پاسخ ارسال می‌شوند. نام مستعار ارسال نمی‌شود. این انتخاب اختیاری است و هر زمان می‌توانی آن را لغو کنی.'),
+          ),
           if (error != null) NoticeCard(text: error!, warning: true),
           const SizedBox(height: 12),
           FilledButton(onPressed: saving ? null : _save, child: Text(saving ? 'در حال ذخیره…' : 'ذخیره پروفایل')),
@@ -185,7 +197,7 @@ class _EntryScreenState extends State<EntryScreen> {
           const Text('سخنی با اولیا و دانش‌آموزان گرامی', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
           const Text('برنامه مطالعه، نمرات، فلش‌کارت‌ها و سابقه مشاوره روی همین گوشی ذخیره می‌شوند. '
-              'برای پاسخ هوش مصنوعی، پرسش، گفت‌وگوهای اخیر و پروفایل تحصیلی ارسال می‌شوند. '
+              'برای پاسخ هوش مصنوعی، پرسش و بخش‌هایی از گفت‌وگوهای اخیر ارسال می‌شوند. زمینه پروفایل تحصیلی فقط در صورت فعال‌کردن رضایت جداگانه در ویرایش پروفایل ارسال می‌شود. '
               'در تحلیل وضعیت تحصیلی، خلاصه نمره‌ها فقط پس از زدن دکمه تحلیل ارسال می‌شود. '
               'نام کامل، نشانی، شماره تماس و اطلاعات حساس را وارد نکن. '
               'پاسخ هوش مصنوعی ممکن است اشتباه باشد و جایگزین معلم، مشاور مدرسه یا منابع رسمی نیست. '
