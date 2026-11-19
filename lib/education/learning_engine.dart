@@ -485,7 +485,7 @@ class WorkspaceBackup {
   static const maxItemsPerKey = 5000;
   static const objectKeys = {'edu.profile', 'edu.career.draft'};
   static const listKeys = {
-    'edu.tasks', 'edu.exams', 'edu.cards', 'edu.messages', 'edu.reports', 'edu.deadlines',
+    'edu.tasks', 'edu.exams', 'edu.cards', 'edu.messages', 'edu.teaching.sessions', 'edu.reports', 'edu.deadlines',
   };
 
   static Set<String> get allowedKeys => {...objectKeys, ...listKeys};
