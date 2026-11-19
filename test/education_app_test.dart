@@ -268,6 +268,11 @@ void main() {
 
   testWidgets('Simorgh teaching evaluates a student answer and persists lesson progress', (tester) async {
     final store = await EducationStore.open();
+    await store.saveProfile({
+      'grade': 'پایه محرمانه',
+      'year': 'یازدهم',
+      'aiProfileContextConsent': false,
+    });
     var teachingProviderCalls = 0;
     String? teachingPrompt;
     final service = AiAdvisorService(
@@ -318,6 +323,9 @@ void main() {
     expect(teachingProviderCalls, 1);
     expect(teachingPrompt, contains('ساختار دقیق'));
     expect(teachingPrompt, contains('ابتدا یک پرسش کوتاه'));
+    expect(teachingPrompt, contains('پایه تحصیلی مشخص نشده'));
+    expect(teachingPrompt, isNot(contains('پایه محرمانه')));
+    expect(teachingPrompt, isNot(contains('یازدهم')));
     expect(store.messages.last['status'], 'completed');
     expect(store.messages.last['content'], contains('آفرین؛ پاسخ تو درست بود.'));
     expect(store.teachingSessions.single['diagnosticCount'], 1);
