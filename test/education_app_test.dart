@@ -235,7 +235,7 @@ void main() {
     final failedWallet = store.walletSnapshot;
     expect(failedWallet['requests'][requestId]['charge'], 'credit');
     expect(failedWallet['requests'][requestId]['status'], 'refunded');
-    expect(find.text('تلاش دوباره همین درخواست'), findsOneWidget);
+    expect(find.text('تلاش دوباره همین درخواست'), findsNWidgets(2));
     final retryButton = find.byKey(ValueKey('advisor-retry-$requestId'));
     await tester.scrollUntilVisible(
       find.text('تلاش دوباره همین درخواست').last,
@@ -267,10 +267,12 @@ void main() {
 
   testWidgets('Simorgh teaching evaluates a student answer and persists lesson progress', (tester) async {
     final store = await EducationStore.open();
+    var teachingProviderCalls = 0;
     final service = AiAdvisorService(
       store: store,
       apiKey: 'test-key',
       client: MockClient((request) async {
+        teachingProviderCalls++;
         final body = jsonDecode(request.body) as Map<String, dynamic>;
         final messages = body['messages'] as List;
         expect(messages.first['content'], contains('ساختار دقیق'));
@@ -309,6 +311,9 @@ void main() {
     await tester.pump();
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await tester.pumpAndSettle();
+    expect(teachingProviderCalls, 1);
+    expect(store.messages.last['status'], 'completed');
+    expect(store.messages.last['content'], contains('آفرین؛ پاسخ تو درست بود.'));
     expect(store.teachingSessions.single['diagnosticCount'], 1);
     expect(store.teachingSessions.single['diagnosticCorrect'], 1);
     expect(find.textContaining('آفرین؛ پاسخ تو درست بود.'), findsOneWidget);
