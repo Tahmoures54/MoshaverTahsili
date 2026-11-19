@@ -381,9 +381,10 @@ class _AdvisorPageState extends State<AdvisorPage> {
           }
         } on AiException catch (value) {
           if (value.kind != AiErrorKind.response) rethrow;
-          // The model answered but its evaluation payload was malformed.
-          // Keep the lesson stage unchanged and allow a fresh student turn.
-          displayedAnswer = value.message;
+          // The model returned unusable structured feedback. Do not charge the
+          // student for a response that cannot safely advance the lesson.
+          await widget.store.refundInvalidAiResponse(id);
+          displayedAnswer = '${value.message}\\n\\nپر سیمرغت برگشت داده شد.';
         }
       } else if (teachingMode && localSafetyResponse) {
         // Local crisis support is not a structured lesson evaluation.
