@@ -330,7 +330,7 @@ void main() {
 
   testWidgets('Simorgh chat carries model evaluations across diagnostic, practice and reteaching stages', (tester) async {
     final store = await EducationStore.open();
-    final outcomes = ['correct', 'correct', 'correct', 'partial'];
+    final outcomes = ['correct', 'correct', 'correct', 'partial', 'malformed'];
     final prompts = <String>[];
     var call = 0;
     final service = AiAdvisorService(
@@ -341,18 +341,19 @@ void main() {
         final messages = body['messages'] as List;
         prompts.add(messages.first['content'].toString());
         final outcome = outcomes[call++];
+        final content = outcome == 'malformed'
+            ? 'پاسخ غیرساختاریافته مدل'
+            : jsonEncode({
+                'feedback': 'بازخورد مرحله $call',
+                'outcome': outcome,
+                'error': outcome == 'partial' ? 'procedural' : 'unknown',
+                'nextQuestion': 'پرسش بعدی مرحله $call',
+              });
         return http.Response(
           jsonEncode({
             'choices': [
               {
-                'message': {
-                  'content': jsonEncode({
-                    'feedback': 'بازخورد مرحله $call',
-                    'outcome': outcome,
-                    'error': outcome == 'partial' ? 'procedural' : 'unknown',
-                    'nextQuestion': 'پرسش بعدی مرحله $call',
-                  }),
-                },
+                'message': {'content': content},
               },
             ],
           }),
@@ -394,14 +395,23 @@ void main() {
     await answer('تمرین نیمه‌درست');
     expect(store.teachingSessions.single['stage'], 'reteach');
     expect(store.teachingSessions.single['lastError'], 'procedural');
+    await answer('پاسخ بازآموزی');
 
-    expect(call, 4);
+    // A malformed provider payload is visible as a safe retry message and
+    // cannot change the deterministic lesson state or its counters.
+    expect(store.teachingSessions.single['stage'], 'reteach');
+    expect(store.teachingSessions.single['practiceAttempts'], 1);
+    expect(store.teachingSessions.single['reteachCount'], 1);
+    expect(store.messages.last['content'], contains('پاسخ آموزشی ساختار معتبری نداشت'));
+
+    expect(call, 5);
     expect(prompts[0], contains('ابتدا یک پرسش کوتاه'));
     expect(prompts[1], contains('ابتدا یک پرسش کوتاه'));
     expect(prompts[2], contains('ابتدا یک پرسش کوتاه'));
     expect(prompts[3], contains('روش سقراطی'));
-    expect(store.messages.where((message) => message['role'] == 'assistant'), hasLength(4));
-    expect(store.messages.last['content'], contains('بازخورد مرحله 4'));
+    expect(prompts[4], contains('روش توضیح متفاوت'));
+    expect(store.messages.where((message) => message['role'] == 'assistant'), hasLength(5));
+    expect(store.messages[3]['content'], contains('بازخورد مرحله 4'));
     expect(store.teachingSessions.single['diagnosticCount'], 3);
     expect(store.teachingSessions.single['diagnosticCorrect'], 3);
     expect(store.teachingSessions.single['practiceAttempts'], 1);
