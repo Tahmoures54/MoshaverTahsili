@@ -264,9 +264,15 @@ class _AdvisorPageState extends State<AdvisorPage> {
           teachingSession = updated;
           displayedAnswer = turn.feedback;
           if (updated.isComplete) {
-            displayedAnswer = '$displayedAnswer\\n\\nجلسه به پایان رسید. در سنجش پایانی، ${updated.masteryCorrect} پاسخ از ${updated.masteryCount} پاسخ درست بود. این نتیجه شواهد همین جلسه است، نه تضمین تسلط کامل. برای تثبیت یادگیری، فردا یک تمرین تازه از همین مبحث حل کن.';
-          } else if (turn.nextQuestion.isNotEmpty) {
-            displayedAnswer = '$displayedAnswer\\n\\n${turn.nextQuestion}';
+            displayedAnswer = '$displayedAnswer\n\nجلسه به پایان رسید. در سنجش پایانی، ${updated.masteryCorrect} پاسخ از ${updated.masteryCount} پاسخ درست بود. این نتیجه شواهد همین جلسه است، نه تضمین تسلط کامل. برای تثبیت یادگیری، فردا یک تمرین تازه از همین مبحث حل کن.';
+          } else if (updated.stage == sessionAtRequest.stage &&
+              turn.nextQuestion.isNotEmpty) {
+            // The model generated this question under the current stage's
+            // instruction. Never show it after the deterministic engine has
+            // moved to a different stage (for example, diagnostic -> reteach).
+            displayedAnswer = '$displayedAnswer\n\n${turn.nextQuestion}';
+          } else if (updated.stage != sessionAtRequest.stage) {
+            displayedAnswer = '$displayedAnswer\n\nمرحله بعدی آموزش آماده است. برای دریافت پرسش متناسب با این مرحله، «آماده‌سازی گام آموزشی» را بزن.';
           }
         } on AiException catch (value) {
           if (value.kind != AiErrorKind.response) rethrow;
