@@ -213,13 +213,20 @@ class _AdvisorPageState extends State<AdvisorPage> {
           systemInstruction: teachingMode ? _teachingResponseContract(sessionAtRequest) : null);
       var displayedAnswer = answer;
       if (teachingMode) {
-        final turn = _decodeTeachingTurn(answer);
-        final updated = _applyTeachingEvaluation(sessionAtRequest, turn);
-        await _persistTeachingSession(updated);
-        teachingSession = updated;
-        displayedAnswer = turn.feedback;
-        if (turn.nextQuestion.isNotEmpty) displayedAnswer = '$displayedAnswer\n\n${turn.nextQuestion}';
-        if (updated.isComplete) displayedAnswer = '$displayedAnswer\n\nآفرین! این جلسه به مرحله سنجش پایانی رسید.';
+        try {
+          final turn = _decodeTeachingTurn(answer);
+          final updated = _applyTeachingEvaluation(sessionAtRequest, turn);
+          await _persistTeachingSession(updated);
+          teachingSession = updated;
+          displayedAnswer = turn.feedback;
+          if (turn.nextQuestion.isNotEmpty) displayedAnswer = '$displayedAnswer\\n\\n${turn.nextQuestion}';
+          if (updated.isComplete) displayedAnswer = '$displayedAnswer\\n\\nآفرین! این جلسه به مرحله سنجش پایانی رسید.';
+        } on AiException catch (value) {
+          if (value.kind != AiErrorKind.response) rethrow;
+          // The model answered but its evaluation payload was malformed.
+          // Keep the lesson stage unchanged and allow a fresh student turn.
+          displayedAnswer = value.message;
+        }
       }
       if (!mounted) return;
       setState(() {
