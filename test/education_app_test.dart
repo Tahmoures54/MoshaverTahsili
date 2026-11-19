@@ -285,8 +285,19 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('روش‌های مؤثر مطالعه'), findsOneWidget);
     expect(find.text('مطالعه فعال'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('مرور فاصله‌دار'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     expect(find.text('مرور فاصله‌دار'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('آمادگی برای امتحان'), 350, scrollable: find.byType(Scrollable).first);
+    await tester.scrollUntilVisible(
+      find.text('آمادگی برای امتحان'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     expect(find.text('آمادگی برای امتحان'), findsOneWidget);
   });
 }
