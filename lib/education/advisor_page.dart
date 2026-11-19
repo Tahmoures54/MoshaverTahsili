@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'ai_advisor_service.dart';
@@ -8,6 +9,14 @@ import 'study_pages.dart' show newId;
 import 'simorgh_companion.dart';
 import 'simorgh_teaching_engine.dart';
 import 'ui.dart';
+
+class _TeachingTurn {
+  const _TeachingTurn({required this.feedback, required this.outcome, required this.error, required this.nextQuestion});
+  final String feedback;
+  final SimorghAnswerOutcome outcome;
+  final SimorghErrorKind error;
+  final String nextQuestion;
+}
 
 class AdvisorPage extends StatefulWidget {
   const AdvisorPage({super.key, required this.store, this.service});
@@ -108,6 +117,54 @@ class _AdvisorPageState extends State<AdvisorPage> {
     } on Object catch (value) { if (mounted) showMessage(context, friendlyError(value)); }
   }
 
+  String _teachingResponseContract(SimorghTeachingSession session) =>
+      '${SimorghTeachingEngine.instructionFor(session)}\n'
+      'پاسخ را فقط به صورت JSON معتبر و بدون Markdown برگردان. ساختار دقیق: '
+      '{"feedback":"بازخورد کوتاه و آموزشی فارسی","outcome":"correct|partial|incorrect|unclear",'
+      '"error":"conceptual|prerequisite|procedural|calculation|careless|unknown",'
+      '"nextQuestion":"یک پرسش یا تمرین بعدی کوتاه"}. '
+      'outcome را فقط بر اساس پاسخ واقعی دانش‌آموز تعیین کن. اگر پاسخ مبهم است unclear بده.';
+
+  _TeachingTurn _decodeTeachingTurn(String raw) {
+    try {
+      final start = raw.indexOf('{');
+      final end = raw.lastIndexOf('}');
+      if (start < 0 || end <= start) throw const FormatException();
+      final value = jsonDecode(raw.substring(start, end + 1));
+      if (value is! Map<String, dynamic>) throw const FormatException();
+      final outcome = SimorghAnswerOutcome.values.byName(value['outcome']?.toString() ?? 'unclear');
+      final error = SimorghErrorKind.values.byName(value['error']?.toString() ?? 'unknown');
+      final feedback = value['feedback']?.toString().trim() ?? '';
+      if (feedback.isEmpty || feedback.length > 5000) throw const FormatException();
+      final next = value['nextQuestion']?.toString().trim() ?? '';
+      if (next.length > 2000) throw const FormatException();
+      return _TeachingTurn(feedback: feedback, outcome: outcome, error: error, nextQuestion: next);
+    } on Object {
+      throw const AiException(AiErrorKind.response,
+          'پاسخ آموزشی ساختار معتبری نداشت. دوباره تلاش کن؛ وضعیت جلسه تغییر نکرده است.');
+    }
+  }
+
+  SimorghTeachingSession _applyTeachingEvaluation(
+      SimorghTeachingSession session, _TeachingTurn turn) {
+    switch (session.stage) {
+      case SimorghTeachingStage.diagnostic:
+        return SimorghTeachingEngine.recordDiagnostic(session, turn.outcome);
+      case SimorghTeachingStage.explanation:
+        return SimorghTeachingEngine.beginGuidedPractice(session);
+      case SimorghTeachingStage.guidedPractice:
+        return SimorghTeachingEngine.recordPractice(
+            session: session, outcome: turn.outcome, error: turn.error);
+      case SimorghTeachingStage.reteach:
+        return SimorghTeachingEngine.finishReteach(session);
+      case SimorghTeachingStage.masteryCheck:
+        return SimorghTeachingEngine.recordMasteryCheck(
+            session: session, outcome: turn.outcome, error: turn.error);
+      case SimorghTeachingStage.completed:
+        return session;
+    }
+  }
+
   Future<void> openShop() async {
     await Navigator.push<void>(context, MaterialPageRoute(builder: (_) => CreditShopPage(store: widget.store)));
     if (mounted) setState(() {});
@@ -137,13 +194,26 @@ class _AdvisorPageState extends State<AdvisorPage> {
     setState(() { busy = true; error = null; });
     final history = messages.where((m) => m['id'] != id).toList();
     try {
+      final sessionAtRequest = teachingSession;
+      final teachingMode = sessionAtRequest != null;
       final answer = await service.ask(profile: widget.store.profile, history: history,
-          question: text, requestId: id);
+          question: text, requestId: id,
+          systemInstruction: teachingMode ? _teachingResponseContract(sessionAtRequest) : null);
+      var displayedAnswer = answer;
+      if (teachingMode) {
+        final turn = _decodeTeachingTurn(answer);
+        final updated = _applyTeachingEvaluation(sessionAtRequest, turn);
+        await _persistTeachingSession(updated);
+        teachingSession = updated;
+        displayedAnswer = turn.feedback;
+        if (turn.nextQuestion.isNotEmpty) displayedAnswer = '$displayedAnswer\n\n${turn.nextQuestion}';
+        if (updated.isComplete) displayedAnswer = '$displayedAnswer\n\nآفرین! این جلسه به مرحله سنجش پایانی رسید.';
+      }
       if (!mounted) return;
       setState(() {
         for (final message in messages) { if (message['id'] == id) message['status'] = 'completed'; }
         messages.removeWhere((m) => m['id'] == '$id-answer');
-        messages.add({'id': '$id-answer', 'role': 'assistant', 'content': answer,
+        messages.add({'id': '$id-answer', 'role': 'assistant', 'content': displayedAnswer,
           'status': 'completed', 'createdAt': DateTime.now().toIso8601String()});
       });
       await widget.store.saveMessages(messages);
