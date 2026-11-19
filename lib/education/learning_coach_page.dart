@@ -4,6 +4,12 @@ import 'education_store.dart';
 import 'learning_engine.dart';
 import 'ui.dart';
 
+int _safeCoachMinutes(Object? value, {required int fallback}) {
+  if (value is num && value.isFinite) return value.round().clamp(0, 1440).toInt();
+  final parsed = int.tryParse(digitsToEnglish(value?.toString() ?? ''));
+  return parsed == null ? fallback : parsed.clamp(0, 1440);
+}
+
 /// A transparent coaching layer built only from records already stored locally.
 class LearningCoachStep {
   const LearningCoachStep({
@@ -50,8 +56,7 @@ LearningCoachPlan buildLearningCoachPlan({
   final todayLoad = tasks.where((task) =>
       task['done'] != true && task['dueDate']?.toString() == todayKey)
       .fold<int>(0, (sum, task) {
-        final value = task['minutes'];
-        return sum + (value is num && value.isFinite ? value.round().clamp(0, 1440).toInt() : 0);
+        return sum + _safeCoachMinutes(task['minutes'], fallback: 0);
       });
   final available = (cap - todayLoad).clamp(0, cap).toInt();
   final steps = <LearningCoachStep>[];
@@ -99,8 +104,8 @@ LearningCoachPlan buildLearningCoachPlan({
       final bDate = parseDay(b['dueDate'])!;
       final dateOrder = aDate.compareTo(bDate);
       if (dateOrder != 0) return dateOrder;
-      return ((a['minutes'] as num?)?.toInt() ?? 30)
-          .compareTo((b['minutes'] as num?)?.toInt() ?? 30);
+      return _safeCoachMinutes(a['minutes'], fallback: 30)
+          .compareTo(_safeCoachMinutes(b['minutes'], fallback: 30));
     });
   if (overdue.isNotEmpty && steps.length < 3) {
     final task = overdue.first;
