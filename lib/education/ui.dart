@@ -73,6 +73,55 @@ class NoticeCard extends StatelessWidget {
   );
 }
 
+class SimorghFeatherMark extends StatelessWidget {
+  const SimorghFeatherMark({super.key, this.size = 28});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: size,
+    height: size * 1.15,
+    child: CustomPaint(painter: _SimorghFeatherPainter()),
+  );
+}
+
+class _SimorghFeatherPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final feather = Path()
+      ..moveTo(size.width * .15, size.height * .88)
+      ..cubicTo(size.width * .12, size.height * .55, size.width * .30,
+          size.height * .16, size.width * .84, size.height * .08)
+      ..cubicTo(size.width * .82, size.height * .49, size.width * .61,
+          size.height * .79, size.width * .15, size.height * .88)
+      ..close();
+    canvas.drawPath(feather, Paint()..color = simorghGold);
+
+    final shaft = Paint()
+      ..color = navy.withValues(alpha: .72)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.width * .045
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(size.width * .13, size.height * .90),
+      Offset(size.width * .85, size.height * .07),
+      shaft,
+    );
+    for (var index = 1; index <= 4; index++) {
+      final t = index / 6;
+      final x = size.width * (.13 + .72 * t);
+      final y = size.height * (.90 - .83 * t);
+      canvas.drawLine(Offset(x, y), Offset(x - size.width * .13,
+          y + size.height * .035), shaft);
+      canvas.drawLine(Offset(x, y), Offset(x + size.width * .08,
+          y + size.height * .025), shaft);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class CreditSummary extends StatelessWidget {
   const CreditSummary({super.key, required this.store, this.onShop});
   final EducationStore store;
@@ -84,7 +133,7 @@ class CreditSummary extends StatelessWidget {
       if (store.walletError != null) return NoticeCard(text: store.walletError!, warning: true);
       return Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [
         Row(children: [
-          const Text('🪶', style: TextStyle(fontSize: 27)),
+          const SimorghFeatherMark(size: 28),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('پرهای سیمرغ', style: TextStyle(fontWeight: FontWeight.bold)),
