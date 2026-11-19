@@ -92,6 +92,8 @@ void main() {
     expect(find.text('روش تدریس سیمرغ · سنجش یادگیری'), findsOneWidget);
     expect(find.text('جلسه: معادله درجه دوم'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('آماده‌سازی گام آموزشی'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('آماده‌سازی گام آموزشی'));
     await tester.pump();
     final input = tester.widget<TextField>(find.byType(TextField));
