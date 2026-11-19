@@ -256,7 +256,7 @@ void main() {
     expect(completedWallet['requests'][requestId]['status'], 'completed');
     expect(completedWallet['credits'], 0);
     expect(store.credits, 0);
-    expect(store.messages.last['status'], 'completed');
+    expect(store.messages.last['status'], 'completed', reason: 'AI turn failed: ${store.messages.last['content']}');
     expect(store.messages.where((message) => message['role'] == 'user'), hasLength(2));
     expect(store.messages.first['id'], 'previous-failed');
     expect(store.messages.first['status'], 'failed');
