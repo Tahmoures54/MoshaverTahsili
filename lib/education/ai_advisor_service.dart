@@ -114,6 +114,7 @@ class AiAdvisorService {
       if (store != null) await store!.completeAiRequest(id, answer);
       return answer;
     } on Object catch (error) {
+      print('AI_EXECUTE_FAILURE_DEBUG type=${error.runtimeType} answerReceived=$answerReceived reserved=$reserved safeMessage=${error is AiException ? error.message : error is LocalDataException ? error.message : 'unknown'}');
       if (reserved) {
         try { await store!.refundAiRequest(id); } on Object {
           // The pending reservation survives a storage failure and is refunded
