@@ -384,7 +384,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
           // The model returned unusable structured feedback. Do not charge the
           // student for a response that cannot safely advance the lesson.
           await widget.store.refundInvalidAiResponse(id);
-          displayedAnswer = '${value.message}\\n\\nپر سیمرغت برگشت داده شد.';
+          displayedAnswer = '${value.message}\n\nپر سیمرغت برگشت داده شد.';
         }
       } else if (teachingMode && localSafetyResponse) {
         // Local crisis support is not a structured lesson evaluation.
