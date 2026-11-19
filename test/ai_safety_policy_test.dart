@@ -39,4 +39,28 @@ void main() {
       expect(AiSafetyPolicy.assess(message).shouldBlockRemoteAi, isFalse, reason: message);
     }
   });
+  test('limits historical crisis carryover to three recent completed user turns', () {
+    final history = [
+      {'role': 'user', 'content': 'می‌خوام خودمو بکشم', 'status': 'completed'},
+      {'role': 'assistant', 'content': 'لطفاً تنها نمان', 'status': 'completed'},
+      {'role': 'user', 'content': 'سلام', 'status': 'completed'},
+      {'role': 'assistant', 'content': 'سلام', 'status': 'completed'},
+      {'role': 'user', 'content': 'یک سؤال ریاضی دارم', 'status': 'completed'},
+      {'role': 'assistant', 'content': 'بپرس', 'status': 'completed'},
+      {'role': 'user', 'content': 'حاصل دو به توان سه چیست؟', 'status': 'completed'},
+    ];
+    expect(
+      AiSafetyPolicy.assessTurn('لطفاً توان را توضیح بده', history).shouldBlockRemoteAi,
+      isFalse,
+    );
+  });
+
+  test('ignores failed and pending historical crisis messages', () {
+    final history = [
+      {'role': 'user', 'content': 'می‌خوام خودمو بکشم', 'status': 'failed'},
+      {'role': 'user', 'content': 'می‌خواهم به خودم آسیب بزنم', 'status': 'pending'},
+    ];
+    expect(AiSafetyPolicy.assessTurn('برای فیزیک کمک می‌خواهم', history).shouldBlockRemoteAi, isFalse);
+  });
+
 }
