@@ -357,10 +357,8 @@ class _AdvisorPageState extends State<AdvisorPage> {
           question: text, requestId: id,
           systemInstruction: teachingMode ? _teachingResponseContract(sessionAtRequest) : null);
       var displayedAnswer = answer;
-      final localSafetyResponse = AiSafetyPolicy.assess(text).shouldBlockRemoteAi ||
-          history.any((message) => message['role'] == 'user' &&
-              message['content'] is String &&
-              AiSafetyPolicy.assess(message['content'] as String).shouldBlockRemoteAi);
+      final localSafetyResponse =
+          AiSafetyPolicy.assessTurn(text, history).shouldBlockRemoteAi;
       if (teachingMode && !localSafetyResponse) {
         try {
           final turn = _decodeTeachingTurn(answer);
