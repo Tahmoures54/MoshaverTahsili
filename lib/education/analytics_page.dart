@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'education_store.dart';
 import 'learning_engine.dart';
+import 'mastery_estimator.dart';
 import 'ui.dart';
 
 /// Local performance analytics. Every figure comes from the student's own
@@ -18,6 +19,11 @@ class AnalyticsPage extends StatelessWidget {
       cards: store.cards,
       now: DateTime.now(),
     );
+    final topicMastery = estimateTopicMastery(store.cards);
+    final teachingSessions = store.teachingSessions.reversed.take(8).toList();
+    final completedLessons = store.teachingSessions
+        .where((item) => item['stage'] == 'completed')
+        .length;
     var maxMinutes = 1;
     for (final week in report.weeks) {
       if (week.plannedMinutes > maxMinutes) maxMinutes = week.plannedMinutes;
@@ -65,6 +71,82 @@ class AnalyticsPage extends StatelessWidget {
               Text(_trendText(subject), style: const TextStyle(fontSize: 13, height: 1.6)),
             ],
           ))),
+        _section('شواهد یادگیری به تفکیک مبحث'),
+        if (topicMastery.isEmpty)
+          const EmptyState(
+            title: 'هنوز شواهد موضوعی ثبت نشده',
+            subtitle: 'برای هر فلش‌کارت، نام مبحث را ثبت کن و پس از مرور، نتیجه یادآوری را ارزیابی کن.',
+            icon: Icons.school_outlined,
+          ),
+        for (final item in topicMastery)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: Text(item.topic, style: const TextStyle(fontWeight: FontWeight.bold))),
+                      Text('${faNumber((item.estimate * 100).round())}٪',
+                          style: const TextStyle(color: blue, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(value: item.estimate, minHeight: 7),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${item.confidence} · ${faNumber(item.evidenceCount)} مرور ثبت‌شده · بازه برآورد ${faNumber((item.lowerBound * 100).round())} تا ${faNumber((item.upperBound * 100).round())} درصد',
+                    style: const TextStyle(fontSize: 12, height: 1.6),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        const NoticeCard(
+          text: 'این درصد، برآورد محافظه‌کارانه از سابقه یادآوری فلش‌کارت‌هاست؛ نمره امتحان یا احتمال قطعی موفقیت نیست. شواهد بیشتر، برآورد را قابل اتکاتر می‌کند.',
+          icon: Icons.info_outline,
+        ),
+        _section('یادگیری با سیمرغ'),
+        if (teachingSessions.isEmpty)
+          const EmptyState(
+            title: 'هنوز جلسه تدریسی ثبت نشده',
+            subtitle: 'از صفحه گفت‌وگوی سیمرغ یک مبحث را برای یادگیری انتخاب کن.',
+            icon: Icons.school_outlined,
+          )
+        else ...[
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Expanded(child: _teachingMetric('جلسه‌های ثبت‌شده', store.teachingSessions.length.toString())),
+                  Expanded(child: _teachingMetric('جلسه‌های تکمیل‌شده', completedLessons.toString())),
+                ],
+              ),
+            ),
+          ),
+          for (final lesson in teachingSessions)
+            Card(
+              child: ListTile(
+                leading: Icon(
+                  lesson['stage'] == 'completed' ? Icons.task_alt : Icons.menu_book_outlined,
+                  color: lesson['stage'] == 'completed' ? teal : blue,
+                ),
+                title: Text(lesson['topic']?.toString() ?? 'مبحث بدون نام'),
+                subtitle: Text(
+                  '${_teachingStageText(lesson['stage']?.toString())} · '
+                  '${faNumber(lesson['diagnosticCount'] as int? ?? 0)} ارزیابی آغازین · '
+                  '${faNumber(lesson['masteryCorrect'] as int? ?? 0)} پاسخ درست در سنجش پایانی',
+                ),
+                isThreeLine: true,
+              ),
+            ),
+          const NoticeCard(
+            text: 'تکمیل جلسه یعنی عبور از معیار داخلی تمرین و سنجش این جلسه؛ این شاخص جایگزین نمره امتحان یا ارزیابی معلم نیست.',
+            icon: Icons.info_outline,
+          ),
+        ],
         _section('پایبندی به برنامه'),
         Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(
           report.adherence == null
@@ -88,6 +170,27 @@ class AnalyticsPage extends StatelessWidget {
         ]))),
       ]),
     );
+  }
+
+  Widget _teachingMetric(String label, String value) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(faNumber(value), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: blue)),
+          const SizedBox(height: 4),
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ],
+      );
+
+  String _teachingStageText(String? stage) {
+    switch (stage) {
+      case 'diagnostic': return 'ارزیابی آغازین';
+      case 'explanation': return 'توضیح درس';
+      case 'guidedPractice': return 'تمرین هدایت‌شده';
+      case 'reteach': return 'بازآموزی';
+      case 'masteryCheck': return 'سنجش یادگیری';
+      case 'completed': return 'تکمیل‌شده';
+      default: return 'وضعیت نامشخص';
+    }
   }
 
   Widget _section(String title) => Padding(

@@ -50,18 +50,18 @@ class AiAdvisorService {
   }
 
   Future<String> ask({required Map<String, dynamic>? profile,
-    required List<Map<String, dynamic>> history, required String question, String? requestId}) {
+    required List<Map<String, dynamic>> history, required String question, String? requestId, String? systemInstruction}) {
     if (_disposed) throw const AiException(AiErrorKind.configuration, 'سرویس مشاور بسته شده است.');
     final id = requestId ?? 'ai-${DateTime.now().microsecondsSinceEpoch}-${identityHashCode(question)}';
     final active = _inFlight[id];
     if (active != null) return active;
-    final future = _execute(profile, history, question.trim(), id);
+    final future = _execute(profile, history, question.trim(), id, systemInstruction: systemInstruction);
     _inFlight[id] = future;
     return future.whenComplete(() => _inFlight.remove(id));
   }
 
   Future<String> _execute(Map<String, dynamic>? profile,
-      List<Map<String, dynamic>> history, String question, String id) async {
+      List<Map<String, dynamic>> history, String question, String id, {String? systemInstruction}) async {
     if (question.isEmpty || question.length > EducationStore.maxQuestionLength) {
       throw const AiException(AiErrorKind.input, 'پرسش باید بین ۱ تا ۴۰۰۰ نویسه باشد.');
     }
@@ -91,7 +91,7 @@ class AiAdvisorService {
     if (store != null && !store!.canUseAi && store!.savedAiAnswer(id) == null) {
       throw const AiException(AiErrorKind.credits, 'اعتبار رایگان یا خریداری‌شده کافی نداری. برای ادامه، بسته اعتبار تهیه کن.');
     }
-    final messages = _messages(profile, history, question);
+    final messages = _messages(profile, history, question, systemInstruction: systemInstruction);
     final body = utf8.encode(jsonEncode({'model': model, 'messages': messages,
       'temperature': 0.55, 'max_tokens': 1200}));
     if (body.length > maxRequestBytes) {
@@ -127,7 +127,7 @@ class AiAdvisorService {
   }
 
   List<Map<String, String>> _messages(Map<String, dynamic>? profile,
-      List<Map<String, dynamic>> history, String question) {
+      List<Map<String, dynamic>> history, String question, {String? systemInstruction}) {
     // Profile context is opt-in. Legacy profiles and backups without this flag
     // remain private by default; nickname is never included in the AI context.
     final approvedProfile = profile?['aiProfileContextConsent'] == true ? profile : null;
@@ -162,7 +162,7 @@ class AiAdvisorService {
       {'role': 'system', 'content': buildSimorghSystemPrompt(
         studentContext: context,
         grade: field('grade', 80),
-      )},
+      ) + (systemInstruction == null ? '' : '\n\nدستور ویژه این نوبت آموزشی:\n$systemInstruction')},
       ...recent.reversed,
       {'role': 'user', 'content': question},
     ];
