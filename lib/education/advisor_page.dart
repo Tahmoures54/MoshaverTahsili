@@ -248,6 +248,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
     try {
       final sessionAtRequest = teachingSession;
       final teachingMode = sessionAtRequest != null;
+      print('TEACHING_MODE_DEBUG active=$teachingMode stage=${sessionAtRequest?.stage} id=$teachingSessionId');
       final answer = await service.ask(profile: widget.store.profile, history: history,
           question: text, requestId: id,
           systemInstruction: teachingMode ? _teachingResponseContract(sessionAtRequest) : null);
