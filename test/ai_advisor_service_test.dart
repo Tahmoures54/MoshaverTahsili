@@ -366,4 +366,23 @@ void main() {
     service.dispose();
   });
 
+  test('disposing a service does not close an injected shared HTTP client', () async {
+    var calls = 0;
+    final sharedClient = MockClient((_) async {
+      calls++;
+      return answer('پاسخ مشترک');
+    });
+    final first = AiAdvisorService(apiKey: 'test-key', client: sharedClient);
+    first.dispose();
+
+    final second = AiAdvisorService(apiKey: 'test-key', client: sharedClient);
+    expect(
+      await second.ask(profile: null, history: const [], question: 'پرسش دوم'),
+      'پاسخ مشترک',
+    );
+    expect(calls, 1);
+    second.dispose();
+    sharedClient.close();
+  });
+
 }
