@@ -316,7 +316,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(teachingProviderCalls, 1);
     expect(teachingPrompt, contains('ساختار دقیق'));
-    expect(teachingPrompt, contains('ارزیابی پیش‌نیازها'));
+    expect(teachingPrompt, contains('ابتدا یک پرسش کوتاه'));
     expect(store.messages.last['status'], 'completed');
     expect(store.messages.last['content'], contains('آفرین؛ پاسخ تو درست بود.'));
     expect(store.teachingSessions.single['diagnosticCount'], 1);
