@@ -411,6 +411,9 @@ void main() {
     expect(prompts[2], contains('ابتدا یک پرسش کوتاه'));
     expect(prompts[3], contains('روش سقراطی'));
     expect(prompts[4], contains('روش توضیح متفاوت'));
+    expect(prompts[0], contains('calculation یعنی خطای محاسبات عددی'));
+    expect(prompts[0], contains('شواهد پاسخ'));
+    expect(prompts[0], contains('partial وقتی'));
     expect(store.messages.where((message) => message['role'] == 'assistant'), hasLength(5));
     expect(store.messages[3]['content'], contains('بازخورد مرحله 4'));
     expect(store.teachingSessions.single['diagnosticCount'], 3);
