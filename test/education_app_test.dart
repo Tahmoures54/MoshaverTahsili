@@ -301,7 +301,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(store.teachingSessions.single['stage'], 'diagnostic');
     await tester.enterText(find.byType(TextField).last, 'یک دوم');
-    final sendButton = find.byTooltip('ارسال پرسش');
+    final sendButton = find.ancestor(
+      of: find.byTooltip('ارسال پرسش'),
+      matching: find.byType(IconButton),
+    );
     tester.widget<IconButton>(sendButton).onPressed!.call();
     await tester.pump();
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
