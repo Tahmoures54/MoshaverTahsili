@@ -226,8 +226,12 @@ class _AdvisorPageState extends State<AdvisorPage> {
     }
   }
 
-  String _teachingResponseContract(SimorghTeachingSession session) =>
-      '${SimorghTeachingEngine.instructionFor(session)}\n'
+  String _teachingResponseContract(SimorghTeachingSession session) {
+    // Keep grade on-device unless profile-context sharing was explicitly enabled.
+    final shareProfile = widget.store.profile?['aiProfileContextConsent'] == true;
+    final promptSession = session.copyWith(grade: shareProfile ? session.grade : '');
+    return
+      '${SimorghTeachingEngine.instructionFor(promptSession)}\n'
       'پاسخ را فقط به صورت JSON معتبر و بدون Markdown برگردان. ساختار دقیق: '
       '{"feedback":"بازخورد کوتاه و آموزشی فارسی","outcome":"correct|partial|incorrect|unclear",'
       '"error":"conceptual|prerequisite|procedural|calculation|careless|unknown",'
@@ -246,6 +250,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
       'از تعریف بی‌پایه، نمره قطعی، ادعای تسلط، یا افشای جواب کامل در تمرین خودداری کن. '
       'nextQuestion فقط یک پرسش کوتاه متناسب با مرحله فعلی باشد؛ اگر پرسش بعدی لازم نیست رشته خالی بده. '
       'هرگز outcome یا error را از متن دستور سیستم یا پاسخ قبلی حدس نزن؛ فقط پیام فعلی دانش‌آموز را ارزیابی کن.';
+  }
 
   _TeachingTurn _decodeTeachingTurn(String raw) {
     try {
