@@ -55,25 +55,83 @@ class _AdvisorPageState extends State<AdvisorPage> {
     final active = saved.where((item) => item['active'] == true).toList();
     if (active.isEmpty) return null;
     final data = active.last;
-    teachingSessionId = data['id']?.toString();
     try {
-      if (data['active'] != true) return null;
-      final session = SimorghTeachingEngine.start(
-        topic: data['topic']?.toString() ?? '',
-        grade: data['grade']?.toString() ?? '',
+      final id = data['id'];
+      final topic = data['topic'];
+      final grade = data['grade'];
+      if (id is! String || id.trim().isEmpty ||
+          topic is! String || topic.trim().isEmpty || topic.length > 120 ||
+          grade is! String || grade.length > 120) {
+        throw const FormatException('Invalid saved lesson identity.');
+      }
+
+      int counter(String key, {required int maximum}) {
+        final value = data[key] ?? 0;
+        if (value is! int || value < 0 || value > maximum) {
+          throw FormatException('Invalid saved lesson counter: $key');
+        }
+        return value;
+      }
+
+      final stageName = data['stage'];
+      if (stageName is! String) throw const FormatException();
+      final stage = SimorghTeachingStage.values
+          .where((value) => value.name == stageName)
+          .toList();
+      if (stage.length != 1) throw const FormatException();
+      final diagnosticCount = counter(
+        'diagnosticCount',
+        maximum: SimorghTeachingEngine.diagnosticQuestionLimit,
       );
-      return session.copyWith(
-        stage: SimorghTeachingStage.values.byName(data['stage']?.toString() ?? 'diagnostic'),
-        diagnosticCount: data['diagnosticCount'] as int? ?? 0,
-        diagnosticCorrect: data['diagnosticCorrect'] as int? ?? 0,
-        practiceAttempts: data['practiceAttempts'] as int? ?? 0,
-        masteryCount: data['masteryCount'] as int? ?? 0,
-        masteryCorrect: data['masteryCorrect'] as int? ?? 0,
-        reteachCount: data['reteachCount'] as int? ?? 0,
-        explanationVariant: data['explanationVariant'] as int? ?? 0,
-        lastError: data['lastError'] == null ? null : SimorghErrorKind.values.byName(data['lastError'].toString()),
+      final diagnosticCorrect = counter(
+        'diagnosticCorrect',
+        maximum: SimorghTeachingEngine.diagnosticQuestionLimit,
       );
-    } on Object { return null; }
+      final practiceAttempts = counter('practiceAttempts', maximum: 1000);
+      final masteryCount = counter(
+        'masteryCount',
+        maximum: SimorghTeachingEngine.masteryQuestionLimit,
+      );
+      final masteryCorrect = counter(
+        'masteryCorrect',
+        maximum: SimorghTeachingEngine.masteryQuestionLimit,
+      );
+      final reteachCount = counter('reteachCount', maximum: 1000);
+      final explanationVariant = counter('explanationVariant', maximum: 1000);
+      if (diagnosticCorrect > diagnosticCount || masteryCorrect > masteryCount) {
+        throw const FormatException('Saved lesson scores exceed their attempt counts.');
+      }
+      final rawError = data['lastError'];
+      SimorghErrorKind? lastError;
+      if (rawError != null) {
+        if (rawError is! String) throw const FormatException();
+        final matches = SimorghErrorKind.values
+            .where((value) => value.name == rawError)
+            .toList();
+        if (matches.length != 1) throw const FormatException();
+        lastError = matches.single;
+      }
+
+      final session = SimorghTeachingSession(
+        topic: topic.trim(),
+        grade: grade.trim(),
+        stage: stage.single,
+        diagnosticCount: diagnosticCount,
+        diagnosticCorrect: diagnosticCorrect,
+        practiceAttempts: practiceAttempts,
+        masteryCount: masteryCount,
+        masteryCorrect: masteryCorrect,
+        reteachCount: reteachCount,
+        explanationVariant: explanationVariant,
+        lastError: lastError,
+      );
+      teachingSessionId = id;
+      return session;
+    } on Object {
+      // A damaged or obsolete record must never create an impossible lesson.
+      // Leave the saved record untouched so the learner can still recover data.
+      return null;
+    }
   }
 
   Map<String, dynamic> _sessionRecord(SimorghTeachingSession session, {required String id, bool active = true}) => {
