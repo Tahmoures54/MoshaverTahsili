@@ -204,18 +204,20 @@ class _AdvisorPageState extends State<AdvisorPage> {
         throw const FormatException();
       }
 
-      final outcome = SimorghAnswerOutcome.values
+      final matchingOutcomes = SimorghAnswerOutcome.values
           .where((item) => item.name == rawOutcome)
-          .firstOrNull;
-      final error = SimorghErrorKind.values
+          .toList();
+      final matchingErrors = SimorghErrorKind.values
           .where((item) => item.name == rawError)
-          .firstOrNull;
+          .toList();
       final feedback = rawFeedback.trim();
       final next = rawNextQuestion.trim();
-      if (outcome == null || error == null || feedback.isEmpty ||
-          feedback.length > 5000 || next.length > 2000) {
+      if (matchingOutcomes.length != 1 || matchingErrors.length != 1 ||
+          feedback.isEmpty || feedback.length > 5000 || next.length > 2000) {
         throw const FormatException();
       }
+      final outcome = matchingOutcomes.single;
+      final error = matchingErrors.single;
       return _TeachingTurn(
         feedback: feedback,
         outcome: outcome,
