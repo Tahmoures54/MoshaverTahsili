@@ -221,7 +221,7 @@ class AiAdvisorService {
       throw const AiException(AiErrorKind.timeout, 'پاسخ به‌موقع نرسید. اتصال اینترنت را بررسی کن و دوباره تلاش کن.');
     } on AiException {
       rethrow;
-    } on Object catch (error) {
+    } on Object {
       // Exception details may contain URLs or credentials; do not expose them.
       throw const AiException(AiErrorKind.network, 'ارتباط با مشاور برقرار نشد. اتصال اینترنت را بررسی کن.');
     } finally {
