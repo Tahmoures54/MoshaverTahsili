@@ -7,7 +7,7 @@ import 'ui.dart';
 int _safeCoachMinutes(Object? value, {required int fallback}) {
   if (value is num && value.isFinite) return value.round().clamp(0, 1440).toInt();
   final parsed = int.tryParse(digitsToEnglish(value?.toString() ?? ''));
-  return parsed == null ? fallback : parsed.clamp(0, 1440);
+  return parsed == null ? fallback : parsed.clamp(0, 1440).toInt();
 }
 
 /// A transparent coaching layer built only from records already stored locally.
