@@ -67,21 +67,8 @@ class AiAdvisorService {
     }
     // Explicit crisis-intent phrases are handled locally before checking the
     // provider key, wallet, or constructing any network request.
-    AiSafetyResult? crisis;
-    final currentSafety = AiSafetyPolicy.assess(question);
-    if (currentSafety.shouldBlockRemoteAi) {
-      crisis = currentSafety;
-    } else {
-      for (final message in history.reversed) {
-        if (message['role'] != 'user' || message['content'] is! String) continue;
-        final previousSafety = AiSafetyPolicy.assess(message['content'] as String);
-        if (previousSafety.shouldBlockRemoteAi) {
-          crisis = previousSafety;
-          break;
-        }
-      }
-    }
-    if (crisis != null) return crisis.localResponse!;
+    final safety = AiSafetyPolicy.assessTurn(question, history);
+    if (safety.shouldBlockRemoteAi) return safety.localResponse!;
     if (!isConfigured) {
       throw const AiException(AiErrorKind.configuration,
           'سرویس هوش مصنوعی هنوز برای این نسخه پیکربندی نشده است. امکانات محلی برنامه همچنان در دسترس‌اند.');
