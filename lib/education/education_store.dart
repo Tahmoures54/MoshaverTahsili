@@ -736,6 +736,7 @@ class EducationStore extends ChangeNotifier {
         _dataErrors[key] = 'بازگردانی این بخش پس از خطای واردسازی کامل نشد.';
       }
       if (rollbackFailures.isNotEmpty) {
+        notifyListeners();
         throw const LocalDataException(
           'بازیابی ناموفق بود و بازگردانی کامل داده‌های قبلی تأیید نشد؛ پیش از تلاش دوباره از داده‌های محلی نسخه پشتیبان بگیر.',
         );
