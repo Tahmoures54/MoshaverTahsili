@@ -65,7 +65,7 @@ class EducationStore extends ChangeNotifier {
   static const maxWalletBytes = 4 * 1024 * 1024;
   static const workspaceKeys = [
     'edu.profile', 'edu.tasks', 'edu.exams', 'edu.cards',
-    'edu.messages', 'edu.reports', 'edu.career.draft', 'edu.deadlines',
+    'edu.messages', 'edu.teaching.sessions', 'edu.reports', 'edu.career.draft', 'edu.deadlines',
   ];
 
   Future<void> _tail = Future<void>.value();
@@ -554,6 +554,10 @@ class EducationStore extends ChangeNotifier {
   });
   Future<void> deleteCard(String id) =>
       _mutateList('edu.cards', (all) => all.where((e) => e['id'] != id).toList());
+
+  List<Map<String, dynamic>> get teachingSessions => readList('edu.teaching.sessions');
+  Future<void> saveTeachingSessions(List<Map<String, dynamic>> value) =>
+      writeList('edu.teaching.sessions', value.length <= 30 ? value : value.sublist(value.length - 30));
 
   List<Map<String, dynamic>> get messages => readList('edu.messages');
   Future<void> saveMessages(List<Map<String, dynamic>> value) => writeList('edu.messages',
