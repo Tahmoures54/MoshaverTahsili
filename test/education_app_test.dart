@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:moshaver_tahsili/education/ai_advisor_service.dart';
 import 'package:moshaver_tahsili/education/assessment_pages.dart';
+import 'package:moshaver_tahsili/education/analytics_page.dart';
 import 'package:moshaver_tahsili/education/bazaar_billing_service.dart';
 import 'package:moshaver_tahsili/education/credit_shop_page.dart';
 import 'package:moshaver_tahsili/education/education_store.dart';
@@ -534,4 +535,24 @@ class _TrackingHttpClient extends http.BaseClient {
   void close() {
     closed = true;
   }
+  testWidgets('analytics tolerates malformed legacy teaching counters', (tester) async {
+    final store = await EducationStore.open();
+    await store.saveTeachingSessions([
+      {
+        'id': 'legacy-lesson',
+        'active': false,
+        'topic': 'درس قدیمی',
+        'stage': 'unknown',
+        'diagnosticCount': 'نامعتبر',
+        'masteryCorrect': 1.5,
+      },
+    ]);
+    await tester.pumpWidget(frame(AnalyticsPage(store: store)));
+    await tester.pumpAndSettle();
+    expect(find.text('درس قدیمی'), findsOneWidget);
+    expect(find.textContaining('۰ ارزیابی آغازین'), findsOneWidget);
+    expect(find.textContaining('۱ پاسخ درست در سنجش پایانی'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
 }
