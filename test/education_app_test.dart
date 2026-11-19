@@ -309,6 +309,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'شروع ارزیابی'));
     await tester.pumpAndSettle();
     expect(store.teachingSessions.single['stage'], 'diagnostic');
+    expect(find.textContaining('روش تدریس سیمرغ'), findsOneWidget);
     await tester.enterText(find.byType(TextField).last, 'یک دوم');
     final sendButton = find.ancestor(
       of: find.byTooltip('ارسال پرسش'),
