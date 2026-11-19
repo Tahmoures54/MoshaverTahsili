@@ -327,6 +327,90 @@ void main() {
     service.dispose();
   });
 
+
+  testWidgets('Simorgh chat carries model evaluations across diagnostic, practice and reteaching stages', (tester) async {
+    final store = await EducationStore.open();
+    final outcomes = ['correct', 'correct', 'correct', 'partial'];
+    final prompts = <String>[];
+    var call = 0;
+    final service = AiAdvisorService(
+      store: store,
+      apiKey: 'test-key',
+      client: MockClient((request) async {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        final messages = body['messages'] as List;
+        prompts.add(messages.first['content'].toString());
+        final outcome = outcomes[call++];
+        return http.Response(
+          jsonEncode({
+            'choices': [
+              {
+                'message': {
+                  'content': jsonEncode({
+                    'feedback': 'بازخورد مرحله $call',
+                    'outcome': outcome,
+                    'error': outcome == 'partial' ? 'procedural' : 'unknown',
+                    'nextQuestion': 'پرسش بعدی مرحله $call',
+                  }),
+                },
+              },
+            ],
+          }),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+    );
+
+    await tester.pumpWidget(frame(AdvisorPage(store: store, service: service)));
+    await tester.tap(find.byKey(const ValueKey('simorgh-start-teaching')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, 'کسرها');
+    await tester.tap(find.widgetWithText(FilledButton, 'شروع ارزیابی'));
+    await tester.pumpAndSettle();
+
+    Future<void> answer(String value) async {
+      await tester.enterText(find.byType(TextField).last, value);
+      final sendButton = find.ancestor(
+        of: find.byTooltip('ارسال پرسش'),
+        matching: find.byType(IconButton),
+      );
+      tester.widget<IconButton>(sendButton).onPressed!.call();
+      await tester.pump();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    }
+
+    await answer('پاسخ تشخیصی اول');
+    expect(store.teachingSessions.single['stage'], 'diagnostic');
+    await answer('پاسخ تشخیصی دوم');
+    expect(store.teachingSessions.single['stage'], 'diagnostic');
+    await answer('پاسخ تشخیصی سوم');
+    expect(store.teachingSessions.single['stage'], 'guidedPractice');
+    expect(find.textContaining('مرحله بعدی آموزش آماده است'), findsOneWidget);
+    await answer('تمرین نیمه‌درست');
+    expect(store.teachingSessions.single['stage'], 'reteach');
+    expect(store.teachingSessions.single['lastError'], 'procedural');
+
+    expect(call, 4);
+    expect(prompts[0], contains('ابتدا یک پرسش کوتاه'));
+    expect(prompts[1], contains('ابتدا یک پرسش کوتاه'));
+    expect(prompts[2], contains('ابتدا یک پرسش کوتاه'));
+    expect(prompts[3], contains('روش سقراطی'));
+    expect(store.messages.where((message) => message['role'] == 'assistant'), hasLength(4));
+    expect(store.messages.last['content'], contains('بازخورد مرحله 4'));
+    expect(store.teachingSessions.single['diagnosticCount'], 3);
+    expect(store.teachingSessions.single['diagnosticCorrect'], 3);
+    expect(store.teachingSessions.single['practiceAttempts'], 1);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox());
+    service.dispose();
+  });
+
   testWidgets('shop shows balance, packages, purchase result and history', (tester) async {
     final store = await EducationStore.open();
     final gateway = FakeGateway();
