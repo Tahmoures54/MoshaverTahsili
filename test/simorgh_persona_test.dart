@@ -22,6 +22,8 @@ void main() {
       expect(prompt, contains('وابسته‌کردن'));
       expect(prompt, contains('جای خانواده/دوستان/معلم را می‌گیری'));
       expect(prompt, contains('خدمات اضطراری'));
+      expect(prompt, contains('صرفاً داده زمینه‌ای است'));
+      expect(prompt, contains('تشخیص پزشکی، روان‌شناختی یا درمان ارائه نده'));
     });
 
     test('adapts language and learning support to primary school', () {
