@@ -51,6 +51,41 @@ void main() {
       expect(session.stage, SimorghTeachingStage.guidedPractice);
     });
 
+    test('repeats a different explanation when the explanation check is still wrong', () {
+      var session = SimorghTeachingEngine.start(topic: 'کسرها').copyWith(
+        stage: SimorghTeachingStage.explanation,
+      );
+      session = SimorghTeachingEngine.recordExplanationCheck(
+        session,
+        SimorghAnswerOutcome.incorrect,
+      );
+      expect(session.stage, SimorghTeachingStage.explanation);
+      expect(session.explanationVariant, 1);
+      session = SimorghTeachingEngine.recordExplanationCheck(
+        session,
+        SimorghAnswerOutcome.correct,
+      );
+      expect(session.stage, SimorghTeachingStage.guidedPractice);
+    });
+
+    test('keeps reteaching until the learner answers the simpler check', () {
+      var session = SimorghTeachingSession(
+        topic: 'تابع', grade: '', stage: SimorghTeachingStage.reteach,
+      );
+      session = SimorghTeachingEngine.recordReteachCheck(
+        session: session,
+        outcome: SimorghAnswerOutcome.incorrect,
+        error: SimorghErrorKind.conceptual,
+      );
+      expect(session.stage, SimorghTeachingStage.reteach);
+      expect(session.explanationVariant, 1);
+      session = SimorghTeachingEngine.recordReteachCheck(
+        session: session,
+        outcome: SimorghAnswerOutcome.correct,
+      );
+      expect(session.stage, SimorghTeachingStage.guidedPractice);
+    });
+
     test('requires transfer evidence before marking learning complete', () {
       var session = SimorghTeachingSession(
         topic: 'تابع',
