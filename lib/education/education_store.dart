@@ -101,7 +101,7 @@ class EducationStore extends ChangeNotifier {
         }
       } on Object {
         if (key == walletKey) {
-          _walletError = 'کیف پول رمزگشایی نشد؛ برای جلوگیری از تغییر اعتبار، داده قبلی حفظ شد.';
+          _walletError = 'کیف پول رمزگشایی نشد؛ برای جلوگیری از تغییر موجودی پرها، داده قبلی حفظ شد.';
         } else {
           _dataErrors[key] = 'اطلاعات رمزگشایی نشد؛ برای جلوگیری از بازنویسی، داده قبلی حفظ شد.';
         }
@@ -119,7 +119,7 @@ class EducationStore extends ChangeNotifier {
         await _writeSecure(walletKey, jsonEncode(_wallet));
       }
     } on Object {
-      _walletError = 'اطلاعات کیف پول خوانده نشد. برای جلوگیری از دست رفتن اعتبار، داده قبلی بازنویسی نمی‌شود.';
+      _walletError = 'اطلاعات کیسه پرها خوانده نشد. برای جلوگیری از دست رفتن موجودی، داده قبلی بازنویسی نمی‌شود.';
     }
   }
 
@@ -397,7 +397,7 @@ class EducationStore extends ChangeNotifier {
     if (request['charge'] == 'credit') wallet['credits'] = credits + questionFeatherCost;
     final transactionId = (request['transactionId'] as String?) ?? id;
     _markTransaction(wallet, transactionId, 'refunded');
-    _transaction(wallet, '$transactionId-refund', 'refund', request['charge'] == 'credit' ? 1 : 0,
+    _transaction(wallet, '$transactionId-refund', 'refund', request['charge'] == 'credit' ? questionFeatherCost : 0,
         'بازگشت یک پر سیمرغ · درخواست ناموفق', 'completed');
     _activeRequests.remove(id);
     await _saveWallet(wallet);
