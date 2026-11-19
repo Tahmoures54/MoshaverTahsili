@@ -9,7 +9,7 @@
 **حداقل نسخه اندروید:** Android 7.0 (API 24)  
 **فناوری:** Flutter / Dart — معماری محلی و بدون بک‌اند اختصاصی
 
-راهنمای هویت برند: [راهنمای برند سیمرغ](docs/BRAND_GUIDE_FA.md) · [نشان برداری سیمرغ](assets/branding/simorgh-logo.svg)
+راهنمای هویت برند: [راهنمای برند سیمرغ](docs/BRAND_GUIDE_FA.md) · [راهنمای پرهای سیمرغ](docs/SIMORGH_FEATHERS_FA.md) · [نشان برداری سیمرغ](assets/branding/simorgh-logo.svg)
 
 ## امکانات
 
