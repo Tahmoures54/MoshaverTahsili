@@ -89,7 +89,7 @@ class AiAdvisorService {
     final uri = _endpoint();
     if (store?.walletError != null) throw LocalDataException(store!.walletError!);
     if (store != null && !store!.canUseAi && store!.savedAiAnswer(id) == null) {
-      throw const AiException(AiErrorKind.credits, 'اعتبار رایگان یا خریداری‌شده کافی نداری. برای ادامه، بسته اعتبار تهیه کن.');
+      throw const AiException(AiErrorKind.credits, 'پر سیمرغ کافی نداری. برای ادامه، یک بسته پر تهیه کن.');
     }
     final messages = _messages(profile, history, question, systemInstruction: systemInstruction);
     final body = utf8.encode(jsonEncode({'model': model, 'messages': messages,
@@ -246,7 +246,7 @@ class AiAdvisorService {
       }
       return content.trim();
     } on Object {
-      throw const AiException(AiErrorKind.response, 'پاسخ معتبری از مشاور دریافت نشد. اعتباری بابت این پاسخ کسر نمی‌شود.');
+      throw const AiException(AiErrorKind.response, 'پاسخ معتبری از مشاور دریافت نشد؛ پر رزروشده به کیسه‌ات بازمی‌گردد.');
     }
   }
 
