@@ -155,7 +155,7 @@ class BazaarBillingService {
     if (!purchase.purchased || purchase.productId != expectedProduct ||
         purchase.packageName != packageName || purchase.purchaseToken.trim().isEmpty ||
         purchase.purchaseToken.length > 512 || purchase.signature.trim().isEmpty) {
-      throw const BillingException('خرید برای این برنامه قابل تأیید نیست؛ اعتباری اضافه نشد. با بازیابی خریدها دوباره بررسی کن.');
+      throw const BillingException('خرید برای این برنامه قابل تأیید نیست؛ پری اضافه نشد. با بازیابی خریدها دوباره بررسی کن.');
     }
   }
 
@@ -211,7 +211,7 @@ class BazaarBillingService {
     on PlatformException catch (error) {
       _connected = false;
       throw BillingException(switch (error.code) {
-        'PURCHASE_CANCELLED' => 'پرداخت لغو شد. اعتباری تغییر نکرد.',
+        'PURCHASE_CANCELLED' => 'پرداخت لغو شد. موجودی پر تغییر نکرد.',
         'FAILED_TO_BEGIN_FLOW' => 'بازار نتوانست پرداخت را باز کند. نصب، ورود و به‌روز بودن بازار را بررسی کن.',
         'PAYMENT_CONNECTION_IS_NOT_CONNECTED' => 'ارتباط با بازار قطع شد. دوباره تلاش کن.',
         'QUERY_GET_IN_APP_SKU_DETAILS_FAILED' => 'اطلاعات بسته‌ها دریافت نشد. محصولات پنل بازار و اتصال اینترنت را بررسی کن.',
