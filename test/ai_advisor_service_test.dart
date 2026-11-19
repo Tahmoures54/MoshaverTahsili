@@ -91,7 +91,14 @@ void main() {
   });
 
   test('concurrent duplicate request IDs share one call and one charge', () async {
-    final store = await paidStore();
+    SharedPreferences.setMockInitialValues({
+      EducationStore.walletKey: jsonEncode({
+        'successful_uses': 5,
+        'credits': 2,
+        'purchase_tokens': <String>[],
+      }),
+    });
+    final store = await EducationStore.open();
     final gate = Completer<void>();
     var calls = 0;
     final service = AiAdvisorService(store: store, apiKey: 'test-key', client: MockClient((_) async { calls++; await gate.future; return answer('answer'); }));
