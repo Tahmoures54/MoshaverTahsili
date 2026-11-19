@@ -29,7 +29,10 @@ class _PlannerPageState extends State<PlannerPage> {
   Future<void> mutate(Future<void> Function() action) async {
     if (saving) return;
     setState(() => saving = true);
-    try { await action(); widget.changed(); } on Object catch (error) {
+    try {
+      await action();
+      if (mounted) widget.changed();
+    } on Object catch (error) {
       if (mounted) showMessage(context, friendlyError(error));
     } finally { if (mounted) setState(() => saving = false); }
   }
@@ -195,7 +198,10 @@ class _ExamsPageState extends State<ExamsPage> {
   Future<void> mutate(Future<void> Function() action) async {
     if (saving) return;
     setState(() => saving = true);
-    try { await action(); widget.changed(); } on Object catch (error) {
+    try {
+      await action();
+      if (mounted) widget.changed();
+    } on Object catch (error) {
       if (mounted) showMessage(context, friendlyError(error));
     } finally { if (mounted) setState(() => saving = false); }
   }
@@ -250,7 +256,10 @@ class _CardsPageState extends State<CardsPage> {
   Future<void> mutate(Future<void> Function() action) async {
     if (saving) return;
     setState(() => saving = true);
-    try { await action(); widget.changed(); } on Object catch (error) {
+    try {
+      await action();
+      if (mounted) widget.changed();
+    } on Object catch (error) {
       if (mounted) showMessage(context, friendlyError(error));
     } finally { if (mounted) setState(() => saving = false); }
   }
