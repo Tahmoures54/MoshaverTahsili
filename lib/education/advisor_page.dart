@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'ai_advisor_service.dart';
+import 'ai_safety_policy.dart';
 import 'credit_shop_page.dart';
 import 'education_store.dart';
 import 'study_pages.dart' show newId;
@@ -212,7 +213,11 @@ class _AdvisorPageState extends State<AdvisorPage> {
           question: text, requestId: id,
           systemInstruction: teachingMode ? _teachingResponseContract(sessionAtRequest) : null);
       var displayedAnswer = answer;
-      if (teachingMode) {
+      final localSafetyResponse = AiSafetyPolicy.assess(text).shouldBlockRemoteAi ||
+          history.any((message) => message['role'] == 'user' &&
+              message['content'] is String &&
+              AiSafetyPolicy.assess(message['content'] as String).shouldBlockRemoteAi);
+      if (teachingMode && !localSafetyResponse) {
         try {
           final turn = _decodeTeachingTurn(answer);
           final updated = _applyTeachingEvaluation(sessionAtRequest, turn);
@@ -227,6 +232,10 @@ class _AdvisorPageState extends State<AdvisorPage> {
           // Keep the lesson stage unchanged and allow a fresh student turn.
           displayedAnswer = value.message;
         }
+      } else if (teachingMode && localSafetyResponse) {
+        // Local crisis support is not a structured lesson evaluation.
+        // Preserve it and never advance the teaching state.
+        displayedAnswer = answer;
       }
       if (!mounted) return;
       setState(() {
