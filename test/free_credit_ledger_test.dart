@@ -37,6 +37,24 @@ void main() {
     expect(reopened.creditHistory.where((entry) => entry['kind'] == 'bonus'), hasLength(1));
   });
 
+  test('a failed question returns its reserved feather exactly once', () async {
+    final store = await EducationStore.open();
+    final reservation = await store.prepareAiRequest(id: 'failed-question', question: 'پرسش ناموفق');
+    expect(reservation.usesFreeUse, isFalse);
+    expect(store.feathers, 4);
+    expect(store.creditHistory.first['title'], 'فراخوان سیمرغ · یک پر');
+    await store.refundAiRequest('failed-question');
+    await store.refundAiRequest('failed-question');
+    expect(store.feathers, 5);
+    expect(store.creditHistory.where((item) => item['kind'] == 'refund'), hasLength(1));
+    expect(store.creditHistory.first['title'], 'بازگشت یک پر سیمرغ · درخواست ناموفق');
+  });
+
+  test('existing Bazaar product identifiers and feather amounts stay compatible', () {
+    expect(CreditCatalog.products.map((product) => product.id), ['credit_10', 'credit_35', 'credit_90']);
+    expect(CreditCatalog.products.map((product) => product.feathers), [100, 265, 550]);
+  });
+
   testWidgets('wallet summary presents the balance as Simorgh feathers', (tester) async {
     final store = await EducationStore.open();
     await tester.pumpWidget(MaterialApp(home: Scaffold(body: CreditSummary(store: store))));
