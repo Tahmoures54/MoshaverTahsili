@@ -8,7 +8,8 @@ import 'ui.dart';
 int _safeLessonCount(Object? value) {
   if (value is int && value >= 0) return value;
   if (value is num && value.isFinite && value >= 0) return value.toInt();
-  return 0;
+  final parsed = int.tryParse(digitsToEnglish(value?.toString() ?? ''));
+  return parsed != null && parsed >= 0 ? parsed : 0;
 }
 
 /// Local performance analytics. Every figure comes from the student's own
