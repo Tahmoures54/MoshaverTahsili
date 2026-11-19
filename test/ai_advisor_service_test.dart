@@ -346,4 +346,24 @@ void main() {
     service.dispose();
   });
 
+  test('an old crisis message does not block study help after three neutral user turns', () async {
+    var called = false;
+    final service = AiAdvisorService(apiKey: 'test-key', client: MockClient((_) async {
+      called = true;
+      return answer('پاسخ آموزشی');
+    }));
+    final history = [
+      {'role': 'user', 'content': 'می‌خوام خودمو بکشم', 'status': 'completed'},
+      {'role': 'assistant', 'content': 'لطفاً تنها نمان', 'status': 'completed'},
+      {'role': 'user', 'content': 'سلام', 'status': 'completed'},
+      {'role': 'assistant', 'content': 'سلام', 'status': 'completed'},
+      {'role': 'user', 'content': 'یک سؤال ریاضی دارم', 'status': 'completed'},
+      {'role': 'assistant', 'content': 'بپرس', 'status': 'completed'},
+      {'role': 'user', 'content': 'حاصل دو به توان سه چیست؟', 'status': 'completed'},
+    ];
+    expect(await service.ask(profile: null, history: history, question: 'توان را توضیح بده'), 'پاسخ آموزشی');
+    expect(called, isTrue);
+    service.dispose();
+  });
+
 }
