@@ -22,13 +22,15 @@ class AiException implements Exception {
 class AiAdvisorService {
   AiAdvisorService({http.Client? client, String? apiKey, String? endpoint, String? model,
     this.store, this.timeout = const Duration(seconds: 45)})
-      : client = client ?? http.Client(),
+      : _ownsClient = client == null,
+        client = client ?? http.Client(),
         apiKey = (apiKey ?? const String.fromEnvironment('AI_API_KEY')).trim(),
         endpoint = endpoint ?? const String.fromEnvironment('AI_API_ENDPOINT',
             defaultValue: 'https://api.avalai.ir/v1'),
         model = model ?? const String.fromEnvironment('AI_MODEL', defaultValue: 'deepseek-chat');
 
   final EducationStore? store;
+  final bool _ownsClient;
   final http.Client client;
   final String apiKey, endpoint, model;
   final Duration timeout;
@@ -243,6 +245,6 @@ class AiAdvisorService {
     for (final abort in _activeAborts.toList()) {
       if (!abort.isCompleted) abort.complete();
     }
-    client.close();
+    if (_ownsClient) client.close();
   }
 }
