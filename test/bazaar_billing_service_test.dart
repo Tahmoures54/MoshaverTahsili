@@ -121,7 +121,7 @@ void main() {
     final result = await service.restorePurchases();
     expect(result.skipped, 3);
     expect(result.credited, 0);
-    expect(result.message, contains('اعتباری اضافه نشد'));
+    expect(result.message, contains('پری اضافه نشد'));
     expect(store.credits, 5);
     expect(gateway.consumes, 0);
   });
