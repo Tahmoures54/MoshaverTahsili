@@ -378,6 +378,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
         ],
       ),
     ),
+    ),
     Expanded(child: messages.isEmpty ? ListView(padding: const EdgeInsets.all(20), children: [
       const SizedBox(height: 18), const Icon(Icons.auto_awesome, color: blue, size: 46),
       const SizedBox(height: 14), const Text('سلام! من سیمرغم؛ بیا با هم مسیر یادگیری‌ات را پیدا کنیم.', textAlign: TextAlign.center,
