@@ -192,15 +192,41 @@ class _AdvisorPageState extends State<AdvisorPage> {
       )),
       if (teachingSession != null) IconButton(tooltip: 'پایان جلسه آموزشی', onPressed: busy ? null : endTeaching, icon: const Icon(Icons.close)),
     ])),
-    if (teachingSession != null) Padding(padding: const EdgeInsets.fromLTRB(16, 6, 16, 0), child: Card(
-      child: Padding(padding: const EdgeInsets.all(10), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('روش تدریس سیمرغ · ${teachingSession!.stage.name}', style: const TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4), const Text('وضعیت جلسه روی همین گوشی نگهداری می‌شود. برای دریافت گام بعدی، دستور آموزشی را وارد گفت‌وگو کن.'),
-        Align(alignment: Alignment.centerLeft, child: TextButton.icon(
-          onPressed: busy ? null : () => setState(() => input.text = SimorghTeachingEngine.instructionFor(teachingSession!)),
-          icon: const Icon(Icons.play_arrow), label: const Text('آماده‌سازی گام آموزشی')),
-      ])),
-    )),
+    if (teachingSession != null)
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'روش تدریس سیمرغ · ${teachingSession!.stage.name}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'وضعیت جلسه روی همین گوشی نگهداری می‌شود. برای دریافت گام بعدی، دستور آموزشی را وارد گفت‌وگو کن.',
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: busy
+                        ? null
+                        : () => setState(
+                              () => input.text =
+                                  SimorghTeachingEngine.instructionFor(teachingSession!),
+                            ),
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text('آماده‌سازی گام آموزشی'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: CreditSummary(store: widget.store, onShop: busy ? null : openShop)),
     if (!service.isConfigured) const Padding(padding: EdgeInsets.symmetric(horizontal: 16),
       child: NoticeCard(text: 'مشاور هوش مصنوعی در این نسخه پیکربندی نشده است. برنامه مطالعه، نمرات، مرور و راهنمای روش مطالعه بدون اینترنت کار می‌کنند.', warning: true)),
