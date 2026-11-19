@@ -269,20 +269,14 @@ void main() {
     final store = await EducationStore.open();
     var teachingProviderCalls = 0;
     String? teachingPrompt;
-    String? teachingMockFailure;
     final service = AiAdvisorService(
       store: store,
       apiKey: 'test-key',
       client: MockClient((request) async {
         teachingProviderCalls++;
-        try {
-          final body = jsonDecode(request.body) as Map<String, dynamic>;
-          final messages = body['messages'] as List;
-          teachingPrompt = messages.first['content']?.toString();
-        } on Object catch (value) {
-          teachingMockFailure = value.toString();
-          rethrow;
-        }
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        final messages = body['messages'] as List;
+        teachingPrompt = messages.first['content']?.toString();
         return http.Response(
           jsonEncode({
             'choices': [
@@ -299,6 +293,7 @@ void main() {
             ],
           }),
           200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
         );
       }),
     );
@@ -319,8 +314,9 @@ void main() {
     await tester.pump();
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await tester.pumpAndSettle();
-    print('TEACHING_DEBUG calls=$teachingProviderCalls mockFailure=$teachingMockFailure prompt=$teachingPrompt message=${store.messages.last} wallet=${store.walletSnapshot}');
     expect(teachingProviderCalls, 1);
+    expect(teachingPrompt, contains('ساختار دقیق'));
+    expect(teachingPrompt, contains('ارزیابی پیش‌نیازها'));
     expect(store.messages.last['status'], 'completed');
     expect(store.messages.last['content'], contains('آفرین؛ پاسخ تو درست بود.'));
     expect(store.teachingSessions.single['diagnosticCount'], 1);
