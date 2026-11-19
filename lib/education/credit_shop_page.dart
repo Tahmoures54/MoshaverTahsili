@@ -61,16 +61,16 @@ class _CreditShopPageState extends State<CreditShopPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('کیف اعتبار و خرید')),
+    appBar: AppBar(title: const Text('کیسه پرهای سیمرغ')),
     body: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
       CreditSummary(store: widget.store),
-      const NoticeCard(text: 'برای شروع ۵ اعتبار هدیه دریافت می‌کنی. هر پاسخ موفق هوش مصنوعی یک اعتبار مصرف می‌کند؛ '
-          'در صورت خطا یا دریافت‌نشدن پاسخ معتبر، اعتبار رزروشده برمی‌گردد. '
-          'اعتبارها روی همین گوشی نگهداری می‌شوند؛ حذف برنامه یا انتقال گوشی می‌تواند باعث از دست رفتن آن‌ها شود.'),
+      const NoticeCard(text: 'برای شروع، ۵ پر هدیه سیمرغ دریافت می‌کنی. هر پرسش جدیدی که برای دریافت راهنمایی به هوش مصنوعی می‌فرستی، یک پر مصرف می‌کند؛ '
+          'اگر پاسخ معتبر دریافت نشود، پر رزروشده به کیسه‌ات برمی‌گردد. '
+          'پرها روی همین گوشی نگهداری می‌شوند؛ حذف برنامه یا انتقال گوشی می‌تواند باعث از دست رفتن آن‌ها شود.'),
       if (!billing.isConfigured) NoticeCard(text: billing.configurationMessage, warning: true),
       if (error != null) NoticeCard(text: error!, icon: Icons.error_outline, warning: true),
       const SizedBox(height: 10),
-      const Text('بسته‌های اعتبار', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
+      const Text('بسته‌های پر سیمرغ', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
       const SizedBox(height: 10),
       for (final product in CreditCatalog.products) Card(child: Padding(
         padding: const EdgeInsets.all(16),
@@ -78,7 +78,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
           Row(children: [
             const Icon(Icons.bolt, color: teal), const SizedBox(width: 8),
             Expanded(child: Text(product.title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold))),
-            Text('${faNumber(product.credits)} اعتبار', style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text('${faNumber(product.feathers)} پر', style: const TextStyle(fontWeight: FontWeight.bold)),
           ]),
           const SizedBox(height: 8),
           Text(product.description),
@@ -106,11 +106,11 @@ class _CreditShopPageState extends State<CreditShopPage> {
       const Text('اگر پرداخت انجام شده ولی برنامه بسته شده، ابتدا بازیابی را بزن. خریدهای مصرف‌شده قبلی ممکن است در فهرست قابل بازیابی بازار نباشند.',
           style: TextStyle(color: Colors.blueGrey, height: 1.7)),
       const SizedBox(height: 24),
-      const Text('تاریخچه اعتبار', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
+      const Text('تاریخچه پرها', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
       const SizedBox(height: 10),
       ListenableBuilder(listenable: widget.store, builder: (context, _) {
         final history = widget.store.creditHistory;
-        if (history.isEmpty) return const EmptyState(title: 'هنوز تراکنشی ثبت نشده', subtitle: 'خریدها و مصرف اعتبار پاسخ‌های موفق اینجا نمایش داده می‌شوند.', icon: Icons.receipt_long_outlined);
+        if (history.isEmpty) return const EmptyState(title: 'هنوز تراکنشی ثبت نشده', subtitle: 'دریافت، فراخوان و بازگشت پرهای سیمرغ اینجا نمایش داده می‌شوند.', icon: Icons.receipt_long_outlined);
         return Column(children: [
           for (final item in history) Card(child: ListTile(
             leading: Icon(item['kind'] == 'purchase' || item['kind'] == 'bonus' ? Icons.add_circle_outline : item['kind'] == 'refund' ? Icons.undo : Icons.auto_awesome,
@@ -119,7 +119,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
             subtitle: Text(_date(item['createdAt'].toString()) + _status(item['status'].toString())),
             trailing: Text(item['kind'] == 'ai' && item['amount'] == 0
                 ? 'رایگان'
-                : '${item['kind'] == 'ai' ? '−' : '+'}${faNumber(item['amount'])}',
+                : '${item['kind'] == 'ai' ? '−' : '+'}${faNumber(item['amount'])} پر',
                 style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
           )),
           const Text('نمایش حداکثر ۲۵۰ تراکنش اخیر؛ شناسه خریدهای ثبت‌شده برای جلوگیری از شارژ تکراری نگهداری می‌شود.',
@@ -137,7 +137,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
   }
   String _status(String status) => switch (status) {
     'pending' => ' · در حال پردازش',
-    'refunded' => ' · اعتبار برگشت خورد',
+    'refunded' => ' · پر برگشت خورد',
     _ => ' · ثبت‌شده',
   };
 }
