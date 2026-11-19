@@ -8,6 +8,7 @@ import 'package:http/testing.dart';
 import 'package:moshaver_tahsili/education/ai_advisor_service.dart';
 import 'package:moshaver_tahsili/education/assessment_pages.dart';
 import 'package:moshaver_tahsili/education/analytics_page.dart';
+import 'package:moshaver_tahsili/education/learning_coach_page.dart';
 import 'package:moshaver_tahsili/education/study_pages.dart';
 import 'package:moshaver_tahsili/education/bazaar_billing_service.dart';
 import 'package:moshaver_tahsili/education/credit_shop_page.dart';
@@ -570,6 +571,26 @@ class _TrackingHttpClient extends http.BaseClient {
     expect(find.textContaining('۰ دقیقه'), findsOneWidget);
     expect(find.textContaining('۰ دقیقه مطالعه برنامه‌ریزی کرده‌ای'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  test('learning coach handles malformed legacy task durations', () {
+    final plan = buildLearningCoachPlan(
+      exams: const [],
+      tasks: [
+        {
+          'id': 'legacy-overdue',
+          'title': 'کار عقب‌افتاده',
+          'minutes': 'نامعتبر',
+          'dueDate': '2026-11-18',
+          'done': false,
+        },
+      ],
+      cards: const [],
+      deadlines: const [],
+      now: DateTime(2026, 11, 19),
+    );
+    expect(plan.steps, isNotEmpty);
+    expect(plan.steps.first.kind, 'overdue');
   });
 
 }
