@@ -97,26 +97,55 @@ class _AdvisorPageState extends State<AdvisorPage> {
   }
 
   Future<void> startTeaching() async {
-    final topic = TextEditingController();
-    final selected = await showDialog<String>(context: context, builder: (dialogContext) => AlertDialog(
-      title: const Text('شروع تدریس با سیمرغ'),
-      content: TextField(controller: topic, autofocus: true, maxLength: 120,
-        decoration: const InputDecoration(labelText: 'امروز چه مبحثی را یاد بگیریم؟', hintText: 'مثلاً کسرها، تابع یا فتوسنتز')),
-      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('انصراف')),
-        FilledButton(onPressed: () => Navigator.pop(dialogContext, topic.text.trim()), child: const Text('شروع ارزیابی'))],
-    ));
-    topic.dispose();
+    var topicValue = '';
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('شروع تدریس با سیمرغ'),
+        content: TextField(
+          autofocus: true,
+          maxLength: 120,
+          onChanged: (value) => topicValue = value,
+          decoration: const InputDecoration(
+            labelText: 'امروز چه مبحثی را یاد بگیریم؟',
+            hintText: 'مثلاً کسرها، تابع یا فتوسنتز',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('انصراف'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, topicValue.trim()),
+            child: const Text('شروع ارزیابی'),
+          ),
+        ],
+      ),
+    );
     if (selected == null || selected.trim().isEmpty || !mounted) return;
     final profile = widget.store.profile ?? const <String, dynamic>{};
-    final grade = [profile['grade'], profile['year']].whereType<String>().where((v) => v.trim().isNotEmpty).join(' · ');
+    final grade = [profile['grade'], profile['year']]
+        .whereType<String>()
+        .where((value) => value.trim().isNotEmpty)
+        .join(' · ');
     final session = SimorghTeachingEngine.start(topic: selected, grade: grade);
     teachingSessionId = newId('simorgh-lesson');
     try {
       await _persistTeachingSession(session);
       if (!mounted) return;
-      setState(() { teachingSession = session; input.text = 'می‌خواهم مبحث $selected را یاد بگیرم. لطفاً با یک سؤال کوتاه سطح من را بسنج.'; });
-      showMessage(context, 'جلسه آموزشی روی گوشی ذخیره شد. پرسش ارزیابی را می‌توانی ارسال کنی.');
-    } on Object catch (value) { if (mounted) showMessage(context, friendlyError(value)); }
+      setState(() {
+        teachingSession = session;
+        input.text =
+            'می‌خواهم مبحث $selected را یاد بگیرم. لطفاً با یک سؤال کوتاه سطح من را بسنج.';
+      });
+      showMessage(
+        context,
+        'جلسه آموزشی روی گوشی ذخیره شد. پرسش ارزیابی را می‌توانی ارسال کنی.',
+      );
+    } on Object catch (value) {
+      if (mounted) showMessage(context, friendlyError(value));
+    }
   }
 
   Future<void> endTeaching() async {
