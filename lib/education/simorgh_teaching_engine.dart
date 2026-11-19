@@ -159,6 +159,35 @@ class SimorghTeachingEngine {
     );
   }
 
+  static SimorghTeachingSession recordExplanationCheck(
+    SimorghTeachingSession session,
+    SimorghAnswerOutcome outcome,
+  ) {
+    _requireStage(session, SimorghTeachingStage.explanation);
+    if (outcome == SimorghAnswerOutcome.correct) {
+      return session.copyWith(stage: SimorghTeachingStage.guidedPractice);
+    }
+    return session.copyWith(
+      explanationVariant: session.explanationVariant + 1,
+      lastError: SimorghErrorKind.unknown,
+    );
+  }
+
+  static SimorghTeachingSession recordReteachCheck({
+    required SimorghTeachingSession session,
+    required SimorghAnswerOutcome outcome,
+    SimorghErrorKind error = SimorghErrorKind.unknown,
+  }) {
+    _requireStage(session, SimorghTeachingStage.reteach);
+    if (outcome == SimorghAnswerOutcome.correct) {
+      return session.copyWith(stage: SimorghTeachingStage.guidedPractice, clearLastError: true);
+    }
+    return session.copyWith(
+      explanationVariant: session.explanationVariant + 1,
+      lastError: error,
+    );
+  }
+
   static SimorghTeachingSession finishReteach(
     SimorghTeachingSession session,
   ) {
