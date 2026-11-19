@@ -225,7 +225,7 @@ class AiAdvisorService {
     } on AiException {
       rethrow;
     } on Object catch (error) {
-      print('AI_POST_FAILURE_DEBUG type=${error.runtimeType}');
+      print('AI_POST_FAILURE_DEBUG type=${error.runtimeType}${error is ArgumentError ? ' message=${error.message} name=${error.name}' : ''}');
       // Exception details may contain URLs or credentials; do not expose them.
       throw const AiException(AiErrorKind.network, 'ارتباط با مشاور برقرار نشد. اتصال اینترنت را بررسی کن.');
     } finally {
