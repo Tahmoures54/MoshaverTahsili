@@ -87,17 +87,17 @@ class CreditSummary extends StatelessWidget {
           const Icon(Icons.account_balance_wallet_outlined, color: teal, size: 30),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('اعتبار هوش مصنوعی', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text('پرهای سیمرغ', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text('${faNumber(store.credits)} اعتبار', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+            Text('${faNumber(store.feathers)} پر', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
           ])),
-          if (onShop != null) FilledButton.tonal(onPressed: onShop, child: const Text('خرید اعتبار')),
+          if (onShop != null) FilledButton.tonal(onPressed: onShop, child: const Text('تهیه پر')),
         ]),
         const SizedBox(height: 10),
         Align(alignment: Alignment.centerRight, child: Text(
           store.freeAiUsesRemaining > 0
-              ? '${faNumber(store.freeAiUsesRemaining)} پاسخ موفق رایگان باقی مانده است.'
-              : 'هر پاسخ موفق: یک اعتبار · درخواست ناموفق: بدون هزینه',
+              ? '${faNumber(store.freeAiUsesRemaining)} پرسش رایگان باقی مانده است.'
+              : 'هر پرسش جدید: یک پر · پاسخ ناموفق: بدون هزینه',
           style: const TextStyle(color: Colors.blueGrey, height: 1.6),
         )),
       ])));
