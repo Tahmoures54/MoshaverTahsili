@@ -227,7 +227,7 @@ void main() {
     }));
     await tester.pumpWidget(frame(AdvisorPage(store: store, service: service)));
     await tester.enterText(find.byType(TextField), 'چطور بهتر مطالعه کنم؟');
-    await tester.tap(find.byTooltip('ارسال پرسش'));
+    await tester.tap(find.byTooltip('فراخواندن سیمرغ · مصرف یک پر'));
     await tester.pumpAndSettle();
     expect(store.credits, 1);
     expect(store.messages.last['status'], 'failed');
@@ -307,7 +307,7 @@ void main() {
     expect(find.textContaining('روش تدریس سیمرغ'), findsOneWidget);
     await tester.enterText(find.byType(TextField).last, 'یک دوم');
     final sendButton = find.ancestor(
-      of: find.byTooltip('ارسال پرسش'),
+      of: find.byTooltip('فراخواندن سیمرغ · مصرف یک پر'),
       matching: find.byType(IconButton),
     );
     tester.widget<IconButton>(sendButton).onPressed!.call();
@@ -373,7 +373,7 @@ void main() {
     Future<void> answer(String value) async {
       await tester.enterText(find.byType(TextField).last, value);
       final sendButton = find.ancestor(
-        of: find.byTooltip('ارسال پرسش'),
+        of: find.byTooltip('فراخواندن سیمرغ · مصرف یک پر'),
         matching: find.byType(IconButton),
       );
       tester.widget<IconButton>(sendButton).onPressed!.call();
@@ -441,9 +441,9 @@ void main() {
     await tester.tap(find.text('خرید از بازار').first);
     await tester.pumpAndSettle();
     expect(store.credits, 105);
-    await tester.scrollUntilVisible(find.text('تاریخچه اعتبار'), 300);
+    await tester.scrollUntilVisible(find.text('تاریخچه پرها'), 300);
     await tester.pumpAndSettle();
-    expect(find.text('تاریخچه اعتبار'), findsOneWidget);
+    expect(find.text('تاریخچه پرها'), findsOneWidget);
     await tester.scrollUntilVisible(find.textContaining('بسته برنزی').last, 300);
     expect(tester.takeException(), isNull);
   });
