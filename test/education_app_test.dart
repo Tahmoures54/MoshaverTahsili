@@ -391,7 +391,8 @@ void main() {
     expect(store.teachingSessions.single['stage'], 'diagnostic');
     await answer('پاسخ تشخیصی سوم');
     expect(store.teachingSessions.single['stage'], 'guidedPractice');
-    expect(find.textContaining('مرحله بعدی آموزش آماده است'), findsOneWidget);
+    expect(store.messages.last['content'], contains('بازخورد مرحله 3'));
+    expect(store.messages.last['content'], contains('مرحله بعدی آموزش آماده است'));
     await answer('تمرین نیمه‌درست');
     expect(store.teachingSessions.single['stage'], 'reteach');
     expect(store.teachingSessions.single['lastError'], 'procedural');
