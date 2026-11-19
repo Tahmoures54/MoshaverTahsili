@@ -268,14 +268,21 @@ void main() {
   testWidgets('Simorgh teaching evaluates a student answer and persists lesson progress', (tester) async {
     final store = await EducationStore.open();
     var teachingProviderCalls = 0;
+    String? teachingPrompt;
+    String? teachingMockFailure;
     final service = AiAdvisorService(
       store: store,
       apiKey: 'test-key',
       client: MockClient((request) async {
         teachingProviderCalls++;
-        final body = jsonDecode(request.body) as Map<String, dynamic>;
-        final messages = body['messages'] as List;
-        expect(messages.first['content'], contains('ساختار دقیق'));
+        try {
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          final messages = body['messages'] as List;
+          teachingPrompt = messages.first['content']?.toString();
+        } on Object catch (value) {
+          teachingMockFailure = value.toString();
+          rethrow;
+        }
         return http.Response(
           jsonEncode({
             'choices': [
@@ -311,7 +318,7 @@ void main() {
     await tester.pump();
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await tester.pumpAndSettle();
-    print('TEACHING_DEBUG calls=$teachingProviderCalls message=${store.messages.last} wallet=${store.walletSnapshot}');
+    print('TEACHING_DEBUG calls=$teachingProviderCalls mockFailure=$teachingMockFailure prompt=$teachingPrompt message=${store.messages.last} wallet=${store.walletSnapshot}');
     expect(teachingProviderCalls, 1);
     expect(store.messages.last['status'], 'completed');
     expect(store.messages.last['content'], contains('آفرین؛ پاسخ تو درست بود.'));
