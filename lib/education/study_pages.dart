@@ -10,7 +10,8 @@ String newId(String prefix) => '$prefix-${DateTime.now().microsecondsSinceEpoch}
 int _safeTaskMinutes(Map<String, dynamic> task) {
   final value = task['minutes'];
   if (value is num && value.isFinite && value >= 0) return value.toInt();
-  return int.tryParse(digitsToEnglish(value?.toString() ?? '')) ?? 0;
+  final parsed = int.tryParse(digitsToEnglish(value?.toString() ?? ''));
+  return parsed != null && parsed >= 0 ? parsed : 0;
 }
 
 class PlannerPage extends StatefulWidget {
