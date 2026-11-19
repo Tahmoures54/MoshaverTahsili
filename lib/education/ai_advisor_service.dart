@@ -91,6 +91,7 @@ class AiAdvisorService {
     if (store != null && !store!.canUseAi && store!.savedAiAnswer(id) == null) {
       throw const AiException(AiErrorKind.credits, 'اعتبار رایگان یا خریداری‌شده کافی نداری. برای ادامه، بسته اعتبار تهیه کن.');
     }
+    print('AI_SYSTEM_INSTRUCTION_DEBUG present=${systemInstruction != null} length=${systemInstruction?.length ?? 0}');
     final messages = _messages(profile, history, question, systemInstruction: systemInstruction);
     final body = utf8.encode(jsonEncode({'model': model, 'messages': messages,
       'temperature': 0.55, 'max_tokens': 1200}));
