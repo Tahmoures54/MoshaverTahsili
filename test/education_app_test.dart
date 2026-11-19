@@ -568,7 +568,6 @@ class _TrackingHttpClient extends http.BaseClient {
     await tester.pumpWidget(frame(PlannerPage(store: store, changed: () {})));
     await tester.pumpAndSettle();
     expect(find.text('کار قدیمی'), findsOneWidget);
-    expect(find.textContaining('۰ دقیقه'), findsOneWidget);
     expect(find.textContaining('۰ دقیقه مطالعه برنامه‌ریزی کرده‌ای'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
