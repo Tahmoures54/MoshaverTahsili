@@ -51,7 +51,6 @@ class AiAdvisorService {
 
   Future<String> ask({required Map<String, dynamic>? profile,
     required List<Map<String, dynamic>> history, required String question, String? requestId, String? systemInstruction}) {
-    print('AI_ASK_ENTRY_DEBUG present=${systemInstruction != null} length=${systemInstruction?.length ?? 0}');
     if (_disposed) throw const AiException(AiErrorKind.configuration, 'سرویس مشاور بسته شده است.');
     final id = requestId ?? 'ai-${DateTime.now().microsecondsSinceEpoch}-${identityHashCode(question)}';
     final active = _inFlight[id];
@@ -92,7 +91,6 @@ class AiAdvisorService {
     if (store != null && !store!.canUseAi && store!.savedAiAnswer(id) == null) {
       throw const AiException(AiErrorKind.credits, 'اعتبار رایگان یا خریداری‌شده کافی نداری. برای ادامه، بسته اعتبار تهیه کن.');
     }
-    print('AI_SYSTEM_INSTRUCTION_DEBUG present=${systemInstruction != null} length=${systemInstruction?.length ?? 0}');
     final messages = _messages(profile, history, question, systemInstruction: systemInstruction);
     final body = utf8.encode(jsonEncode({'model': model, 'messages': messages,
       'temperature': 0.55, 'max_tokens': 1200}));
@@ -114,7 +112,6 @@ class AiAdvisorService {
       if (store != null) await store!.completeAiRequest(id, answer);
       return answer;
     } on Object catch (error) {
-      print('AI_EXECUTE_FAILURE_DEBUG type=${error.runtimeType} answerReceived=$answerReceived reserved=$reserved safeMessage=${error is AiException ? error.message : error is LocalDataException ? error.message : 'unknown'}');
       if (reserved) {
         try { await store!.refundAiRequest(id); } on Object {
           // The pending reservation survives a storage failure and is refunded
@@ -225,7 +222,6 @@ class AiAdvisorService {
     } on AiException {
       rethrow;
     } on Object catch (error) {
-      print('AI_POST_FAILURE_DEBUG type=${error.runtimeType}${error is ArgumentError ? ' message=${error.message} name=${error.name}' : ''}');
       // Exception details may contain URLs or credentials; do not expose them.
       throw const AiException(AiErrorKind.network, 'ارتباط با مشاور برقرار نشد. اتصال اینترنت را بررسی کن.');
     } finally {
