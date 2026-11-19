@@ -51,6 +51,7 @@ class AiAdvisorService {
 
   Future<String> ask({required Map<String, dynamic>? profile,
     required List<Map<String, dynamic>> history, required String question, String? requestId, String? systemInstruction}) {
+    print('AI_ASK_ENTRY_DEBUG present=${systemInstruction != null} length=${systemInstruction?.length ?? 0}');
     if (_disposed) throw const AiException(AiErrorKind.configuration, 'سرویس مشاور بسته شده است.');
     final id = requestId ?? 'ai-${DateTime.now().microsecondsSinceEpoch}-${identityHashCode(question)}';
     final active = _inFlight[id];
