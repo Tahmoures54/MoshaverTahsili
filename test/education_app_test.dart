@@ -235,7 +235,7 @@ void main() {
     final failedWallet = store.walletSnapshot;
     expect(failedWallet['requests'][requestId]['charge'], 'credit');
     expect(failedWallet['requests'][requestId]['status'], 'refunded');
-    expect(find.text('تلاش دوباره همین درخواست'), findsNWidgets(2));
+    expect(find.text('تلاش دوباره همین درخواست'), findsOneWidget);
     final retryButton = find.byKey(ValueKey('advisor-retry-$requestId'));
     expect(retryButton, findsOneWidget);
     expect(tester.widget<TextButton>(retryButton).onPressed, isNotNull);
