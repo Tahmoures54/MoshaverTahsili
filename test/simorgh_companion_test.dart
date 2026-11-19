@@ -6,6 +6,43 @@ import 'package:moshaver_tahsili/education/ui.dart';
 void main() {
   final now = DateTime(2026, 11, 18, 10);
 
+  group('resolveSimorghChatState', () {
+    test('shows listening before a student starts chatting', () {
+      expect(resolveSimorghChatState(busy: false, messages: const []),
+          SimorghChatState.listening);
+    });
+
+    test('shows thinking while a request is in progress', () {
+      expect(resolveSimorghChatState(busy: true, messages: const [
+        {'role': 'user', 'content': 'سلام'},
+      ]), SimorghChatState.thinking);
+    });
+
+    test('shows empathy for an explicitly expressed difficulty without diagnosing', () {
+      expect(resolveSimorghChatState(busy: false, messages: const [
+        {'role': 'user', 'content': 'برای امتحان خیلی نگرانم'},
+      ]), SimorghChatState.empathetic);
+    });
+
+    test('shows a listening state for a neutral student message', () {
+      expect(resolveSimorghChatState(busy: false, messages: const [
+        {'role': 'user', 'content': 'معادله درجه دوم را توضیح بده'},
+      ]), SimorghChatState.listening);
+    });
+
+    test('shows a happy state only after an explicitly encouraging answer', () {
+      expect(resolveSimorghChatState(busy: false, messages: const [
+        {'role': 'assistant', 'content': 'آفرین، امروز یک قدم مهم برداشتی.'},
+      ]), SimorghChatState.happy);
+    });
+
+    test('shows guiding after a regular assistant answer', () {
+      expect(resolveSimorghChatState(busy: false, messages: const [
+        {'role': 'assistant', 'content': 'بیایید مسئله را مرحله‌به‌مرحله حل کنیم.'},
+      ]), SimorghChatState.guiding);
+    });
+  });
+
   group('buildSimorghGuidance', () {
     test('welcomes a student who has not created a study item', () {
       final result = buildSimorghGuidance(tasks: [], cards: [], now: now);
