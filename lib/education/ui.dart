@@ -84,7 +84,7 @@ class CreditSummary extends StatelessWidget {
       if (store.walletError != null) return NoticeCard(text: store.walletError!, warning: true);
       return Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [
         Row(children: [
-          const Icon(Icons.auto_awesome, color: simorghGold, size: 30),
+          const Text('🪶', style: TextStyle(fontSize: 27)),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('پرهای سیمرغ', style: TextStyle(fontWeight: FontWeight.bold)),
