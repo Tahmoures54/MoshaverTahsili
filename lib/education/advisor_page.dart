@@ -263,8 +263,11 @@ class _AdvisorPageState extends State<AdvisorPage> {
           await _persistTeachingSession(updated);
           teachingSession = updated;
           displayedAnswer = turn.feedback;
-          if (turn.nextQuestion.isNotEmpty) displayedAnswer = '$displayedAnswer\\n\\n${turn.nextQuestion}';
-          if (updated.isComplete) displayedAnswer = '$displayedAnswer\\n\\nآفرین! این جلسه به مرحله سنجش پایانی رسید.';
+          if (updated.isComplete) {
+            displayedAnswer = '$displayedAnswer\\n\\nجلسه به پایان رسید. در سنجش پایانی، ${updated.masteryCorrect} پاسخ از ${updated.masteryCount} پاسخ درست بود. این نتیجه شواهد همین جلسه است، نه تضمین تسلط کامل. برای تثبیت یادگیری، فردا یک تمرین تازه از همین مبحث حل کن.';
+          } else if (turn.nextQuestion.isNotEmpty) {
+            displayedAnswer = '$displayedAnswer\\n\\n${turn.nextQuestion}';
+          }
         } on AiException catch (value) {
           if (value.kind != AiErrorKind.response) rethrow;
           // The model answered but its evaluation payload was malformed.
