@@ -72,4 +72,33 @@ void main() {
     final field = tester.widget<TextField>(find.byType(TextField));
     expect(field.controller!.text, backup);
   });
+  test('exports and restores active Simorgh teaching sessions', () async {
+    final source = await EducationStore.open();
+    final session = {
+      'id': 'lesson-backup-1',
+      'active': true,
+      'topic': 'کسرها',
+      'grade': 'هفتم',
+      'stage': 'guidedPractice',
+      'diagnosticCount': 2,
+      'diagnosticCorrect': 1,
+      'practiceAttempts': 1,
+      'masteryCount': 0,
+      'masteryCorrect': 0,
+      'reteachCount': 0,
+      'explanationVariant': 0,
+    };
+    await source.saveTeachingSessions([session]);
+
+    final raw = await source.exportBackup();
+    final decoded = WorkspaceBackup.decode(raw);
+    expect(decoded['edu.teaching.sessions'], [session]);
+    expect(raw, isNot(contains('edu.ai.wallet')));
+
+    SharedPreferences.setMockInitialValues({});
+    final target = await EducationStore.open();
+    await target.importBackup(raw);
+    expect(target.teachingSessions, [session]);
+  });
+
 }
