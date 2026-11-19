@@ -499,10 +499,12 @@ void main() {
     await tester.pumpWidget(frame(const SizedBox.shrink()));
     expect(sharedClient.closed, isFalse);
 
-    final answer = await sharedService.ask(
-      profile: null,
-      history: const [],
-      question: 'سرویس هنوز فعال است؟',
+    final answer = await tester.runAsync(
+      () => sharedService.ask(
+        profile: null,
+        history: const [],
+        question: 'سرویس هنوز فعال است؟',
+      ),
     );
     expect(answer, 'پاسخ آزمایشی');
     expect(sharedClient.calls, 1);
