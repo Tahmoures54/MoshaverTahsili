@@ -12,11 +12,11 @@ enum SimorghChatState { listening, empathetic, thinking, happy, guiding }
 
 extension SimorghChatStatePresentation on SimorghChatState {
   String get label => switch (this) {
-    SimorghChatState.listening => 'با دقت گوش می‌دهم',
-    SimorghChatState.empathetic => 'کنارت هستم تا مسئله را روشن کنیم',
-    SimorghChatState.thinking => 'دارم پاسخ را آماده می‌کنم',
-    SimorghChatState.happy => 'از پیشرفتت خوشحالم',
-    SimorghChatState.guiding => 'بیایید قدم بعدی را پیدا کنیم',
+    SimorghChatState.listening => 'شنونده · با دقت گوش می‌دهم',
+    SimorghChatState.empathetic => 'همدل · با هم مسئله را روشن کنیم',
+    SimorghChatState.thinking => 'متفکر · دارم پاسخ را آماده می‌کنم',
+    SimorghChatState.happy => 'خوشحال · پیشرفتت ارزشمند است',
+    SimorghChatState.guiding => 'راهنما · بیایید قدم بعدی را پیدا کنیم',
   };
 
   SimorghMood get visualMood => switch (this) {
@@ -423,7 +423,8 @@ class _SimorghCompanionPainter extends CustomPainter {
     final wingLift = (math.sin(phase * math.pi * 2) * 0.12) +
         (mood == SimorghMood.celebrating ? -0.12 :
             mood == SimorghMood.thinking ? 0.05 :
-            mood == SimorghMood.gentle ? 0.025 : 0.0);
+            mood == SimorghMood.gentle ? 0.025 :
+            mood == SimorghMood.encouraging ? -0.045 : 0.0);
 
     canvas.save();
     canvas.translate(0, bob);
