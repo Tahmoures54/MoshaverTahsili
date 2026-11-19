@@ -35,7 +35,7 @@ class BillingResult {
     if (consumptionPending) {
       return 'اعتبارهای تأییدشده اضافه شد، اما نهایی‌سازی خرید در بازار کامل نشد. بعداً «بازیابی خریدها» را بزن.';
     }
-    if (credited > 0) return '$credited بسته به کیف پول اضافه شد. خریدهای تکراری دوباره شارژ نمی‌شوند.';
+    if (credited > 0) return '$credited بسته پر به کیسه پرهای سیمرغ اضافه شد. خریدهای تکراری دوباره شارژ نمی‌شوند.';
     if (alreadyCredited > 0) return 'این خریدها قبلاً ثبت شده‌اند؛ اعتبار تکراری اضافه نشد.';
     if (skipped > 0) return 'خرید قابل تأییدی برای این برنامه پیدا نشد. اعتباری اضافه نشد.';
     return 'خرید مصرف‌نشده‌ای برای بازیابی پیدا نشد.';
@@ -175,7 +175,7 @@ class BazaarBillingService {
   }
 
   Future<BillingResult> buy(String productId) => _exclusive(() async {
-    if (CreditCatalog.byId(productId) == null) throw const BillingException('بسته اعتبار ناشناخته است.');
+    if (CreditCatalog.byId(productId) == null) throw const BillingException('بسته پر سیمرغ ناشناخته است.');
     await _safe(_connect);
     // A stalled billing activity must not leave the shop busy forever. A timeout
     // is an unknown purchase outcome, so the UI explicitly directs the user to restore.
