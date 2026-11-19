@@ -237,10 +237,14 @@ void main() {
     expect(failedWallet['requests'][requestId]['status'], 'refunded');
     expect(find.text('تلاش دوباره همین درخواست'), findsOneWidget);
     final retryButton = find.byKey(ValueKey('advisor-retry-$requestId'));
+    await tester.scrollUntilVisible(
+      find.text('تلاش دوباره همین درخواست').last,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     expect(retryButton, findsOneWidget);
     expect(tester.widget<TextButton>(retryButton).onPressed, isNotNull);
-    await tester.scrollUntilVisible(retryButton, 300, scrollable: find.byType(Scrollable).first);
-    await tester.pumpAndSettle();
     await tester.tap(retryButton);
     await tester.runAsync(() => Future<void>.delayed(const Duration(seconds: 3)));
     await tester.pump();
