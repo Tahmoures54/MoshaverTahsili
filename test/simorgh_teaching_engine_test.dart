@@ -206,6 +206,89 @@ void main() {
       expect(session.masteryCount, 3);
     });
 
+    test('completes a full adaptive lesson from diagnosis through reteaching and mastery', () {
+      var session = SimorghTeachingEngine.start(
+        topic: 'معادله درجه دوم',
+        grade: 'دهم',
+      );
+
+      // Partial evidence is not counted as correct during diagnosis.
+      session = SimorghTeachingEngine.recordDiagnostic(
+        session,
+        SimorghAnswerOutcome.partial,
+      );
+      session = SimorghTeachingEngine.recordDiagnostic(
+        session,
+        SimorghAnswerOutcome.incorrect,
+      );
+      session = SimorghTeachingEngine.recordDiagnostic(
+        session,
+        SimorghAnswerOutcome.correct,
+      );
+      expect(session.stage, SimorghTeachingStage.explanation);
+      expect(session.diagnosticCount, 3);
+      expect(session.diagnosticCorrect, 1);
+
+      session = SimorghTeachingEngine.recordExplanationCheck(
+        session,
+        SimorghAnswerOutcome.incorrect,
+      );
+      expect(session.stage, SimorghTeachingStage.explanation);
+      expect(session.explanationVariant, 1);
+      session = SimorghTeachingEngine.recordExplanationCheck(
+        session,
+        SimorghAnswerOutcome.correct,
+      );
+      expect(session.stage, SimorghTeachingStage.guidedPractice);
+
+      session = SimorghTeachingEngine.recordPractice(
+        session: session,
+        outcome: SimorghAnswerOutcome.partial,
+        error: SimorghErrorKind.procedural,
+      );
+      expect(session.stage, SimorghTeachingStage.reteach);
+      expect(session.lastError, SimorghErrorKind.procedural);
+
+      session = SimorghTeachingEngine.recordReteachCheck(
+        session: session,
+        outcome: SimorghAnswerOutcome.incorrect,
+        error: SimorghErrorKind.conceptual,
+      );
+      expect(session.stage, SimorghTeachingStage.reteach);
+      session = SimorghTeachingEngine.recordReteachCheck(
+        session: session,
+        outcome: SimorghAnswerOutcome.correct,
+      );
+      expect(session.stage, SimorghTeachingStage.guidedPractice);
+
+      session = SimorghTeachingEngine.recordPractice(
+        session: session,
+        outcome: SimorghAnswerOutcome.correct,
+      );
+      expect(session.stage, SimorghTeachingStage.masteryCheck);
+
+      session = SimorghTeachingEngine.recordMasteryCheck(
+        session: session,
+        outcome: SimorghAnswerOutcome.correct,
+      );
+      session = SimorghTeachingEngine.recordMasteryCheck(
+        session: session,
+        outcome: SimorghAnswerOutcome.partial,
+      );
+      session = SimorghTeachingEngine.recordMasteryCheck(
+        session: session,
+        outcome: SimorghAnswerOutcome.correct,
+      );
+
+      expect(session.stage, SimorghTeachingStage.completed);
+      expect(session.isComplete, isTrue);
+      expect(session.masteryCount, 3);
+      expect(session.masteryCorrect, 2);
+      expect(session.masteryAccuracy, closeTo(2 / 3, 0.001));
+      expect(session.practiceAttempts, 2);
+      expect(session.reteachCount, 1);
+    });
+
   });
   test('unclear answers do not count as negative learning evidence', () {
     final diagnostic = SimorghTeachingEngine.start(topic: 'کسرها');
