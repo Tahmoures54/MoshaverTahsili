@@ -103,7 +103,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
     try {
       await _persistTeachingSession(session);
       if (!mounted) return;
-      setState(() { teachingSession = session; input.text = SimorghTeachingEngine.instructionFor(session); });
+      setState(() { teachingSession = session; input.text = 'می‌خواهم مبحث $selected را یاد بگیرم. لطفاً با یک سؤال کوتاه سطح من را بسنج.'; });
       showMessage(context, 'جلسه آموزشی روی گوشی ذخیره شد. پرسش ارزیابی را می‌توانی ارسال کنی.');
     } on Object catch (value) { if (mounted) showMessage(context, friendlyError(value)); }
   }
@@ -115,6 +115,17 @@ class _AdvisorPageState extends State<AdvisorPage> {
       await _persistTeachingSession(session, active: false);
       if (mounted) setState(() => teachingSession = null);
     } on Object catch (value) { if (mounted) showMessage(context, friendlyError(value)); }
+  }
+
+  String _teachingStageLabel(SimorghTeachingStage stage) {
+    switch (stage) {
+      case SimorghTeachingStage.diagnostic: return 'ارزیابی آغازین';
+      case SimorghTeachingStage.explanation: return 'توضیح درس';
+      case SimorghTeachingStage.guidedPractice: return 'تمرین هدایت‌شده';
+      case SimorghTeachingStage.reteach: return 'بازآموزی';
+      case SimorghTeachingStage.masteryCheck: return 'سنجش یادگیری';
+      case SimorghTeachingStage.completed: return 'جلسه تکمیل‌شده';
+    }
   }
 
   String _teachingResponseContract(SimorghTeachingSession session) =>
@@ -151,12 +162,13 @@ class _AdvisorPageState extends State<AdvisorPage> {
       case SimorghTeachingStage.diagnostic:
         return SimorghTeachingEngine.recordDiagnostic(session, turn.outcome);
       case SimorghTeachingStage.explanation:
-        return SimorghTeachingEngine.beginGuidedPractice(session);
+        return SimorghTeachingEngine.recordExplanationCheck(session, turn.outcome);
       case SimorghTeachingStage.guidedPractice:
         return SimorghTeachingEngine.recordPractice(
             session: session, outcome: turn.outcome, error: turn.error);
       case SimorghTeachingStage.reteach:
-        return SimorghTeachingEngine.finishReteach(session);
+        return SimorghTeachingEngine.recordReteachCheck(
+            session: session, outcome: turn.outcome, error: turn.error);
       case SimorghTeachingStage.masteryCheck:
         return SimorghTeachingEngine.recordMasteryCheck(
             session: session, outcome: turn.outcome, error: turn.error);
@@ -285,8 +297,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
                     onPressed: busy
                         ? null
                         : () => setState(
-                              () => input.text =
-                                  SimorghTeachingEngine.instructionFor(teachingSession!),
+                              () => input.text = 'برای ادامه یادگیری ${teachingSession!.topic} آماده‌ام؛ سؤال بعدی را بپرس.',
                             ),
                     icon: const Icon(Icons.play_arrow),
                     label: const Text('آماده‌سازی گام آموزشی'),
