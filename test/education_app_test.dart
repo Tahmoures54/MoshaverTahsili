@@ -8,6 +8,7 @@ import 'package:http/testing.dart';
 import 'package:moshaver_tahsili/education/ai_advisor_service.dart';
 import 'package:moshaver_tahsili/education/assessment_pages.dart';
 import 'package:moshaver_tahsili/education/analytics_page.dart';
+import 'package:moshaver_tahsili/education/study_pages.dart';
 import 'package:moshaver_tahsili/education/bazaar_billing_service.dart';
 import 'package:moshaver_tahsili/education/credit_shop_page.dart';
 import 'package:moshaver_tahsili/education/education_store.dart';
@@ -552,6 +553,22 @@ class _TrackingHttpClient extends http.BaseClient {
     expect(find.text('درس قدیمی'), findsOneWidget);
     expect(find.textContaining('۰ ارزیابی آغازین'), findsOneWidget);
     expect(find.textContaining('۱ پاسخ درست در سنجش پایانی'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('planner tolerates malformed legacy task durations', (tester) async {
+    final store = await EducationStore.open();
+    await store.addTask({
+      'id': 'legacy-task',
+      'title': 'کار قدیمی',
+      'minutes': 'نامعتبر',
+      'done': false,
+    });
+    await tester.pumpWidget(frame(PlannerPage(store: store, changed: () {})));
+    await tester.pumpAndSettle();
+    expect(find.text('کار قدیمی'), findsOneWidget);
+    expect(find.textContaining('۰ دقیقه'), findsOneWidget);
+    expect(find.textContaining('۰ دقیقه مطالعه برنامه‌ریزی کرده‌ای'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
