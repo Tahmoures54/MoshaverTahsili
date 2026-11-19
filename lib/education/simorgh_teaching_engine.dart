@@ -109,7 +109,8 @@ class SimorghTeachingEngine {
     SimorghAnswerOutcome outcome,
   ) {
     _requireStage(session, SimorghTeachingStage.diagnostic);
-    if (session.diagnosticCount >= diagnosticQuestionLimit) return session;
+    if (outcome == SimorghAnswerOutcome.unclear ||
+        session.diagnosticCount >= diagnosticQuestionLimit) return session;
     final count = session.diagnosticCount + 1;
     final correct = session.diagnosticCorrect +
         (outcome == SimorghAnswerOutcome.correct ? 1 : 0);
@@ -140,6 +141,7 @@ class SimorghTeachingEngine {
     SimorghErrorKind error = SimorghErrorKind.unknown,
   }) {
     _requireStage(session, SimorghTeachingStage.guidedPractice);
+    if (outcome == SimorghAnswerOutcome.unclear) return session;
     final attempts = session.practiceAttempts + 1;
     if (outcome == SimorghAnswerOutcome.correct) {
       return session.copyWith(
@@ -164,6 +166,7 @@ class SimorghTeachingEngine {
     SimorghAnswerOutcome outcome,
   ) {
     _requireStage(session, SimorghTeachingStage.explanation);
+    if (outcome == SimorghAnswerOutcome.unclear) return session;
     if (outcome == SimorghAnswerOutcome.correct) {
       return session.copyWith(stage: SimorghTeachingStage.guidedPractice);
     }
@@ -179,6 +182,7 @@ class SimorghTeachingEngine {
     SimorghErrorKind error = SimorghErrorKind.unknown,
   }) {
     _requireStage(session, SimorghTeachingStage.reteach);
+    if (outcome == SimorghAnswerOutcome.unclear) return session;
     if (outcome == SimorghAnswerOutcome.correct) {
       return session.copyWith(stage: SimorghTeachingStage.guidedPractice, clearLastError: true);
     }
@@ -201,6 +205,7 @@ class SimorghTeachingEngine {
     SimorghErrorKind error = SimorghErrorKind.unknown,
   }) {
     _requireStage(session, SimorghTeachingStage.masteryCheck);
+    if (outcome == SimorghAnswerOutcome.unclear) return session;
     if (session.masteryCount >= masteryQuestionLimit) return session;
     final count = session.masteryCount + 1;
     final correct = session.masteryCorrect +
