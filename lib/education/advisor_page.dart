@@ -5,6 +5,7 @@ import 'ai_advisor_service.dart';
 import 'credit_shop_page.dart';
 import 'education_store.dart';
 import 'study_pages.dart' show newId;
+import 'simorgh_companion.dart';
 import 'ui.dart';
 
 class AdvisorPage extends StatefulWidget {
@@ -101,15 +102,25 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
   @override
   Widget build(BuildContext context) => Column(children: [
+    Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: Card(
+      margin: EdgeInsets.zero,
+      color: const Color(0xFFF1F8F6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: SimorghChatAvatar(
+          state: resolveSimorghChatState(busy: busy, messages: messages),
+        ),
+      ),
+    )),
     Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: CreditSummary(store: widget.store, onShop: busy ? null : openShop)),
     if (!service.isConfigured) const Padding(padding: EdgeInsets.symmetric(horizontal: 16),
       child: NoticeCard(text: 'مشاور هوش مصنوعی در این نسخه پیکربندی نشده است. برنامه مطالعه، نمرات، مرور و راهنمای روش مطالعه بدون اینترنت کار می‌کنند.', warning: true)),
     if (error != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: NoticeCard(text: error!, icon: Icons.error_outline, warning: true)),
     Expanded(child: messages.isEmpty ? ListView(padding: const EdgeInsets.all(20), children: [
       const SizedBox(height: 18), const Icon(Icons.auto_awesome, color: blue, size: 46),
-      const SizedBox(height: 14), const Text('سلام! همراه یادگیری تو هستم.', textAlign: TextAlign.center,
+      const SizedBox(height: 14), const Text('سلام! من سیمرغم؛ بیا با هم مسیر یادگیری‌ات را پیدا کنیم.', textAlign: TextAlign.center,
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-      const SizedBox(height: 8), const Text('درباره درس‌ها، برنامه‌ریزی و مسیر تحصیلی بپرس. پاسخ هوش مصنوعی ممکن است اشتباه باشد؛ موضوع‌های مهم را با معلم یا مشاور مدرسه بررسی کن.',
+      const SizedBox(height: 8), const Text('من یک همراه گفت‌وگویی با کمک هوش مصنوعی هستم؛ می‌توانم در فهم درس، برنامه‌ریزی و شناخت مسیرها کمکت کنم. پاسخ‌ها ممکن است اشتباه باشند؛ تصمیم‌های مهم را با معلم، مشاور مدرسه یا بزرگسال مورد اعتماد هم بررسی کن.',
           textAlign: TextAlign.center, style: TextStyle(color: Colors.blueGrey, height: 1.8)),
       const SizedBox(height: 20),
       for (final prompt in ['برای این هفته یک برنامه مطالعه واقع‌بینانه پیشنهاد بده.', 'چطور نقاط قوت و ضعف درسی‌ام را بشناسم؟', 'برای بهتر شدن تمرکزم چه تمرین‌هایی انجام دهم؟'])
@@ -120,7 +131,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
           if (index == messages.length) {
             return const Padding(padding: EdgeInsets.all(12), child: Row(children: [
               SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)), SizedBox(width: 12),
-              Expanded(child: Text('در حال دریافت پاسخ… درخواست ناموفق هزینه نهایی ندارد.')),
+              Expanded(child: Text('سیمرغ دارد پاسخ را آماده می‌کند… درخواست ناموفق هزینه نهایی ندارد.')),
             ]));
           }
           final message = messages[index];
@@ -132,7 +143,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
               decoration: BoxDecoration(color: user ? blue : Colors.white, borderRadius: BorderRadius.circular(18),
                   border: user ? null : Border.all(color: const Color(0xFFE3EAF2))),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(user ? 'پرسش تو' : 'مشاور هوش مصنوعی', style: TextStyle(fontSize: 11, color: user ? Colors.white70 : teal, fontWeight: FontWeight.bold)),
+                Text(user ? 'پرسش تو' : 'سیمرغ', style: TextStyle(fontSize: 11, color: user ? Colors.white70 : teal, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6),
                 SelectableText(message['content'].toString(), style: TextStyle(color: user ? Colors.white : navy, height: 1.8)),
                 if (user && failed) Padding(padding: const EdgeInsets.only(top: 8), child: Text(
@@ -152,7 +163,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
         IconButton(tooltip: 'پاک کردن گفت‌وگو', onPressed: busy || messages.isEmpty ? null : clearChat, icon: const Icon(Icons.delete_sweep_outlined)),
         Expanded(child: TextField(controller: input, enabled: !busy, minLines: 1, maxLines: 4,
           maxLength: EducationStore.maxQuestionLength, textInputAction: TextInputAction.newline,
-          decoration: const InputDecoration(hintText: 'پرسشت را اینجا بنویس…', counterText: ''))),
+          decoration: const InputDecoration(hintText: 'با سیمرغ حرف بزن…', counterText: ''))),
         const SizedBox(width: 8),
         IconButton.filled(tooltip: 'ارسال پرسش', onPressed: busy ? null : send, icon: const Icon(Icons.send_rounded)),
       ]))),

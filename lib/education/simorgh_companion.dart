@@ -8,6 +8,97 @@ enum SimorghMood { welcome, thinking, encouraging, celebrating, gentle }
 
 enum SimorghAction { planner, review, advisor }
 
+enum SimorghChatState { listening, empathetic, thinking, happy, guiding }
+
+extension SimorghChatStatePresentation on SimorghChatState {
+  String get label => switch (this) {
+    SimorghChatState.listening => 'شنونده · با دقت گوش می‌دهم',
+    SimorghChatState.empathetic => 'همدل · با هم مسئله را روشن کنیم',
+    SimorghChatState.thinking => 'متفکر · دارم پاسخ را آماده می‌کنم',
+    SimorghChatState.happy => 'خوشحال · پیشرفتت ارزشمند است',
+    SimorghChatState.guiding => 'راهنما · بیایید قدم بعدی را پیدا کنیم',
+  };
+
+  SimorghMood get visualMood => switch (this) {
+    SimorghChatState.listening => SimorghMood.welcome,
+    SimorghChatState.empathetic => SimorghMood.gentle,
+    SimorghChatState.thinking => SimorghMood.thinking,
+    SimorghChatState.happy => SimorghMood.celebrating,
+    SimorghChatState.guiding => SimorghMood.encouraging,
+  };
+}
+
+/// The state is derived only from the visible conversation and request status.
+/// It does not claim to detect or diagnose the student's emotions.
+SimorghChatState resolveSimorghChatState({
+  required bool busy,
+  required List<Map<String, dynamic>> messages,
+}) {
+  if (busy) return SimorghChatState.thinking;
+  if (messages.isEmpty) return SimorghChatState.listening;
+  final last = messages.last;
+  if (last['role'] == 'assistant') {
+    final answer = last['content']?.toString() ?? '';
+    if (RegExp(r'آفرین|پیشرفت|تبریک|تمام کردی|موفق شدی').hasMatch(answer)) {
+      return SimorghChatState.happy;
+    }
+    return SimorghChatState.guiding;
+  }
+  final text = last['content']?.toString() ?? '';
+  if (RegExp(r'نگران|می‌ترسم|میترسم|خسته|استرس|ناامید|غمگین|سخته|نمی‌توانم|نمی‌تونم')
+      .hasMatch(text)) {
+    return SimorghChatState.empathetic;
+  }
+  return SimorghChatState.listening;
+}
+
+/// Compact version of the same vector mascot, used in the dedicated chat header.
+class SimorghChatAvatar extends StatelessWidget {
+  const SimorghChatAvatar({super.key, required this.state});
+  final SimorghChatState state;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    textDirection: TextDirection.rtl,
+    children: [
+      SizedBox(
+        width: 62,
+        height: 68,
+        child: Semantics(
+          label: 'حالت سیمرغ: ${state.label}',
+          image: true,
+          child: CustomPaint(
+            key: const ValueKey('simorgh-chat-avatar'),
+            painter: _SimorghCompanionPainter(
+              phase: 0.5,
+              mood: state.visualMood,
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('سیمرغ', style: TextStyle(
+              color: navy, fontSize: 16, fontWeight: FontWeight.w900,
+            )),
+            const SizedBox(height: 3),
+            Text(state.label, style: const TextStyle(
+              color: Color(0xFF42566B), fontSize: 12, height: 1.5,
+            )),
+            const SizedBox(height: 2),
+            const Text('همراه یادگیری با کمک هوش مصنوعی', style: TextStyle(
+              color: teal, fontSize: 10, fontWeight: FontWeight.w600,
+            )),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
 class SimorghGuidance {
   const SimorghGuidance({
     required this.title,
@@ -330,7 +421,10 @@ class _SimorghCompanionPainter extends CustomPainter {
     final center = Offset(size.width * 0.5, size.height * 0.55);
     final bob = math.sin(phase * math.pi) * unit * 0.025;
     final wingLift = (math.sin(phase * math.pi * 2) * 0.12) +
-        (mood == SimorghMood.celebrating ? -0.12 : 0.0);
+        (mood == SimorghMood.celebrating ? -0.12 :
+            mood == SimorghMood.thinking ? 0.05 :
+            mood == SimorghMood.gentle ? 0.025 :
+            mood == SimorghMood.encouraging ? -0.045 : 0.0);
 
     canvas.save();
     canvas.translate(0, bob);
@@ -443,18 +537,25 @@ class _SimorghCompanionPainter extends CustomPainter {
       ..close();
     canvas.drawPath(beak, Paint()..color = teal);
 
-    final eye = Offset(headCenter.dx + unit * 0.065, headCenter.dy - unit * 0.035);
+    final eye = Offset(
+      headCenter.dx + unit * 0.065,
+      headCenter.dy - unit * (mood == SimorghMood.thinking ? 0.055 :
+          mood == SimorghMood.gentle ? 0.018 : 0.035),
+    );
+    final pupilShift = mood == SimorghMood.thinking ? -unit * 0.008 :
+        mood == SimorghMood.celebrating ? unit * 0.004 : 0.0;
     canvas.drawCircle(eye, unit * 0.027, Paint()..color = Colors.white);
-    canvas.drawCircle(eye.translate(unit * 0.008, 0), unit * 0.014,
+    canvas.drawCircle(eye.translate(unit * 0.008 + pupilShift, 0), unit * 0.014,
         Paint()..color = navy);
-    canvas.drawCircle(eye.translate(unit * 0.012, -unit * 0.006),
+    canvas.drawCircle(eye.translate(unit * 0.012 + pupilShift, -unit * 0.006),
         unit * 0.004, Paint()..color = Colors.white);
 
     final smile = Path()
       ..moveTo(headCenter.dx + unit * 0.03, headCenter.dy + unit * 0.075)
       ..quadraticBezierTo(headCenter.dx + unit * 0.08,
-          headCenter.dy + unit * 0.11, headCenter.dx + unit * 0.13,
-          headCenter.dy + unit * 0.07);
+          headCenter.dy + unit * (mood == SimorghMood.gentle ? 0.085 :
+              mood == SimorghMood.thinking ? 0.095 : 0.13),
+          headCenter.dx + unit * 0.13, headCenter.dy + unit * 0.07);
     canvas.drawPath(
       smile,
       Paint()
