@@ -144,6 +144,26 @@ void main() {
     });
   });
 
+  testWidgets('chat avatar renders all five states with accessible labels', (tester) async {
+    for (final state in SimorghChatState.values) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Directionality(
+              textDirection: TextDirection.rtl,
+              child: SimorghChatAvatar(state: state),
+            ),
+          ),
+        ),
+      );
+      expect(find.byKey(const ValueKey('simorgh-chat-avatar')), findsOneWidget);
+      expect(find.text('سیمرغ'), findsOneWidget);
+      expect(find.text(state.label), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('companion renders, animates, and routes its actions', (tester) async {
     SimorghAction? selectedAction;
     var chatOpened = false;
