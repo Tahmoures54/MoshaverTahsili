@@ -124,7 +124,7 @@ class _BackupPageState extends State<BackupPage> {
         appBar: AppBar(title: const Text('پشتیبان‌گیری و بازیابی')),
         body: ListView(padding: const EdgeInsets.all(16), children: [
           const NoticeCard(
-            text: 'پشتیبان شامل پروفایل، برنامه‌ها، امتحان‌ها، فلش‌کارت‌ها، گفت‌وگوها، جلسه‌های تدریس، ' 
+            text: 'پشتیبان شامل پروفایل، برنامه‌ها، امتحان‌ها، فلش‌کارت‌ها، گفت‌وگوها، جلسه‌های تدریس، '
                 'یادآورها و گزارش‌های مشاوره است. '
                 'کیف اعتبار و سابقه خرید در پشتیبان نیستند.',
             icon: Icons.backup_outlined,
