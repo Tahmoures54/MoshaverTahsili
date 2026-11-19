@@ -178,18 +178,50 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
   _TeachingTurn _decodeTeachingTurn(String raw) {
     try {
-      final start = raw.indexOf('{');
-      final end = raw.lastIndexOf('}');
-      if (start < 0 || end <= start) throw const FormatException();
-      final value = jsonDecode(raw.substring(start, end + 1));
-      if (value is! Map<String, dynamic>) throw const FormatException();
-      final outcome = SimorghAnswerOutcome.values.byName(value['outcome']?.toString() ?? 'unclear');
-      final error = SimorghErrorKind.values.byName(value['error']?.toString() ?? 'unknown');
-      final feedback = value['feedback']?.toString().trim() ?? '';
-      if (feedback.isEmpty || feedback.length > 5000) throw const FormatException();
-      final next = value['nextQuestion']?.toString().trim() ?? '';
-      if (next.length > 2000) throw const FormatException();
-      return _TeachingTurn(feedback: feedback, outcome: outcome, error: error, nextQuestion: next);
+      // Do not salvage JSON from prose or Markdown: accepting a partial object
+      // can silently turn a malformed model response into a state transition.
+      final source = raw.trim();
+      if (source.isEmpty || source.length > 12000 ||
+          !source.startsWith('{') || !source.endsWith('}')) {
+        throw const FormatException();
+      }
+      final decoded = jsonDecode(source);
+      if (decoded is! Map<String, dynamic>) throw const FormatException();
+      const requiredKeys = {'feedback', 'outcome', 'error', 'nextQuestion'};
+      if (decoded.length != requiredKeys.length ||
+          !decoded.keys.toSet().containsAll(requiredKeys)) {
+        throw const FormatException();
+      }
+
+      final rawOutcome = decoded['outcome'];
+      final rawError = decoded['error'];
+      final rawFeedback = decoded['feedback'];
+      final rawNextQuestion = decoded['nextQuestion'];
+      if (rawOutcome is! String ||
+          rawError is! String ||
+          rawFeedback is! String ||
+          rawNextQuestion is! String) {
+        throw const FormatException();
+      }
+
+      final outcome = SimorghAnswerOutcome.values
+          .where((item) => item.name == rawOutcome)
+          .firstOrNull;
+      final error = SimorghErrorKind.values
+          .where((item) => item.name == rawError)
+          .firstOrNull;
+      final feedback = rawFeedback.trim();
+      final next = rawNextQuestion.trim();
+      if (outcome == null || error == null || feedback.isEmpty ||
+          feedback.length > 5000 || next.length > 2000) {
+        throw const FormatException();
+      }
+      return _TeachingTurn(
+        feedback: feedback,
+        outcome: outcome,
+        error: error,
+        nextQuestion: next,
+      );
     } on Object {
       throw const AiException(AiErrorKind.response,
           'پاسخ آموزشی ساختار معتبری نداشت. دوباره تلاش کن؛ وضعیت جلسه تغییر نکرده است.');
