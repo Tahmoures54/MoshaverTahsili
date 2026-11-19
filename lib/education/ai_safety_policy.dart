@@ -37,4 +37,26 @@ class AiSafetyPolicy {
       localResponse: 'ممنونم که این موضوع را گفتی. لازم نیست در این لحظه با این احساس تنها بمانی. این پاسخ محلی سیمرغ است و پیام تو به سرویس هوش مصنوعی ارسال نشد. اگر احتمال می‌دهی همین حالا به خودت آسیب بزنی، لطفاً تنها نمان، از داروها یا وسایل خطرناک فاصله بگیر و همین حالا به یک بزرگسال قابل اعتماد که نزدیکت است خبر بده و از خدمات اضطراری محل زندگی کمک فوری بگیر. اگر خطر فوری نیست هم امروز با والد یا سرپرست امن، مشاور مدرسه یا متخصص سلامت روان صحبت کن. من جای کمک انسانی و تخصصی را نمی‌گیرم.',
     );
   }
+  /// Carries an unresolved safety signal forward only across a short, recent
+  /// window. Old or failed chat records must not permanently disable AI help.
+  static AiSafetyResult assessTurn(
+    String currentMessage,
+    List<Map<String, dynamic>> history, {
+    int maxPriorUserMessages = 3,
+  }) {
+    final current = assess(currentMessage);
+    if (current.shouldBlockRemoteAi) return current;
+
+    var inspected = 0;
+    for (final message in history.reversed) {
+      if (message['role'] != 'user' || message['content'] is! String) continue;
+      if (message['status'] == 'failed' || message['status'] == 'pending') continue;
+      inspected++;
+      final previous = assess(message['content'] as String);
+      if (previous.shouldBlockRemoteAi) return previous;
+      if (inspected >= maxPriorUserMessages) break;
+    }
+    return current;
+  }
+
 }
