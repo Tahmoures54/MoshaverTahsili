@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:moshaver_tahsili/education/ai_advisor_service.dart';
+import 'package:moshaver_tahsili/education/assessment_pages.dart';
 import 'package:moshaver_tahsili/education/bazaar_billing_service.dart';
 import 'package:moshaver_tahsili/education/credit_shop_page.dart';
 import 'package:moshaver_tahsili/education/education_store.dart';
@@ -468,4 +469,38 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('آمادگی برای امتحان'), findsOneWidget);
   });
+  testWidgets('ConsultationRunner does not dispose an injected shared AI service', (tester) async {
+    final store = await EducationStore.open();
+    var calls = 0;
+    final sharedService = AiAdvisorService(
+      apiKey: 'test-key',
+      client: MockClient((request) async {
+        calls++;
+        return http.Response(
+          jsonEncode({'choices': [{'message': {'content': 'پاسخ آزمایشی'}}]}),
+          200,
+        );
+      }),
+    );
+
+    await tester.pumpWidget(frame(ConsultationRunner(
+      store: store,
+      service: sharedService,
+      kind: 'academic',
+      title: 'آزمون مالکیت سرویس',
+      question: 'یک پرسش آزمایشی',
+      autoStart: false,
+    )));
+    await tester.pumpWidget(frame(const SizedBox.shrink()));
+
+    final answer = await sharedService.ask(
+      profile: null,
+      history: const [],
+      question: 'سرویس هنوز فعال است؟',
+    );
+    expect(answer, 'پاسخ آزمایشی');
+    expect(calls, 1);
+    sharedService.dispose();
+  });
+
 }
