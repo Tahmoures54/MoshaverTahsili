@@ -58,6 +58,8 @@ class EducationStore extends ChangeNotifier {
   Map<String, dynamic> get walletSnapshot => _decodeWallet(jsonEncode(_checkedWallet()));
   static const walletKey = 'edu.ai.wallet';
   static const freeUses = 2; // Retained only for pre-v3 wallets.
+  /// One student-submitted AI question reserves exactly one Simorgh feather.
+  static const questionFeatherCost = 1;
   static const maxQuestionLength = 4000;
   static const maxAnswerLength = 24000;
   static const maxHistoryEntries = 250;
@@ -99,7 +101,7 @@ class EducationStore extends ChangeNotifier {
         }
       } on Object {
         if (key == walletKey) {
-          _walletError = 'کیف پول رمزگشایی نشد؛ برای جلوگیری از تغییر اعتبار، داده قبلی حفظ شد.';
+          _walletError = 'کیف پول رمزگشایی نشد؛ برای جلوگیری از تغییر موجودی پرها، داده قبلی حفظ شد.';
         } else {
           _dataErrors[key] = 'اطلاعات رمزگشایی نشد؛ برای جلوگیری از بازنویسی، داده قبلی حفظ شد.';
         }
@@ -117,7 +119,7 @@ class EducationStore extends ChangeNotifier {
         await _writeSecure(walletKey, jsonEncode(_wallet));
       }
     } on Object {
-      _walletError = 'اطلاعات کیف پول خوانده نشد. برای جلوگیری از دست رفتن اعتبار، داده قبلی بازنویسی نمی‌شود.';
+      _walletError = 'اطلاعات کیسه پرها خوانده نشد. برای جلوگیری از دست رفتن موجودی، داده قبلی بازنویسی نمی‌شود.';
     }
   }
 
@@ -149,7 +151,7 @@ class EducationStore extends ChangeNotifier {
         'id': 'welcome-credits-v1',
         'kind': 'bonus',
         'amount': 5,
-        'title': 'هدیه شروع سیمرغ',
+        'title': 'هدیه نخست · ۵ پر سیمرغ',
         'createdAt': DateTime.now().toUtc().toIso8601String(),
         'status': 'completed',
       },
@@ -257,6 +259,8 @@ class EducationStore extends ChangeNotifier {
   }
 
   int get credits => _walletError != null ? 0 : _wallet['credits'] as int;
+  /// User-facing name for the legacy `credits` balance; storage stays compatible.
+  int get feathers => credits;
   int get successfulAiUses => _walletError != null ? 0 : _wallet['successful_uses'] as int;
   int get freeAiUsesRemaining {
     if (_walletError != null || (_wallet['version'] as int? ?? 1) >= 3) return 0;
@@ -352,15 +356,15 @@ class EducationStore extends ChangeNotifier {
           charge = 'credit';
         }
         if (charge == 'credit' && credits < 1) {
-          throw const LocalDataException('اعتبار کافی نداری. برای ادامه، بسته اعتبار تهیه کن.');
+          throw const LocalDataException('پر سیمرغ کافی نداری. برای ادامه، یک بسته پر تهیه کن.');
         }
-        if (charge == 'credit') wallet['credits'] = credits - 1;
+        if (charge == 'credit') wallet['credits'] = credits - questionFeatherCost;
         final attempt = previous == null ? 1 : ((previous['attempt'] as int?) ?? 1) + 1;
         final transactionId = '$id-attempt-$attempt';
         requests[id] = {'question': question, 'status': 'pending', 'charge': charge,
           'createdAt': previous?['createdAt'] ?? _now(),
           'attempt': attempt, 'transactionId': transactionId};
-        _transaction(wallet, transactionId, 'ai', charge == 'credit' ? 1 : 0, 'درخواست مشاور هوشمند', 'pending');
+        _transaction(wallet, transactionId, 'ai', charge == 'credit' ? questionFeatherCost : 0, 'فراخوان سیمرغ · یک پر', 'pending');
         _trimRequests(wallet);
         await _saveWallet(wallet);
         _activeRequests.add(id);
@@ -390,12 +394,34 @@ class EducationStore extends ChangeNotifier {
     final request = (wallet['requests'] as Map)[id] as Map?;
     if (request == null || request['status'] != 'pending') return;
     request['status'] = 'refunded';
-    if (request['charge'] == 'credit') wallet['credits'] = credits + 1;
+    if (request['charge'] == 'credit') wallet['credits'] = credits + questionFeatherCost;
     final transactionId = (request['transactionId'] as String?) ?? id;
     _markTransaction(wallet, transactionId, 'refunded');
-    _transaction(wallet, '$transactionId-refund', 'refund', request['charge'] == 'credit' ? 1 : 0,
-        'بازگشت اعتبار درخواست ناموفق', 'completed');
+    _transaction(wallet, '$transactionId-refund', 'refund', request['charge'] == 'credit' ? questionFeatherCost : 0,
+        'بازگشت یک پر سیمرغ · درخواست ناموفق', 'completed');
     _activeRequests.remove(id);
+    await _saveWallet(wallet);
+  });
+
+  /// Refund a completed model call when its payload cannot be used by the app
+  /// (for example, malformed structured teaching feedback). This is idempotent.
+  Future<void> refundInvalidAiResponse(String id) => _serialized(() async {
+    final wallet = _copyWallet();
+    final requests = wallet['requests'] as Map<String, dynamic>;
+    final request = requests[id] as Map<String, dynamic>?;
+    if (request == null || request['status'] != 'completed') return;
+    request['status'] = 'refunded';
+    request.remove('answer');
+    if (request['charge'] == 'credit') {
+      wallet['credits'] = (wallet['credits'] as int) + questionFeatherCost;
+    } else if (request['charge'] == 'free') {
+      wallet['successful_uses'] = ((wallet['successful_uses'] as int) - 1).clamp(0, 1000000000).toInt();
+    }
+    final transactionId = (request['transactionId'] as String?) ?? id;
+    _markTransaction(wallet, transactionId, 'refunded');
+    _transaction(wallet, '$transactionId-invalid-refund', 'refund',
+        request['charge'] == 'credit' ? questionFeatherCost : 0,
+        'بازگشت پر · پاسخ ساختاری نامعتبر', 'completed');
     await _saveWallet(wallet);
   });
 
@@ -413,12 +439,12 @@ class EducationStore extends ChangeNotifier {
       // original balance here loses all but the final refund when several
       // requests were interrupted before the app was closed.
       if (request['charge'] == 'credit') {
-        wallet['credits'] = (wallet['credits'] as int) + 1;
+        wallet['credits'] = (wallet['credits'] as int) + questionFeatherCost;
       }
       final transactionId = (request['transactionId'] as String?) ?? id;
       _markTransaction(wallet, transactionId, 'refunded');
       _transaction(wallet, '$transactionId-refund', 'refund', request['charge'] == 'credit' ? 1 : 0,
-          'بازگشت رزرو پس از بسته شدن برنامه', 'completed');
+          'بازگشت پر سیمرغ پس از بسته شدن برنامه', 'completed');
     }
     await _saveWallet(wallet);
   });
@@ -434,11 +460,11 @@ class EducationStore extends ChangeNotifier {
     if (free) {
       wallet['successful_uses'] = successfulAiUses + 1;
     } else {
-      wallet['credits'] = credits - 1;
+      wallet['credits'] = credits - questionFeatherCost;
     }
     requests[id] = {'question': 'درخواست ثبت‌شده', 'status': 'completed',
       'charge': free ? 'free' : 'credit', 'createdAt': _now(), 'answer': 'پاسخ دریافت شده'};
-    _transaction(wallet, id, 'ai', free ? 0 : 1, 'پاسخ موفق مشاور هوشمند', 'completed');
+    _transaction(wallet, id, 'ai', free ? 0 : questionFeatherCost, 'فراخوان سیمرغ · یک پر', 'completed');
     _trimRequests(wallet);
     await _saveWallet(wallet);
     return true;
@@ -451,7 +477,7 @@ class EducationStore extends ChangeNotifier {
         _validateId(purchaseToken, limit: 512);
         final product = CreditCatalog.byId(productId);
         if (product == null || product.credits != creditsToAdd) {
-          throw const LocalDataException('بسته اعتبار یا تعداد اعتبار آن معتبر نیست.');
+          throw const LocalDataException('بسته پر یا تعداد پر آن معتبر نیست.');
         }
         final wallet = _copyWallet();
         final tokens = wallet['purchase_tokens'] as Map;
@@ -706,6 +732,8 @@ class CreditProduct {
   /// Total credits delivered to the wallet, including any pack bonus.
   final int credits;
   final int purchasedCredits, bonusCredits;
+  /// Public product vocabulary; `credits` remains the persisted legacy field.
+  int get feathers => credits;
 }
 
 /// Existing SKUs retained from this repository, NOT guessed replacement IDs.
@@ -713,12 +741,12 @@ class CreditProduct {
 /// reference project/Bazaar panel; a public key alone does not verify a catalog.
 class CreditCatalog {
   static const products = [
-    CreditProduct('credit_10', 'بسته برنزی · ۱۰۰ اعتبار', 100,
-        '۱۰۰ اعتبار؛ بدون اعتبار تشویقی', purchasedCredits: 100),
-    CreditProduct('credit_35', 'بسته نقره‌ای · ۲۶۵ اعتبار', 265,
-        '۲۵۰ اعتبار خرید + ۱۵ اعتبار هدیه', purchasedCredits: 250, bonusCredits: 15),
-    CreditProduct('credit_90', 'بسته طلایی · ۵۵۰ اعتبار', 550,
-        '۵۰۰ اعتبار خرید + ۵۰ اعتبار هدیه', purchasedCredits: 500, bonusCredits: 50),
+    CreditProduct('credit_10', 'بسته برنزی · ۱۰۰ پر', 100,
+        '۱۰۰ پر سیمرغ', purchasedCredits: 100),
+    CreditProduct('credit_35', 'بسته نقره‌ای · ۲۶۵ پر', 265,
+        '۲۵۰ پر خرید + ۱۵ پر هدیه', purchasedCredits: 250, bonusCredits: 15),
+    CreditProduct('credit_90', 'بسته طلایی · ۵۵۰ پر', 550,
+        '۵۰۰ پر خرید + ۵۰ پر هدیه', purchasedCredits: 500, bonusCredits: 50),
   ];
   static CreditProduct? byId(String id) {
     for (final product in products) {

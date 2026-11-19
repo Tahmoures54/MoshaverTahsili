@@ -381,9 +381,10 @@ class _AdvisorPageState extends State<AdvisorPage> {
           }
         } on AiException catch (value) {
           if (value.kind != AiErrorKind.response) rethrow;
-          // The model answered but its evaluation payload was malformed.
-          // Keep the lesson stage unchanged and allow a fresh student turn.
-          displayedAnswer = value.message;
+          // The model returned unusable structured feedback. Do not charge the
+          // student for a response that cannot safely advance the lesson.
+          await widget.store.refundInvalidAiResponse(id);
+          displayedAnswer = '${value.message}\n\nپر سیمرغت برگشت داده شد.';
         }
       } else if (teachingMode && localSafetyResponse) {
         // Local crisis support is not a structured lesson evaluation.
@@ -414,7 +415,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
   Future<void> clearChat() async {
     if (busy) return;
     final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
-      title: const Text('گفت‌وگو پاک شود؟'), content: const Text('تاریخچه گفت‌وگو پاک می‌شود؛ اعتبار و سابقه خرید تغییر نمی‌کند.'),
+      title: const Text('گفت‌وگو پاک شود؟'), content: const Text('تاریخچه گفت‌وگو پاک می‌شود؛ پرهای سیمرغ و سابقه خرید تغییر نمی‌کند.'),
       actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
         FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('پاک کردن'))]));
     if (confirmed != true || !mounted) return;
@@ -542,7 +543,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
           maxLength: EducationStore.maxQuestionLength, textInputAction: TextInputAction.newline,
           decoration: const InputDecoration(hintText: 'با سیمرغ حرف بزن…', counterText: ''))),
         const SizedBox(width: 8),
-        IconButton.filled(tooltip: 'ارسال پرسش', onPressed: busy ? null : send, icon: const Icon(Icons.send_rounded)),
+        IconButton.filled(tooltip: 'فراخواندن سیمرغ · مصرف یک پر', onPressed: busy ? null : send, icon: const Icon(Icons.send_rounded)),
       ]))),
   ]);
 }
