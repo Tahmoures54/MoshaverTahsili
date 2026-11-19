@@ -421,7 +421,9 @@ class _SimorghCompanionPainter extends CustomPainter {
     final center = Offset(size.width * 0.5, size.height * 0.55);
     final bob = math.sin(phase * math.pi) * unit * 0.025;
     final wingLift = (math.sin(phase * math.pi * 2) * 0.12) +
-        (mood == SimorghMood.celebrating ? -0.12 : 0.0);
+        (mood == SimorghMood.celebrating ? -0.12 :
+            mood == SimorghMood.thinking ? 0.05 :
+            mood == SimorghMood.gentle ? 0.025 : 0.0);
 
     canvas.save();
     canvas.translate(0, bob);
@@ -534,18 +536,25 @@ class _SimorghCompanionPainter extends CustomPainter {
       ..close();
     canvas.drawPath(beak, Paint()..color = teal);
 
-    final eye = Offset(headCenter.dx + unit * 0.065, headCenter.dy - unit * 0.035);
+    final eye = Offset(
+      headCenter.dx + unit * 0.065,
+      headCenter.dy - unit * (mood == SimorghMood.thinking ? 0.055 :
+          mood == SimorghMood.gentle ? 0.018 : 0.035),
+    );
+    final pupilShift = mood == SimorghMood.thinking ? -unit * 0.008 :
+        mood == SimorghMood.celebrating ? unit * 0.004 : 0.0;
     canvas.drawCircle(eye, unit * 0.027, Paint()..color = Colors.white);
-    canvas.drawCircle(eye.translate(unit * 0.008, 0), unit * 0.014,
+    canvas.drawCircle(eye.translate(unit * 0.008 + pupilShift, 0), unit * 0.014,
         Paint()..color = navy);
-    canvas.drawCircle(eye.translate(unit * 0.012, -unit * 0.006),
+    canvas.drawCircle(eye.translate(unit * 0.012 + pupilShift, -unit * 0.006),
         unit * 0.004, Paint()..color = Colors.white);
 
     final smile = Path()
       ..moveTo(headCenter.dx + unit * 0.03, headCenter.dy + unit * 0.075)
       ..quadraticBezierTo(headCenter.dx + unit * 0.08,
-          headCenter.dy + unit * 0.11, headCenter.dx + unit * 0.13,
-          headCenter.dy + unit * 0.07);
+          headCenter.dy + unit * (mood == SimorghMood.gentle ? 0.085 :
+              mood == SimorghMood.thinking ? 0.095 : 0.13),
+          headCenter.dx + unit * 0.13, headCenter.dy + unit * 0.07);
     canvas.drawPath(
       smile,
       Paint()
