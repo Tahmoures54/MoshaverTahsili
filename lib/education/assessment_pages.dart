@@ -104,7 +104,8 @@ class _CareerPageState extends State<CareerPage> {
     final draft = {'interests': interests.text.trim(), 'strengths': strengths.text.trim(),
       'favorites': favorites.text.trim(), 'workStyle': workStyle.text.trim()};
     try { await widget.store.saveCareerDraft(draft); } on Object catch (value) {
-      setState(() => error = friendlyError(value)); return;
+      if (mounted) setState(() => error = friendlyError(value));
+      return;
     }
     if (!mounted) return;
     setState(() { error = null; question = 'برای راهنمای انتخاب رشته، این اطلاعات خوداظهاری را بررسی کن: '
@@ -170,7 +171,10 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
   @override
   void initState() { super.initState(); if (widget.autoStart && answer == null) unawaited(run()); }
   @override
-  void dispose() { service.dispose(); super.dispose(); }
+  void dispose() {
+    if (widget.service == null) service.dispose();
+    super.dispose();
+  }
 
   Future<void> save(String status, {String? answer}) async {
     final reports = widget.store.reports;
