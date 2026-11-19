@@ -102,15 +102,23 @@ void main() {
       );
     });
 
-    test('does not count answers beyond the configured limits', () {
+    test('closes diagnostic after the configured limit', () {
       var session = SimorghTeachingEngine.start(topic: 'علوم');
-      for (var i = 0; i < 5; i++) {
+      for (var i = 0; i < SimorghTeachingEngine.diagnosticQuestionLimit; i++) {
         session = SimorghTeachingEngine.recordDiagnostic(
           session,
           SimorghAnswerOutcome.correct,
         );
       }
-      expect(session.diagnosticCount, 3);
+      expect(session.diagnosticCount, SimorghTeachingEngine.diagnosticQuestionLimit);
+      expect(session.stage, SimorghTeachingStage.guidedPractice);
+      expect(
+        () => SimorghTeachingEngine.recordDiagnostic(
+          session,
+          SimorghAnswerOutcome.correct,
+        ),
+        throwsStateError,
+      );
     });
   });
 }
