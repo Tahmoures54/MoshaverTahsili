@@ -50,6 +50,21 @@ void main() {
     expect(store.creditHistory.first['title'], 'بازگشت یک پر سیمرغ · درخواست ناموفق');
   });
 
+  test('malformed structured teaching feedback refunds the completed request once', () async {
+    final store = await EducationStore.open();
+    await store.prepareAiRequest(id: 'bad-structured-turn', question: 'پرسش درس');
+    await store.completeAiRequest('bad-structured-turn', 'not valid teaching JSON');
+    expect(store.feathers, 4);
+    await store.refundInvalidAiResponse('bad-structured-turn');
+    await store.refundInvalidAiResponse('bad-structured-turn');
+    expect(store.feathers, 5);
+    expect(store.savedAiAnswer('bad-structured-turn'), isNull);
+    expect(store.creditHistory.where((item) => item['kind'] == 'refund'), hasLength(1));
+    final retry = await store.prepareAiRequest(id: 'bad-structured-turn', question: 'پرسش درس');
+    expect(retry.isCompleted, isFalse);
+    expect(store.feathers, 4);
+  });
+
   test('existing Bazaar product identifiers and feather amounts stay compatible', () {
     expect(CreditCatalog.products.map((product) => product.id), ['credit_10', 'credit_35', 'credit_90']);
     expect(CreditCatalog.products.map((product) => product.feathers), [100, 265, 550]);
