@@ -47,7 +47,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('بزن بریم'));
     await tester.pumpAndSettle();
-    expect(find.text('پایه تحصیلی'), findsOneWidget);\n    await tester.enterText(find.widgetWithText(TextFormField, 'نام و نام خانوادگی'), 'سارا احمدی');
+    expect(find.text('پایه تحصیلی'), findsOneWidget);
+    await tester.enterText(find.byType(TextFormField).first, 'سارا احمدی');
     await tester.ensureVisible(find.text('ذخیره پروفایل'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('ذخیره پروفایل'));
