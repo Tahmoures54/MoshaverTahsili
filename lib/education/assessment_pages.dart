@@ -50,7 +50,7 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
     final done = tasks.where((task) => task['done'] == true).length;
     return Scaffold(appBar: AppBar(title: const Text('بررسی وضعیت تحصیلی')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
-        const NoticeCard(text: 'این بخش ابتدا داده‌های خودت را روی گوشی خلاصه می‌کند. تحلیل هوش مصنوعی فقط با دکمه زیر و پس از ارسال خلاصه نمره‌ها انجام می‌شود؛ پاسخ جایگزین ارزیابی معلم یا مشاور مدرسه نیست.'),
+        const NoticeCard(text: 'این بخش ابتدا داده‌های خودت را روی گوشی خلاصه می‌کند. تحلیل سیمرغ فقط با دکمه زیر و پس از ارسال خلاصه نمره‌ها انجام می‌شود؛ پاسخ جایگزین ارزیابی معلم یا مشاور مدرسه نیست.'),
         CreditSummary(store: widget.store, onShop: () => Navigator.push<void>(context, MaterialPageRoute(builder: (_) => CreditShopPage(store: widget.store)))),
         if (entries.isEmpty) const EmptyState(title: 'برای بررسی، نمره لازم داریم', subtitle: 'از بخش آزمون، نتیجه دست‌کم یک درس را ثبت کن.', icon: Icons.insights_outlined),
         for (final entry in entries) Card(child: ListTile(
@@ -61,7 +61,7 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
         )),
         if (tasks.isNotEmpty) NoticeCard(text: '${faNumber(done)} کار از ${faNumber(tasks.length)} کار مطالعه انجام شده است. این نسبت، میزان تلاش واقعی یا یادگیری را به‌تنهایی اندازه نمی‌گیرد.', icon: Icons.task_alt),
         if (entries.isNotEmpty && question == null) ...[
-          const NoticeCard(text: 'با زدن دکمه زیر، نام درس‌ها و میانگین نمره‌ها، تعداد کارهای مطالعه و پروفایل تحصیلی به سرویس هوش مصنوعی ارسال می‌شود. این درخواست پس از پاسخ موفق یک اعتبار مصرف می‌کند.', icon: Icons.privacy_tip_outlined),
+          const NoticeCard(text: 'با زدن دکمه زیر، نام درس‌ها و میانگین نمره‌ها، تعداد کارهای مطالعه و پروفایل تحصیلیِ مجازشده به سرویس پاسخ‌گویی بیرونی ارسال می‌شوند. این درخواست پس از پاسخ موفق یک پر سیمرغ مصرف می‌کند.', icon: Icons.privacy_tip_outlined),
           FilledButton.icon(onPressed: analyze, icon: const Icon(Icons.auto_awesome), label: const Text('دریافت تحلیل و برنامه پیشنهادی')),
         ],
         if (question != null) ConsultationRunner(store: widget.store, service: widget.service,
@@ -124,7 +124,7 @@ class _CareerPageState extends State<CareerPage> {
   @override
   Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('راهنمای انتخاب رشته')),
     body: ListView(padding: const EdgeInsets.all(16), children: [
-      const NoticeCard(text: 'این پرسش‌نامه برای شناخت گزینه‌هاست، نه تشخیص قطعی استعداد. پاسخ‌ها روی گوشی ذخیره می‌شوند و هنگام درخواست تحلیل به سرویس هوش مصنوعی فرستاده می‌شوند.'),
+      const NoticeCard(text: 'این پرسش‌نامه برای شناخت گزینه‌هاست، نه تشخیص قطعی استعداد. پاسخ‌ها روی گوشی ذخیره می‌شوند و هنگام درخواست تحلیل به سرویس پاسخ‌گویی بیرونی فرستاده می‌شوند.'),
       CreditSummary(store: widget.store, onShop: () => Navigator.push<void>(context, MaterialPageRoute(builder: (_) => CreditShopPage(store: widget.store)))),
       if (error != null) NoticeCard(text: error!, warning: true),
       Form(key: form, child: Column(children: [
@@ -215,7 +215,7 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
       if (error != null) ...[NoticeCard(text: error!, warning: true),
         OutlinedButton.icon(onPressed: busy ? null : run, icon: const Icon(Icons.refresh), label: const Text('تلاش دوباره همین درخواست'))],
       if (answer != null) ...[SelectableText(answer!, style: const TextStyle(height: 1.9)),
-        const SizedBox(height: 12), const Text('پاسخ هوش مصنوعی · در تاریخچه مشاوره‌ها ذخیره شد', style: TextStyle(color: teal, fontSize: 12))],
+        const SizedBox(height: 12), const Text('پاسخ سیمرغ · در تاریخچه مشاوره‌ها ذخیره شد', style: TextStyle(color: teal, fontSize: 12))],
       if (!busy && answer == null && error == null)
         FilledButton(onPressed: run, child: const Text('ادامه درخواست ذخیره‌شده')),
     ])));
