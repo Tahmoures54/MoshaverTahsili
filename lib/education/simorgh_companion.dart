@@ -89,7 +89,7 @@ class SimorghChatAvatar extends StatelessWidget {
               color: Color(0xFF42566B), fontSize: 12, height: 1.5,
             )),
             const SizedBox(height: 2),
-            const Text('همراه یادگیری با کمک هوش مصنوعی', style: TextStyle(
+            const Text('همراه تو در مسیر دانایی', style: TextStyle(
               color: teal, fontSize: 10, fontWeight: FontWeight.w600,
             )),
           ],
@@ -389,7 +389,7 @@ class _SimorghCompanionState extends State<SimorghCompanion>
                 TextButton.icon(
                   onPressed: widget.onChat,
                   icon: const Icon(Icons.chat_bubble_outline, size: 17),
-                  label: const Text('گفت‌وگو با مشاور'),
+                  label: const Text('گفت‌وگو با سیمرغ'),
                 ),
                 FilledButton.tonal(
                   onPressed: () => widget.onAction(guidance.action),
