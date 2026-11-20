@@ -55,6 +55,22 @@ void main() {
     expect(reopened.containsKey('completedAt'), isFalse);
   });
 
+  test('task toggle safely normalizes malformed imported completion flags', () async {
+    final store = await EducationStore.open();
+    await store.addTask({
+      'id': 'legacy-task',
+      'title': 'کار واردشده',
+      'done': 'true',
+    });
+
+    await store.toggleTask('legacy-task');
+    expect(store.tasks.single['done'], isTrue);
+    await store.toggleTask('legacy-task');
+    expect(store.tasks.single['done'], isFalse);
+  });
+
+
+
   test('concurrent local additions do not overwrite one another', () async {
     final store = await EducationStore.open();
     await Future.wait([store.addTask({'id': 'a'}), store.addTask({'id': 'b'})]);

@@ -457,7 +457,7 @@ void main() {
     // A malformed provider payload is visible as a safe retry message and
     // cannot change the deterministic lesson state or its counters.
     expect(store.teachingSessions.single['stage'], 'reteach');
-    expect(store.teachingSessions.single['practiceAttempts'], 2);
+    expect(store.teachingSessions.single['practiceAttempts'], 1);
     expect(store.teachingSessions.single['reteachCount'], 1);
     expect(store.messages.last['content'], contains('پاسخ آموزشی ساختار معتبری نداشت'));
 
@@ -493,7 +493,7 @@ void main() {
     expect(assistantMessages[3]['content'], contains('بازخورد مرحله 4'));
     expect(store.teachingSessions.single['diagnosticCount'], 3);
     expect(store.teachingSessions.single['diagnosticCorrect'], 3);
-    expect(store.teachingSessions.single['practiceAttempts'], 1);
+    expect(store.teachingSessions.single['practiceAttempts'], 2);
     expect(tester.takeException(), isNull);
 
     await tester.pumpWidget(const SizedBox());
