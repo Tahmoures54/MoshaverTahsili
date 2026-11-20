@@ -47,7 +47,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('بزن بریم'));
     await tester.pumpAndSettle();
-    expect(find.text('پایه تحصیلی'), findsOneWidget);
+    expect(find.text('پایه تحصیلی'), findsOneWidget);\n    await tester.enterText(find.widgetWithText(TextFormField, 'نام و نام خانوادگی'), 'سارا احمدی');
     await tester.ensureVisible(find.text('ذخیره پروفایل'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('ذخیره پروفایل'));
@@ -75,7 +75,7 @@ void main() {
   testWidgets('editing profile preserves unrelated existing settings', (tester) async {
     final store = await EducationStore.open();
     await store.saveProfile({
-      'nickname': 'دانش‌آموز', 'grade': 'متوسطه اول', 'year': 'هفتم',
+      'fullName': 'آزمون دانش‌آموز', 'nickname': 'آزمون', 'grade': 'متوسطه اول', 'year': 'هفتم',
       'field': 'عمومی', 'goal': 'پیشرفت', 'dailyMinutes': 90,
       'aiContextConsent': true, 'customPreference': 'keep-me',
     });
@@ -93,7 +93,7 @@ void main() {
 
   testWidgets('AI profile context consent is opt-in and can be revoked', (tester) async {
     final store = await EducationStore.open();
-    await store.saveProfile({'grade': 'متوسطه اول', 'year': 'هفتم', 'field': 'عمومی'});
+    await store.saveProfile({'fullName': 'سارا احمدی', 'nickname': 'سارا', 'grade': 'متوسطه اول', 'year': 'هفتم', 'field': 'عمومی'});
     await tester.pumpWidget(frame(Builder(builder: (context) => Center(child: ElevatedButton(
       onPressed: () => showProfileSheet(context, store),
       child: const Text('ویرایش پروفایل'),
@@ -101,7 +101,7 @@ void main() {
 
     await tester.tap(find.text('ویرایش پروفایل'));
     await tester.pumpAndSettle();
-    final consentLabel = find.text('اجازه ارسال زمینه تحصیلی به هوش مصنوعی');
+    final consentLabel = find.text('اجازه استفاده سیمرغ از زمینه تحصیلی');
     await tester.ensureVisible(consentLabel);
     await tester.pumpAndSettle();
     expect(tester.widget<CheckboxListTile>(find.ancestor(
