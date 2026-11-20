@@ -357,7 +357,7 @@ void main() {
 
   testWidgets('Simorgh chat carries model evaluations across diagnostic, practice and reteaching stages', (tester) async {
     final store = await EducationStore.open();
-    final outcomes = ['correct', 'correct', 'correct', 'partial', 'malformed', 'correct', 'correct', 'correct', 'correct', 'incorrect'];
+    final outcomes = ['correct', 'correct', 'correct', 'partial', 'malformed', 'correct', 'correct', 'correct', 'correct', 'correct', 'incorrect'];
     final prompts = <String>[];
     var call = 0;
     final service = AiAdvisorService(
@@ -436,7 +436,9 @@ void main() {
     // questions. A completed lesson is archived, not restored as active.
     await answer('پاسخ بازآموزی معتبر');
     expect(store.teachingSessions.single['stage'], 'guidedPractice');
-    await answer('تمرین درست');
+    await answer('تمرین اول');
+    expect(store.teachingSessions.single['stage'], 'guidedPractice');
+    await answer('تمرین دوم');
     expect(store.teachingSessions.single['stage'], 'masteryCheck');
     await answer('سنجش انتقال اول');
     expect(store.teachingSessions.single['masteryCount'], 1);
@@ -446,7 +448,7 @@ void main() {
     expect(store.teachingSessions.single['stage'], 'completed');
     expect(store.teachingSessions.single['active'], isFalse);
 
-    expect(call, 10);
+    expect(call, 11);
     expect(prompts[0], contains('ابتدا یک پرسش کوتاه'));
     expect(prompts[1], contains('ابتدا یک پرسش کوتاه'));
     expect(prompts[2], contains('ابتدا یک پرسش کوتاه'));
@@ -458,7 +460,7 @@ void main() {
     final assistantMessages = store.messages
         .where((message) => message['role'] == 'assistant')
         .toList();
-    expect(assistantMessages, hasLength(10));
+    expect(assistantMessages, hasLength(11));
     expect(assistantMessages[3]['content'], contains('بازخورد مرحله 4'));
     expect(store.teachingSessions.single['diagnosticCount'], 3);
     expect(store.teachingSessions.single['diagnosticCorrect'], 3);
