@@ -50,10 +50,10 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.auto_awesome_outlined));
     await tester.pumpAndSettle();
-    expect(find.text('خرید اعتبار'), findsOneWidget);
-    await tester.tap(find.text('خرید اعتبار'));
+    expect(find.text('تهیه پر'), findsOneWidget);
+    await tester.tap(find.text('تهیه پر'));
     await tester.pumpAndSettle();
-    expect(find.text('کیف اعتبار و خرید'), findsOneWidget);
+    expect(find.text('کیسه پرهای سیمرغ'), findsOneWidget);
     expect(find.text('بازیابی خریدها'), findsOneWidget);
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
