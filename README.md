@@ -229,15 +229,19 @@ Workflow اصلی: [`.github/workflows/build-apk.yml`](.github/workflows/build-a
 
 Workflow فعلی طبق تنظیمات مخزن APK انتشار معماری `arm64-v8a` می‌سازد؛ تا وقتی workflow تغییر نکرده، نباید وجود APK universal یا AAB را فرض کرد. انتشار در پنل بازار باید توسط صاحب حساب انجام شود.
 
-### بازیابی Secretهای امضا که از Artifact صادر شده‌اند
+### بازیابی پشتیبان رمزگذاری‌شده کلید امضا
 
-اگر از workflow تولید کلید استفاده شده و Artifact رمزگذاری‌شده در اختیار شماست، اسکریپت موجود را از PowerShell در پوشه مناسب اجرا کنید:
+Workflow پشتیبان، فایل `android-signing-backup.tar.gz.enc` می‌سازد و فقط همان فایل رمزگذاری‌شده را برای هفت روز به‌عنوان Artifact نگه می‌دارد. در Windows با Git Bash و OpenSSL (یا در Linux/macOS با OpenSSL) در پوشه‌ای خصوصی اجرا کنید:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\\scripts\\decrypt_android_signing_key.ps1
+```bash
+openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 \
+  -in android-signing-backup.tar.gz.enc \
+  -out android-signing-backup.tar.gz
+mkdir signing-restore
+tar -xzf android-signing-backup.tar.gz -C signing-restore
 ```
 
-رمز `KEYSTORE_EXPORT_PASSPHRASE` را فقط در prompt محلی وارد کنید. فایل خروجی حاوی اطلاعات محرمانه است؛ آن را در Git، چت یا Issue قرار ندهید. مقادیر لازم را فقط در GitHub Actions Secrets وارد کنید.
+OpenSSL گذرواژه `SIGNING_BACKUP_PASSPHRASE` را تعاملی درخواست می‌کند؛ آن را در خط فرمان یا تاریخچه shell ننویسید. فایل‌های استخراج‌شده شامل کلید خصوصی و رمزهای امضا هستند؛ فقط در محل آفلاین امن نگه دارید و هرگز در مخزن، چت یا Issue بارگذاری نکنید. برای بازیابی، چهار مقدار داخل پوشه را فقط در GitHub Actions Secrets وارد کنید. این کار را با کلید فعلی یا نسخه موجود جایگزین نکنید مگر اینکه واقعاً فرایند بازیابی لازم باشد. پس از تأیید پشتیبان، فایل موقت رمزگشایی‌شده را به‌صورت امن پاک کنید.
 
 ## ۹. متن معرفی کافه‌بازار
 
