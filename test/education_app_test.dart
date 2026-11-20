@@ -52,7 +52,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('ذخیره پروفایل'));
     await tester.pumpAndSettle();
-    expect(find.text('سلام، همراه پرتلاش!'), findsOneWidget);
+    expect(find.text('درود بر جوینده دانایی!'), findsOneWidget);
     final store = await EducationStore.open();
     expect(store.profile?['grade'], 'متوسطه اول');
     expect(store.profile?['year'], 'هفتم');
@@ -170,6 +170,17 @@ void main() {
       await store.saveProfile({'grade': 'متوسطه دوم', 'year': 'دهم', 'field': 'ریاضی'});
       await tester.pumpWidget(EducationApp(store: store));
       await tester.pumpAndSettle();
+      expect(find.text('درود بر جوینده دانایی!'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('رد پای تلاش تو'), 250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('رد پای تلاش تو'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('پیشنهاد امروز سیمرغ'), 250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('پیشنهاد امروز سیمرغ'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.tap(find.byIcon(Icons.calendar_month_outlined));
       await tester.pumpAndSettle();
@@ -196,6 +207,10 @@ void main() {
     await tester.tap(find.text('افزودن'));
     await tester.pumpAndSettle();
     expect(store.tasks.single['minutes'], 45);
+    await tester.scrollUntilVisible(
+      find.text('حل تمرین ریاضی'), 250,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('حل تمرین ریاضی'), findsOneWidget);
 
     await tester.pumpWidget(frame(ExamsPage(store: store, changed: () {})));
@@ -449,6 +464,7 @@ void main() {
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
         home: CreditShopPage(store: store, billing: billing)));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.textContaining('بسته برنزی').first, 300);
     expect(find.textContaining('بسته برنزی'), findsOneWidget);
     await tester.tap(find.text('خرید از بازار').first);
     await tester.pumpAndSettle();
@@ -548,6 +564,10 @@ testWidgets('analytics tolerates malformed legacy teaching counters', (tester) a
     });
     await tester.pumpWidget(frame(PlannerPage(store: store, changed: () {})));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('کار قدیمی'), 250,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('کار قدیمی'), findsOneWidget);
     expect(find.textContaining('۰ دقیقه مطالعه برنامه‌ریزی کرده‌ای'), findsOneWidget);
     expect(tester.takeException(), isNull);

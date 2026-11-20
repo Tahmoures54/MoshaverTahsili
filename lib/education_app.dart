@@ -314,24 +314,38 @@ class HomePage extends StatelessWidget {
     final suggestions = dailySuggestions(report: report, tasks: tasks, deadlines: store.deadlines, now: now, dailyMinutes: dailyMinutes);
     final nickname = profile['nickname']?.toString() ?? '';
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
-      Container(width: double.infinity, padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(color: navy, borderRadius: BorderRadius.circular(24)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(nickname.isEmpty ? 'سلام، همراه پرتلاش!' : 'سلام $nickname!', style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text('${profile['grade'] ?? ''} · پایه ${profile['year'] ?? 'ثبت‌نشده'} · ${profile['field'] ?? ''}', style: const TextStyle(color: Colors.white70, height: 1.7)),
-          const SizedBox(height: 14), const Text('امروز فقط یک قدم کوچک بردار؛ استمرار از برنامه‌های سنگین مهم‌تر است.', style: TextStyle(color: Colors.white, height: 1.8)),
-        ])),
+      SimorghHomeHero(
+        nickname: nickname,
+        gradeLine: [
+          profile['grade']?.toString() ?? '',
+          profile['year'] == null ? '' : 'پایه ${profile['year']}',
+          profile['field']?.toString() ?? '',
+        ].where((part) => part.trim().isNotEmpty).join(' · '),
+        onChat: () => go(4),
+      ),
       const SizedBox(height: 14),
       CreditSummary(store: store, onShop: () => push(context, CreditShopPage(store: store))),
+      const SimorghSectionTitle(
+        title: 'رد پای تلاش تو',
+        subtitle: 'پیشرفت را با قدم‌های خودت بسنج، نه با دیگران.',
+      ),
       Row(children: [
-        Expanded(child: StatCard(title: 'انجام‌شده', value: '${faNumber(tasks.where((task) => task['done'] == true).length)}/${faNumber(tasks.length)}', icon: Icons.task_alt)),
-        const SizedBox(width: 8), Expanded(child: StatCard(title: 'آزمون', value: faNumber(store.exams.length), icon: Icons.assessment_outlined)),
-        const SizedBox(width: 8), Expanded(child: StatCard(title: 'فلش‌کارت', value: faNumber(store.cards.length), icon: Icons.style_outlined)),
+        Expanded(child: StatCard(title: 'کارهای انجام‌شده', value: '${faNumber(tasks.where((task) => task['done'] == true).length)}/${faNumber(tasks.length)}', icon: Icons.task_alt)),
+        const SizedBox(width: 8),
+        Expanded(child: StatCard(title: 'آزمون‌ها', value: faNumber(store.exams.length), icon: Icons.assessment_outlined)),
+        const SizedBox(width: 8),
+        Expanded(child: StatCard(title: 'فلش‌کارت‌ها', value: faNumber(store.cards.length), icon: Icons.style_outlined)),
       ]),
-      const SizedBox(height: 12),
-      NoticeCard(text: 'هفت روز اخیر: ${faNumber(completed.length)} کار تکمیل شده؛ ${faNumber(minutes)} دقیقه زمان برای این کارها برنامه‌ریزی شده است.', icon: Icons.insights_outlined),
-      const SizedBox(height: 12),
+      const SizedBox(height: 4),
+      NoticeCard(
+        text: 'هفت روز اخیر: ${faNumber(completed.length)} کار تکمیل شده؛ '
+            '${faNumber(minutes)} دقیقه زمان برای این کارها برنامه‌ریزی شده است.',
+        icon: Icons.insights_outlined,
+      ),
+      const SimorghSectionTitle(
+        title: 'پیشنهاد امروز سیمرغ',
+        subtitle: 'یک پیشنهاد کوچک و متناسب با مسیر فعلی تو.',
+      ),
       SimorghCompanion(
         tasks: tasks,
         cards: store.cards,
@@ -345,7 +359,10 @@ class HomePage extends StatelessWidget {
         onChat: () => go(4),
       ),
       for (final tip in suggestions) NoticeCard(text: tip, icon: Icons.lightbulb_outline),
-      const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('از کجا شروع کنیم؟', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
+      const SimorghSectionTitle(
+        title: 'ابزارهای مسیر یادگیری',
+        subtitle: 'هر بار یک مسیر را انتخاب کن؛ لازم نیست همه کارها را هم‌زمان انجام بدهی.',
+      ),
       QuickTile(icon: Icons.auto_awesome, title: 'گفت‌وگو با مشاور هوشمند', subtitle: 'پرسش، برنامه مطالعه و روش بهبود', onTap: () => go(4)),
       QuickTile(icon: Icons.share_outlined, title: 'معرفی سیمرغ به دوستان', subtitle: 'ارسال لینک نصب برنامه برای هم‌کلاسی‌ها و دوستان', onTap: () => push(context, const ReferralPage())),
       QuickTile(icon: Icons.insights_outlined, title: 'بررسی وضعیت تحصیلی', subtitle: 'نقاط قوت و ضعف بر اساس نمره‌های تو', onTap: () => push(context, AcademicInsightsPage(store: store))),
@@ -366,11 +383,32 @@ class StatCard extends StatelessWidget {
   const StatCard({super.key, required this.title, required this.value, required this.icon});
   final String title, value;
   final IconData icon;
+
   @override
-  Widget build(BuildContext context) => Card(child: Padding(padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 6),
-    child: Column(children: [Icon(icon, color: teal), const SizedBox(height: 8),
-      Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-      Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: Colors.blueGrey))])));
+  Widget build(BuildContext context) => Card(
+    margin: EdgeInsets.zero,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 4),
+      child: Column(
+        children: [
+          Container(
+            width: 34, height: 34,
+            decoration: BoxDecoration(
+              color: teal.withValues(alpha: .12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: navy, size: 19),
+          ),
+          const SizedBox(height: 8),
+          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 19, color: navy)),
+          const SizedBox(height: 3),
+          Text(title, textAlign: TextAlign.center, maxLines: 2,
+            style: const TextStyle(fontSize: 10, height: 1.35, color: Color(0xFF617387))),
+        ],
+      ),
+    ),
+  );
 }
 
 class QuickTile extends StatelessWidget {
@@ -378,10 +416,31 @@ class QuickTile extends StatelessWidget {
   final IconData icon;
   final String title, subtitle;
   final VoidCallback onTap;
+
   @override
-  Widget build(BuildContext context) => Card(child: ListTile(onTap: onTap,
-    leading: Icon(icon, color: blue), title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-    subtitle: Text(subtitle, style: const TextStyle(height: 1.6)), trailing: const Icon(Icons.chevron_left)));
+  Widget build(BuildContext context) => Card(
+    margin: const EdgeInsets.only(bottom: 9),
+    child: ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+      minVerticalPadding: 10,
+      leading: Container(
+        width: 44, height: 44,
+        decoration: BoxDecoration(
+          color: const Color(0xFFEAF6F4),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Icon(icon, color: teal, size: 22),
+      ),
+      title: Text(title, style: const TextStyle(
+        fontWeight: FontWeight.w800, color: navy, height: 1.5,
+      )),
+      subtitle: Text(subtitle, style: const TextStyle(
+        height: 1.6, color: Color(0xFF617387), fontSize: 12,
+      )),
+      trailing: const Icon(Icons.chevron_left, color: Color(0xFF617387)),
+    ),
+  );
 }
 
 class AboutPage extends StatelessWidget {
