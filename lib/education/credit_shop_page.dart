@@ -64,7 +64,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
     appBar: AppBar(title: const Text('کیسه پرهای سیمرغ')),
     body: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
       CreditSummary(store: widget.store),
-      const NoticeCard(text: 'برای شروع، ۵ پر هدیه سیمرغ دریافت می‌کنی. هر پرسش جدیدی که برای دریافت راهنمایی به هوش مصنوعی می‌فرستی، یک پر مصرف می‌کند؛ '
+      const NoticeCard(text: 'برای شروع، ۵ پر هدیه سیمرغ دریافت می‌کنی. هر پرسش تازه‌ای که برای دریافت راهنمایی از سیمرغ می‌فرستی، یک پر مصرف می‌کند؛ '
           'اگر پاسخ معتبر دریافت نشود، پر رزروشده به کیسه‌ات برمی‌گردد. '
           'پرها روی همین گوشی نگهداری می‌شوند؛ حذف برنامه یا انتقال گوشی می‌تواند باعث از دست رفتن آن‌ها شود.'),
       if (!billing.isConfigured) NoticeCard(text: billing.configurationMessage, warning: true),
