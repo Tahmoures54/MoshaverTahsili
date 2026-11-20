@@ -363,6 +363,13 @@ void main() {
 
   testWidgets('Simorgh chat carries model evaluations across diagnostic, practice and reteaching stages', (tester) async {
     final store = await EducationStore.open();
+    // This scenario exercises ten successful turns; fund the local wallet
+    // explicitly so the test measures teaching transitions, not exhaustion.
+    await store.grantProduct(
+      productId: 'credit_10',
+      purchaseToken: 'teaching-lifecycle-test',
+      creditsToAdd: 100,
+    );
     final outcomes = ['correct', 'correct', 'correct', 'partial', 'malformed', 'correct', 'correct', 'correct', 'correct', 'incorrect'];
     final prompts = <String>[];
     var call = 0;
@@ -415,7 +422,6 @@ void main() {
         () => Future<void>.delayed(const Duration(milliseconds: 100)),
       );
       await tester.pumpAndSettle();
-      print('SIMORGH_TRACE calls=$call ids=${store.messages.where((m) => m['role'] == 'user').map((m) => m['id']).toList()} statuses=${store.messages.where((m) => m['role'] == 'user').map((m) => m['status']).toList()} stage=${store.teachingSessions.single['stage']}');
       expect(tester.takeException(), isNull);
     }
 
