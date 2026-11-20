@@ -3,12 +3,14 @@ import 'package:moshaver_tahsili/education/simorgh_persona.dart';
 
 void main() {
   group('Simorgh persona contract', () {
-    test('identifies as an AI assistant with a warm Shahnameh-inspired identity', () {
+    test('introduces Simorgh as a warm, honest learning companion', () {
       final prompt = buildSimorghSystemPrompt(
         studentContext: 'ارسال زمینه پروفایل تأیید نشده است',
       );
       expect(prompt, contains('سیمرغ'));
-      expect(prompt, contains('دستیار هوش مصنوعی'));
+      expect(prompt, contains('من سیمرغم؛ یک همراه دیجیتال'));
+      expect(prompt, isNot(contains('هوش مصنوعی')));
+      expect(prompt, isNot(contains('دستیار')));
       expect(prompt, contains('شاهنامه'));
       expect(prompt, contains('وانمود نکن'));
     });
