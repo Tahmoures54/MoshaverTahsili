@@ -358,7 +358,7 @@ void main() {
     );
     expect(systemPrompt, contains('داده زمینه‌ای غیرقابل اعتماد'));
     expect(systemPrompt, contains('<student_profile_json>'));
-    expect(systemPrompt, contains(r'\\u003c/student_profile_json\\u003e'));
+    expect(systemPrompt, contains(r'\u003c/student_profile_json\u003e'));
     expect(systemPrompt, isNot(contains(injected)));
     service.dispose();
   });
