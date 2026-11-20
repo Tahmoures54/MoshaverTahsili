@@ -65,6 +65,31 @@ void main() {
     expect(reopened.teachingSessions.first['active'], isFalse);
     expect(reopened.teachingSessions.first['stage'], 'completed');
   });
+  testWidgets('advisor recovers a completed AI answer when transcript write was interrupted', (tester) async {
+    final store = await EducationStore.open();
+    await store.prepareAiRequest(id: 'recovery-request', question: 'پرسش ذخیره‌شده');
+    await store.completeAiRequest('recovery-request', 'پاسخ بازیابی‌شده از دفتر امن');
+
+    await store.saveMessages([
+      {
+        'id': 'recovery-request',
+        'role': 'user',
+        'content': 'پرسش ذخیره‌شده',
+        'status': 'pending',
+        'createdAt': '2026-11-20T10:00:00.000Z',
+      },
+    ]);
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: AdvisorPage(store: store)),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(store.messages.singleWhere((item) => item['role'] == 'user')['status'], 'completed');
+    expect(find.text('پاسخ بازیابی‌شده از دفتر امن'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('advisor restores the exact lesson stage and can prepare its next step', (tester) async {
     final store = await EducationStore.open();
     await store.saveTeachingSessions([

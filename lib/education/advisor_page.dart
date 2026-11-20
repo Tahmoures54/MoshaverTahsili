@@ -42,6 +42,41 @@ class _AdvisorPageState extends State<AdvisorPage> {
     super.initState();
     messages = widget.store.messages;
     teachingSession = _restoreTeachingSession(widget.store.teachingSessions);
+    unawaited(_recoverPendingMessages());
+  }
+
+  /// Reconciles the chat transcript with the durable AI request ledger.
+  /// This repairs the narrow crash window after the wallet saved an answer but
+  /// before the conversation transcript could be written.
+  Future<void> _recoverPendingMessages() async {
+    if (widget.store.hasActiveAiRequests) return;
+    final recovered = messages.map((item) => Map<String, dynamic>.from(item)).toList();
+    var changed = false;
+    for (final message in recovered) {
+      if (message['role'] != 'user' || message['status'] != 'pending') continue;
+      final id = message['id'];
+      if (id is! String || id.isEmpty) continue;
+      final answer = widget.store.savedAiAnswer(id);
+      message['status'] = answer == null ? 'failed' : 'completed';
+      if (answer != null && !recovered.any((item) => item['id'] == '$id-answer')) {
+        recovered.add({
+          'id': '$id-answer',
+          'role': 'assistant',
+          'content': answer,
+          'status': 'completed',
+          'createdAt': message['createdAt'] ?? DateTime.now().toIso8601String(),
+        });
+      }
+      changed = true;
+    }
+    if (!changed) return;
+    try {
+      await widget.store.saveMessages(recovered);
+      if (mounted) setState(() => messages = recovered);
+    } on Object {
+      // The wallet remains the authoritative local recovery source. Do not
+      // replace a pending transcript with an unpersisted in-memory guess.
+    }
   }
 
   @override
@@ -394,25 +429,44 @@ class _AdvisorPageState extends State<AdvisorPage> {
         // Preserve it and never advance the teaching state.
         displayedAnswer = answer;
       }
-      if (!mounted) return;
-      setState(() {
-        for (final message in messages) { if (message['id'] == id) message['status'] = 'completed'; }
-        messages.removeWhere((m) => m['id'] == '$id-answer');
-        messages.add({'id': '$id-answer', 'role': 'assistant', 'content': displayedAnswer,
-          'status': 'completed', 'createdAt': DateTime.now().toIso8601String()});
-      });
-      await widget.store.saveMessages(messages);
-    } on Object catch (value) {
-      if (!mounted) return;
-      setState(() {
-        error = friendlyError(value);
-        for (final message in messages) { if (message['id'] == id) message['status'] = 'failed'; }
-      });
-      try { await widget.store.saveMessages(messages); } on Object {
-        // The wallet still holds the completed answer/refund. A storage error
-        // must never turn a real answer into a fabricated one.
+      final updatedMessages = messages
+          .map((message) => Map<String, dynamic>.from(message))
+          .toList();
+      for (final message in updatedMessages) {
+        if (message['id'] == id) message['status'] = 'completed';
       }
-    } finally { if (mounted) setState(() => busy = false); }
+      updatedMessages.removeWhere((message) => message['id'] == '$id-answer');
+      updatedMessages.add({
+        'id': '$id-answer',
+        'role': 'assistant',
+        'content': displayedAnswer,
+        'status': 'completed',
+        'createdAt': DateTime.now().toIso8601String(),
+      });
+      // Persist even if the page was popped while the network request ran.
+      await widget.store.saveMessages(updatedMessages);
+      if (mounted) setState(() => messages = updatedMessages);
+    } on Object catch (value) {
+      final failedMessages = messages
+          .map((message) => Map<String, dynamic>.from(message))
+          .toList();
+      for (final message in failedMessages) {
+        if (message['id'] == id) message['status'] = 'failed';
+      }
+      try {
+        await widget.store.saveMessages(failedMessages);
+      } on Object {
+        // The wallet remains the recovery source if transcript persistence fails.
+      }
+      if (mounted) {
+        setState(() {
+          messages = failedMessages;
+          error = friendlyError(value);
+        });
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
 
   Future<void> clearChat() async {
