@@ -159,6 +159,8 @@ void main() {
       expect(find.byKey(const ValueKey('simorgh-chat-avatar')), findsOneWidget);
       expect(find.text('سیمرغ'), findsOneWidget);
       expect(find.text(state.label), findsOneWidget);
+      expect(find.text('همراه تو در مسیر دانایی'), findsOneWidget);
+      expect(find.textContaining('هوش مصنوعی'), findsNothing);
       expect(tester.takeException(), isNull);
     }
     await tester.pumpWidget(const SizedBox());
