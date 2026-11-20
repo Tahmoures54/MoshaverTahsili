@@ -135,8 +135,15 @@ class AiAdvisorService {
       final value = approvedProfile?[key]?.toString().trim() ?? '';
       return value.length <= limit ? value : value.substring(0, limit);
     }
-    final context = approvedProfile == null ? 'ارسال زمینه پروفایل تأیید نشده است' :
-        'مقطع: ${field('grade', 80)}؛ پایه: ${field('year', 80)}؛ رشته: ${field('field', 120)}؛ هدف: ${field('goal', 300)}';
+    final context = approvedProfile == null
+        ? '{"consent":false}'
+        : jsonEncode({
+            'consent': true,
+            'grade': field('grade', 80),
+            'year': field('year', 80),
+            'field': field('field', 120),
+            'goal': field('goal', 300),
+          }).replaceAll('<', r'\u003c').replaceAll('>', r'\u003e').replaceAll('&', r'\u0026');
     final recent = <Map<String, String>>[];
     var budget = 18000;
     for (final message in history.reversed) {
