@@ -38,22 +38,241 @@ void showMessage(BuildContext context, String message) {
 }
 
 ThemeData buildAppTheme() {
-  final scheme = ColorScheme.fromSeed(seedColor: navy, primary: navy, secondary: teal, tertiary: simorghGold);
-  final base = ThemeData(useMaterial3: true, colorScheme: scheme, scaffoldBackgroundColor: pale);
+  final scheme = ColorScheme.fromSeed(
+    seedColor: navy,
+    primary: navy,
+    secondary: teal,
+    tertiary: simorghGold,
+    surface: const Color(0xFFFCFDFE),
+    brightness: Brightness.light,
+  );
+  final base = ThemeData(
+    useMaterial3: true,
+    colorScheme: scheme,
+    scaffoldBackgroundColor: pale,
+    visualDensity: VisualDensity.standard,
+  );
+  final textTheme = base.textTheme.apply(
+    fontFamily: 'Vazirmatn',
+    bodyColor: navy,
+    displayColor: navy,
+  ).copyWith(
+    headlineSmall: base.textTheme.headlineSmall?.copyWith(
+      fontWeight: FontWeight.w800, height: 1.45,
+    ),
+    titleLarge: base.textTheme.titleLarge?.copyWith(
+      fontWeight: FontWeight.w800, height: 1.45,
+    ),
+    titleMedium: base.textTheme.titleMedium?.copyWith(
+      fontWeight: FontWeight.w700, height: 1.5,
+    ),
+    bodyLarge: base.textTheme.bodyLarge?.copyWith(height: 1.8),
+    bodyMedium: base.textTheme.bodyMedium?.copyWith(height: 1.75),
+    labelLarge: base.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+  );
   return base.copyWith(
-    textTheme: base.textTheme.apply(fontFamily: 'Vazirmatn', bodyColor: navy, displayColor: navy),
-    appBarTheme: const AppBarTheme(backgroundColor: pale, foregroundColor: navy, centerTitle: true, elevation: 0),
-    cardTheme: CardThemeData(color: Colors.white, elevation: 0, margin: const EdgeInsets.only(bottom: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: const BorderSide(color: Color(0xFFE3EAF2)))),
-    inputDecorationTheme: InputDecorationTheme(filled: true, fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFD8E2ED))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFD8E2ED)))),
-    navigationBarTheme: NavigationBarThemeData(backgroundColor: Colors.white, indicatorColor: blue.withValues(alpha: .12),
-        labelTextStyle: WidgetStatePropertyAll(base.textTheme.labelSmall?.copyWith(fontFamily: 'Vazirmatn', fontWeight: FontWeight.w600))),
-    filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(backgroundColor: teal, foregroundColor: navy, minimumSize: const Size(48, 48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)))),
-    snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+    textTheme: textTheme,
+    appBarTheme: const AppBarTheme(
+      backgroundColor: pale,
+      foregroundColor: navy,
+      centerTitle: true,
+      elevation: 0,
+      scrolledUnderElevation: 1,
+      titleTextStyle: TextStyle(
+        fontFamily: 'Vazirmatn', color: navy, fontSize: 18,
+        fontWeight: FontWeight.w800,
+      ),
+    ),
+    cardTheme: CardThemeData(
+      color: Colors.white,
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 10),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: Color(0xFFE3EAF2)),
+      ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFFD8E2ED)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFFD8E2ED)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: teal, width: 1.7),
+      ),
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      indicatorColor: teal.withValues(alpha: .16),
+      labelTextStyle: WidgetStatePropertyAll(
+        textTheme.labelSmall?.copyWith(
+          fontFamily: 'Vazirmatn', fontWeight: FontWeight.w700,
+        ),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: teal,
+        foregroundColor: navy,
+        minimumSize: const Size(48, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        textStyle: const TextStyle(
+          fontFamily: 'Vazirmatn', fontWeight: FontWeight.w700,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: navy,
+        minimumSize: const Size(44, 44),
+        side: const BorderSide(color: Color(0xFFD5E0EA)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      ),
+    ),
+    snackBarTheme: const SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      showCloseIcon: true,
+    ),
+    dividerTheme: const DividerThemeData(
+      color: Color(0xFFE5EBF1), thickness: 1, space: 1,
+    ),
+  );
+}
+
+/// Shared brand components. Keep the mascot expressive but let learning content
+/// remain the visual priority on small screens.
+class SimorghHomeHero extends StatelessWidget {
+  const SimorghHomeHero({
+    super.key, required this.nickname, required this.gradeLine,
+    required this.onChat,
+  });
+
+  final String nickname;
+  final String gradeLine;
+  final VoidCallback onChat;
+
+  @override
+  Widget build(BuildContext context) {
+    final greeting = nickname.isEmpty ? 'درود بر جوینده دانایی!' : 'درود، $nickname!';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [Color(0xFF1D4770), Color(0xFF142D4E), Color(0xFF10233F)],
+        ),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: simorghGold.withValues(alpha: .42)),
+        boxShadow: [
+          BoxShadow(color: navy.withValues(alpha: .12), blurRadius: 18,
+            offset: const Offset(0, 8)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SimorghMark(size: 82, compact: true),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(greeting, style: const TextStyle(
+                      color: Color(0xFFFFE8B2), fontSize: 19,
+                      fontWeight: FontWeight.w900, height: 1.5,
+                    )),
+                    const SizedBox(height: 5),
+                    const Text('همراه دانای راه آینده', style: TextStyle(
+                      color: Colors.white, fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    )),
+                    if (gradeLine.trim().isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      Text(gradeLine, maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFFD9E7F2), fontSize: 11, height: 1.6,
+                        )),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'من مسیر را روشن‌تر می‌کنم؛ پرواز را خودت انجام می‌دهی. '
+            'امروز با یک قدم کوچک شروع کنیم.',
+            style: TextStyle(color: Colors.white, height: 1.8, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: onChat,
+              icon: const Icon(Icons.chat_bubble_outline, size: 18),
+              label: const Text('گفت‌وگو با سیمرغ'),
+              style: FilledButton.styleFrom(
+                backgroundColor: simorghGold,
+                foregroundColor: navy,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SimorghSectionTitle extends StatelessWidget {
+  const SimorghSectionTitle({super.key, required this.title, this.subtitle});
+  final String title;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(2, 18, 2, 10),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(children: [
+          Container(
+            width: 4, height: 22,
+            decoration: BoxDecoration(
+              color: teal, borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(width: 9),
+          Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(color: navy, fontWeight: FontWeight.w800))),
+        ]),
+        if (subtitle != null) ...[
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(right: 13),
+            child: Text(subtitle!, style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: const Color(0xFF617387), height: 1.6)),
+          ),
+        ],
+      ],
+    ),
   );
 }
 
