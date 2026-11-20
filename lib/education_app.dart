@@ -314,14 +314,15 @@ class HomePage extends StatelessWidget {
     final suggestions = dailySuggestions(report: report, tasks: tasks, deadlines: store.deadlines, now: now, dailyMinutes: dailyMinutes);
     final nickname = profile['nickname']?.toString() ?? '';
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
-      Container(width: double.infinity, padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(color: navy, borderRadius: BorderRadius.circular(24)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(nickname.isEmpty ? 'سلام، همراه پرتلاش!' : 'سلام $nickname!', style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text('${profile['grade'] ?? ''} · پایه ${profile['year'] ?? 'ثبت‌نشده'} · ${profile['field'] ?? ''}', style: const TextStyle(color: Colors.white70, height: 1.7)),
-          const SizedBox(height: 14), const Text('امروز فقط یک قدم کوچک بردار؛ استمرار از برنامه‌های سنگین مهم‌تر است.', style: TextStyle(color: Colors.white, height: 1.8)),
-        ])),
+      SimorghHomeHero(
+        nickname: nickname,
+        gradeLine: [
+          profile['grade']?.toString() ?? '',
+          profile['year'] == null ? '' : 'پایه ${profile['year']}',
+          profile['field']?.toString() ?? '',
+        ].where((part) => part.trim().isNotEmpty).join(' · '),
+        onChat: () => go(4),
+      ),
       const SizedBox(height: 14),
       CreditSummary(store: store, onShop: () => push(context, CreditShopPage(store: store))),
       Row(children: [
@@ -345,7 +346,10 @@ class HomePage extends StatelessWidget {
         onChat: () => go(4),
       ),
       for (final tip in suggestions) NoticeCard(text: tip, icon: Icons.lightbulb_outline),
-      const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('از کجا شروع کنیم؟', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
+      const SimorghSectionTitle(
+        title: 'از کجا شروع کنیم؟',
+        subtitle: 'هر بار یک مسیر را انتخاب کن؛ لازم نیست همه کارها را هم‌زمان انجام بدهی.',
+      ),
       QuickTile(icon: Icons.auto_awesome, title: 'گفت‌وگو با مشاور هوشمند', subtitle: 'پرسش، برنامه مطالعه و روش بهبود', onTap: () => go(4)),
       QuickTile(icon: Icons.share_outlined, title: 'معرفی سیمرغ به دوستان', subtitle: 'ارسال لینک نصب برنامه برای هم‌کلاسی‌ها و دوستان', onTap: () => push(context, const ReferralPage())),
       QuickTile(icon: Icons.insights_outlined, title: 'بررسی وضعیت تحصیلی', subtitle: 'نقاط قوت و ضعف بر اساس نمره‌های تو', onTap: () => push(context, AcademicInsightsPage(store: store))),
