@@ -320,7 +320,8 @@ class HomePage extends StatelessWidget {
     final dailyMinutes = dailyValue is int ? dailyValue : 120;
     final report = buildLearningReport(exams: store.exams, tasks: tasks, cards: store.cards, now: now);
     final suggestions = dailySuggestions(report: report, tasks: tasks, deadlines: store.deadlines, now: now, dailyMinutes: dailyMinutes);
-    final fullName = profile['fullName']?.toString().trim() ?? '';\n    final nickname = fullName.isNotEmpty ? fullName.split(RegExp(r'\s+')).first : (profile['nickname']?.toString() ?? '');
+    final fullName = profile['fullName']?.toString().trim() ?? '';
+    final nickname = fullName.isNotEmpty ? fullName.split(RegExp(r'\s+')).first : (profile['nickname']?.toString() ?? '');
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
       SimorghHomeHero(
         nickname: nickname,
