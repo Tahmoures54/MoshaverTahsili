@@ -224,6 +224,7 @@ void main() {
     expect(captured!.headers['Authorization'], 'Bearer test-key');
     final body = jsonDecode(captured!.body) as Map<String, dynamic>;
     expect(body['model'], 'test-model');
+    expect(body['thinking'], {'type': 'disabled'});
     final messages = body['messages'] as List;
     expect(messages, hasLength(26));
     expect(Map<String, dynamic>.from(messages.first as Map)['content'], contains('هفتم'));
