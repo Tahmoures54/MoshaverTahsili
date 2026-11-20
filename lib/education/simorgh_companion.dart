@@ -464,14 +464,14 @@ class _SimorghCompanionPainter extends CustomPainter {
             _teal.withValues(alpha: 0.08),
             Colors.transparent,
           ],
-        ).createShader(const Rect.fromCircle(center: Offset.zero, radius: 47)),
+        ).createShader(Rect.fromCircle(center: Offset.zero, radius: 47)),
     );
     final halo = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8
       ..color = _gold.withValues(alpha: 0.25);
     canvas.drawArc(
-      const Rect.fromCircle(center: Offset(0, 0), radius: 43),
+      Rect.fromCircle(center: Offset(0, 0), radius: 43),
       math.pi * 1.08,
       math.pi * 0.84,
       false,
@@ -608,9 +608,9 @@ class _SimorghCompanionPainter extends CustomPainter {
         ..strokeWidth = 0.65,
     );
     final eyeY = mood == SimorghMood.thinking ? -37.0 : -35.0;
-    canvas.drawCircle(const Offset(23, eyeY), 2.0, Paint()..color = Colors.white);
-    canvas.drawCircle(const Offset(23.7, eyeY), 1.15, Paint()..color = _navy);
-    canvas.drawCircle(const Offset(24, eyeY - 0.45), 0.35, Paint()..color = Colors.white);
+    canvas.drawCircle(Offset(23, eyeY), 2.0, Paint()..color = Colors.white);
+    canvas.drawCircle(Offset(23.7, eyeY), 1.15, Paint()..color = _navy);
+    canvas.drawCircle(Offset(24, eyeY - 0.45), 0.35, Paint()..color = Colors.white);
 
     // Three rising crown plumes, an unmistakable royal silhouette.
     final crestColors = [_blue, _teal, _gold];
