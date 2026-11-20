@@ -52,7 +52,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
     if (widget.store.hasActiveAiRequests) return;
     final recovered = messages.map((item) => Map<String, dynamic>.from(item)).toList();
     var changed = false;
-    for (final message in recovered) {
+    for (final message in recovered.toList()) {
       if (message['role'] != 'user' || message['status'] != 'pending') continue;
       final id = message['id'];
       if (id is! String || id.isEmpty) continue;
