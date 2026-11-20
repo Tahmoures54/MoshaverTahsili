@@ -5,7 +5,14 @@ import 'learning_engine.dart';
 import 'mastery_estimator.dart';
 import 'ui.dart';
 
-String newId(String prefix) => '$prefix-${DateTime.now().microsecondsSinceEpoch}';
+int _idSequence = 0;
+
+/// Timestamp plus an isolate-local sequence prevents collisions when multiple
+/// records are created within the same clock tick (including on fake clocks).
+String newId(String prefix) {
+  _idSequence++;
+  return '$prefix-${DateTime.now().microsecondsSinceEpoch}-$_idSequence';
+}
 
 int _safeTaskMinutes(Map<String, dynamic> task) {
   final value = task['minutes'];

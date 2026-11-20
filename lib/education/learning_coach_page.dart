@@ -204,17 +204,22 @@ LearningCoachPlan buildLearningCoachPlan({
   }
 
   final unique = <String>{};
-  final filtered = steps.where((step) {
-    // Never recommend a step that cannot fit into the learner's remaining time.
-    if (step.minutes > available) return false;
+  final filtered = <LearningCoachStep>[];
+  var remainingMinutes = available;
+  for (final step in steps) {
+    if (filtered.length == 3) break;
+    // Recommendations are budgeted cumulatively, not one by one.
+    if (step.minutes > remainingMinutes) continue;
     final key = '${step.kind}|${step.subject}|${step.title}';
-    if (!unique.add(key)) return false;
+    if (!unique.add(key)) continue;
     final alreadyOpen = tasks.any((task) =>
         task['done'] != true &&
         task['title']?.toString().trim() == step.title &&
         task['dueDate']?.toString() == todayKey);
-    return !alreadyOpen;
-  }).take(3).toList();
+    if (alreadyOpen) continue;
+    filtered.add(step);
+    remainingMinutes -= step.minutes;
+  }
 
   return LearningCoachPlan(
     steps: filtered,
@@ -267,6 +272,7 @@ class _LearningCoachPageState extends State<LearningCoachPage> {
       final profile = widget.store.profile ?? {};
       final dailyValue = profile['dailyMinutes'];
       final dailyMinutes = dailyValue is int ? dailyValue : 120;
+      final dailyBudget = dailyMinutes.clamp(15, 240).toInt();
       final plan = buildLearningCoachPlan(
         exams: widget.store.exams,
         tasks: widget.store.tasks,
@@ -290,10 +296,10 @@ class _LearningCoachPageState extends State<LearningCoachPage> {
                   const SizedBox(height: 8),
                   const Text('این پیشنهادها فقط از نمره‌ها، برنامه‌ها، امتحان‌ها و مرورهای ثبت‌شده روی همین گوشی ساخته می‌شوند.'),
                   const SizedBox(height: 12),
-                  Text('ظرفیت آزاد امروز: ${faNumber(plan.availableMinutes)} دقیقه از ${faNumber(dailyMinutes)} دقیقه'),
+                  Text('ظرفیت آزاد امروز: ${faNumber(plan.availableMinutes)} دقیقه از ${faNumber(dailyBudget)} دقیقه'),
                   const SizedBox(height: 6),
                   LinearProgressIndicator(
-                    value: dailyMinutes <= 0 ? 0.0 : (plan.plannedMinutes / dailyMinutes).clamp(0.0, 1.0),
+                    value: (plan.plannedMinutes / dailyBudget).clamp(0.0, 1.0),
                   ),
                 ]),
               ),

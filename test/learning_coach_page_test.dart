@@ -77,6 +77,31 @@ void main() {
     expect(plan.steps, isEmpty);
   });
 
+  test('combined recommendations never exceed the remaining daily budget', () {
+    final plan = buildLearningCoachPlan(
+      exams: [
+        {'subject': 'ریاضی', 'score': 4, 'max': 20},
+        {'subject': 'ریاضی', 'score': 5, 'max': 20},
+      ],
+      tasks: [
+        {'id': 'today', 'title': 'برنامه قبلی', 'minutes': 90, 'done': false, 'dueDate': '2026-11-18'},
+        {'id': 'old', 'title': 'کار عقب‌افتاده', 'subject': 'فیزیک', 'minutes': 60, 'done': false, 'dueDate': '2026-11-16'},
+      ],
+      cards: [
+        {'id': 'card', 'dueAt': '2026-11-17T10:00:00'},
+      ],
+      deadlines: [
+        {'subject': 'زیست', 'date': '2026-11-19'},
+      ],
+      now: now,
+      dailyMinutes: 120,
+    );
+
+    expect(plan.availableMinutes, 30);
+    expect(plan.steps.map((step) => step.kind), ['deadline', 'retrieval']);
+    expect(plan.steps.fold<int>(0, (sum, step) => sum + step.minutes), lessThanOrEqualTo(plan.availableMinutes));
+  });
+
   test('ignores malformed exam scores and safely handles empty workspaces', () {
     final plan = buildLearningCoachPlan(
       exams: [{'subject': 'ریاضی', 'score': 'bad', 'max': 20}],
