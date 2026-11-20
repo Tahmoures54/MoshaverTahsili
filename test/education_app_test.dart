@@ -415,6 +415,7 @@ void main() {
         () => Future<void>.delayed(const Duration(milliseconds: 100)),
       );
       await tester.pumpAndSettle();
+      print('SIMORGH_TRACE calls=$call ids=${store.messages.where((m) => m['role'] == 'user').map((m) => m['id']).toList()} statuses=${store.messages.where((m) => m['role'] == 'user').map((m) => m['status']).toList()} stage=${store.teachingSessions.single['stage']}');
       expect(tester.takeException(), isNull);
     }
 
