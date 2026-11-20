@@ -90,7 +90,7 @@ class _ProfileSheet extends StatefulWidget {
 
 class _ProfileSheetState extends State<_ProfileSheet> {
   final form = GlobalKey<FormState>();
-  late final TextEditingController nickname;
+  late final TextEditingController fullName;
   late final TextEditingController field;
   late final TextEditingController goal;
   late String grade;
@@ -104,7 +104,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
     super.initState();
     final current = widget.store.profile ?? {};
     shareProfileWithAi = current['aiProfileContextConsent'] == true;
-    nickname = TextEditingController(text: current['nickname']?.toString() ?? '');
+    fullName = TextEditingController(text: current['fullName']?.toString() ?? current['nickname']?.toString() ?? '');
     field = TextEditingController(text: current['field']?.toString() ?? 'عمومی');
     goal = TextEditingController(text: current['goal']?.toString() ?? '');
     grade = gradeYears.containsKey(current['grade']) ? current['grade'].toString() : 'متوسطه اول';
@@ -113,7 +113,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
 
   @override
   void dispose() {
-    nickname.dispose();
+    fullName.dispose();
     field.dispose();
     goal.dispose();
     super.dispose();
@@ -123,9 +123,9 @@ class _ProfileSheetState extends State<_ProfileSheet> {
     if (!form.currentState!.validate()) return;
     setState(() { saving = true; error = null; });
     try {
-      await widget.store.saveProfile({...?widget.store.profile, 'nickname': nickname.text.trim(), 'grade': grade, 'year': year,
+      await widget.store.saveProfile({...?widget.store.profile, 'fullName': fullName.text.trim(), 'nickname': fullName.text.trim().split(RegExp(r'\\s+')).first, 'grade': grade, 'year': year,
         'field': field.text.trim(), 'goal': goal.text.trim(),
-        'aiProfileContextConsent': shareProfileWithAi, 'privacyVersion': 2});
+        'aiProfileContextConsent': shareProfileWithAi, 'privacyVersion': 3});
       if (mounted) Navigator.pop(context, true);
     } on Object catch (value) {
       if (mounted) setState(() { saving = false; error = friendlyError(value); });
@@ -139,11 +139,11 @@ class _ProfileSheetState extends State<_ProfileSheet> {
       child: SingleChildScrollView(child: Form(key: form, child: Column(
         mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('کمی درباره مسیر تحصیلی‌ات بدانیم', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text('به جمع همراهان سیمرغ خوش آمدی', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          const Text('نام مستعار کافی است. اطلاعات هویتی یا شماره تماس وارد نکن.', style: TextStyle(color: Colors.blueGrey, height: 1.7)),
+          const Text('برای اینکه بهتر بشناسمت و راهنمایی دقیق‌تری داشته باشم، کمی از خودت بگو. نام کامل فقط روی همین گوشی نگهداری می‌شود و برای سرویس پاسخ‌گویی بیرونی فرستاده نمی‌شود.', style: TextStyle(color: Colors.blueGrey, height: 1.7)),
           const SizedBox(height: 18),
-          TextFormField(controller: nickname, maxLength: 40, decoration: const InputDecoration(labelText: 'نام یا نام مستعار (اختیاری)')),
+          TextFormField(controller: fullName, maxLength: 80, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'نام و نام خانوادگی', hintText: 'مثلاً سارا احمدی'), validator: (value) { final parts = (value ?? '').trim().split(RegExp(r'\\s+')).where((part) => part.isNotEmpty); return parts.length < 2 ? 'لطفاً نام و نام خانوادگی را وارد کن.' : null; }),
           DropdownButtonFormField<String>(initialValue: grade, decoration: const InputDecoration(labelText: 'مقطع تحصیلی'),
             items: gradeYears.keys.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
             onChanged: saving ? null : (value) { if (value != null) setState(() { grade = value; year = gradeYears[value]!.first; }); }),
@@ -207,7 +207,7 @@ class _EntryScreenState extends State<EntryScreen> {
           const Text('برنامه مطالعه، نمرات، فلش‌کارت‌ها و سابقه مشاوره روی همین گوشی ذخیره می‌شوند. '
               'برای پاسخ‌گویی سیمرغ، متن پرسش و بخش‌هایی از گفت‌وگوهای اخیر به یک سرویس بیرونی ارسال می‌شوند. زمینه پروفایل تحصیلی فقط در صورت فعال‌کردن رضایت جداگانه در ویرایش پروفایل ارسال می‌شود. '
               'در تحلیل وضعیت تحصیلی، خلاصه نمره‌ها فقط پس از زدن دکمه تحلیل ارسال می‌شود. '
-              'نام کامل، نشانی، شماره تماس و اطلاعات حساس را وارد نکن. '
+              'نشانی، شماره تماس و اطلاعات حساس را وارد نکن. نام و نام خانوادگی فقط روی همین گوشی می‌ماند و به سرویس بیرونی فرستاده نمی‌شود. '
               'پاسخ‌های سیمرغ ممکن است اشتباه باشند و جایگزین معلم، مشاور مدرسه یا منابع رسمی نیستند. '
               'با حذف برنامه، اطلاعات و اعتبار محلی از دست می‌روند.', style: TextStyle(height: 1.9)),
           CheckboxListTile(value: accepted, contentPadding: EdgeInsets.zero, controlAffinity: ListTileControlAffinity.leading,
@@ -320,7 +320,7 @@ class HomePage extends StatelessWidget {
     final dailyMinutes = dailyValue is int ? dailyValue : 120;
     final report = buildLearningReport(exams: store.exams, tasks: tasks, cards: store.cards, now: now);
     final suggestions = dailySuggestions(report: report, tasks: tasks, deadlines: store.deadlines, now: now, dailyMinutes: dailyMinutes);
-    final nickname = profile['nickname']?.toString() ?? '';
+    final fullName = profile['fullName']?.toString().trim() ?? '';\n    final nickname = fullName.isNotEmpty ? fullName.split(RegExp(r'\\s+')).first : (profile['nickname']?.toString() ?? '');
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
       SimorghHomeHero(
         nickname: nickname,
