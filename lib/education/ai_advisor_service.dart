@@ -45,7 +45,7 @@ class AiAdvisorService {
     final uri = Uri.tryParse(endpoint.trim());
     if (uri == null || uri.scheme != 'https' || uri.host.isEmpty ||
         uri.userInfo.isNotEmpty || uri.hasQuery || uri.hasFragment) {
-      throw const AiException(AiErrorKind.configuration, 'آدرس سرویس هوش مصنوعی در این نسخه معتبر نیست.');
+      throw const AiException(AiErrorKind.configuration, 'نشانی سرویس پاسخ‌گویی در این نسخه معتبر نیست.');
     }
     final path = uri.path.replaceFirst(RegExp(r'/+$'), '');
     return uri.replace(path: path.endsWith('/chat/completions') ? path : '$path/chat/completions');
@@ -84,7 +84,7 @@ class AiAdvisorService {
     if (safety.shouldBlockRemoteAi) return safety.localResponse!;
     if (!isConfigured) {
       throw const AiException(AiErrorKind.configuration,
-          'سرویس هوش مصنوعی هنوز برای این نسخه پیکربندی نشده است. امکانات محلی برنامه همچنان در دسترس‌اند.');
+          'گفت‌وگوی سیمرغ هنوز آماده استفاده نیست. امکانات محلی برنامه همچنان در دسترس‌اند.');
     }
     final uri = _endpoint();
     if (store?.walletError != null) throw LocalDataException(store!.walletError!);
