@@ -170,6 +170,9 @@ void main() {
       await store.saveProfile({'grade': 'متوسطه دوم', 'year': 'دهم', 'field': 'ریاضی'});
       await tester.pumpWidget(EducationApp(store: store));
       await tester.pumpAndSettle();
+      expect(find.text('درود بر جوینده دانایی!'), findsOneWidget);
+      expect(find.text('رد پای تلاش تو'), findsOneWidget);
+      expect(find.text('پیشنهاد امروز سیمرغ'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.tap(find.byIcon(Icons.calendar_month_outlined));
       await tester.pumpAndSettle();
