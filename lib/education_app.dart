@@ -26,6 +26,14 @@ const appVersion = String.fromEnvironment('APP_VERSION', defaultValue: '1.1.2');
 const appBuildNumber = String.fromEnvironment('APP_BUILD_NUMBER', defaultValue: '5');
 const appVersionLabel = 'نسخه $appVersion · ساخت $appBuildNumber';
 
+int _safeHomeMinutes(Object? value) {
+  if (value is num && value.isFinite) {
+    return value.clamp(0, 1440).toInt();
+  }
+  final parsed = int.tryParse(digitsToEnglish(value?.toString() ?? '').trim());
+  return parsed?.clamp(0, 1440).toInt() ?? 0;
+}
+
 class EducationApp extends StatefulWidget {
   const EducationApp({super.key, this.store});
   final EducationStore? store;
@@ -306,7 +314,7 @@ class HomePage extends StatelessWidget {
       final date = DateTime.tryParse(task['completedAt']?.toString() ?? '');
       return date != null && !date.isBefore(weekStart);
     }).toList();
-    final minutes = completed.fold<int>(0, (sum, task) => sum + ((task['minutes'] as num?)?.toInt() ?? 0));
+    final minutes = completed.fold<int>(0, (sum, task) => sum + _safeHomeMinutes(task['minutes']));
     final now = DateTime.now();
     final dailyValue = profile['dailyMinutes'];
     final dailyMinutes = dailyValue is int ? dailyValue : 120;

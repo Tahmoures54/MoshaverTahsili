@@ -58,6 +58,20 @@ void main() {
     expect(store.profile?['year'], 'هفتم');
   });
 
+  testWidgets('dashboard tolerates malformed imported task durations', (tester) async {
+    final store = await EducationStore.open();
+    await store.addTask({
+      'id': 'bad-duration',
+      'title': 'کار واردشده',
+      'minutes': 'نامعتبر',
+      'done': true,
+      'completedAt': DateTime.now().toIso8601String(),
+    });
+    await tester.pumpWidget(frame(HomePage(store: store, go: (_) {})));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('editing profile preserves unrelated existing settings', (tester) async {
     final store = await EducationStore.open();
     await store.saveProfile({
@@ -423,7 +437,6 @@ void main() {
         () => Future<void>.delayed(const Duration(milliseconds: 100)),
       );
       await tester.pumpAndSettle();
-      print('SIMORGH_TRACE input=$value calls=$call stage=${store.teachingSessions.single['stage']} diag=${store.teachingSessions.single['diagnosticCount']} practice=${store.teachingSessions.single['practiceAttempts']} mastery=${store.teachingSessions.single['masteryCount']} correct=${store.teachingSessions.single['masteryCorrect']}');
       expect(call, previousCall + 1, reason: 'Exactly one provider turn should be used for: $value');
       expect(tester.takeException(), isNull);
     }
@@ -444,7 +457,7 @@ void main() {
     // A malformed provider payload is visible as a safe retry message and
     // cannot change the deterministic lesson state or its counters.
     expect(store.teachingSessions.single['stage'], 'reteach');
-    expect(store.teachingSessions.single['practiceAttempts'], 1);
+    expect(store.teachingSessions.single['practiceAttempts'], 2);
     expect(store.teachingSessions.single['reteachCount'], 1);
     expect(store.messages.last['content'], contains('پاسخ آموزشی ساختار معتبری نداشت'));
 

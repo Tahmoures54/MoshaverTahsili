@@ -60,8 +60,8 @@ class _AdvisorPageState extends State<AdvisorPage> {
       final topic = data['topic'];
       final grade = data['grade'];
       if (id is! String || id.trim().isEmpty ||
-          topic is! String || topic.trim().isEmpty || topic.length > 120 ||
-          grade is! String || grade.length > 120) {
+          topic is! String || topic.trim().isEmpty || topic.length > SimorghTeachingEngine.maxTopicLength ||
+          grade is! String || grade.length > SimorghTeachingEngine.maxGradeLength) {
         throw const FormatException('Invalid saved lesson identity.');
       }
 

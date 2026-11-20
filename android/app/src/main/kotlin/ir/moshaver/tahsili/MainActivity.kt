@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Intent
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.plugin.common.MethodChannel
 import java.io.ByteArrayOutputStream
 import android.security.keystore.KeyGenParameterSpec
@@ -19,11 +18,6 @@ import javax.crypto.spec.GCMParameterSpec
 class MainActivity : FlutterActivity() {
     private var pendingBackupResult: MethodChannel.Result? = null
     private var pendingBackupContent: String? = null
-
-    override fun provideFlutterEngine(context: android.content.Context): FlutterEngine? {
-        return FlutterEngineCache.getInstance().get(ENGINE_ID)
-            ?: super.provideFlutterEngine(context)
-    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -203,7 +197,6 @@ class MainActivity : FlutterActivity() {
     }
 
     companion object {
-        private const val ENGINE_ID = "moshaver_tahsili_engine"
         private const val BACKUP_CHANNEL = "ir.moshaver.tahsili/backup"
         private const val SHARE_CHANNEL = "ir.moshaver.tahsili/share"
         private const val SECURE_CHANNEL = "ir.moshaver.tahsili/secure_storage"
