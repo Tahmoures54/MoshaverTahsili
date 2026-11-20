@@ -123,7 +123,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
     if (!form.currentState!.validate()) return;
     setState(() { saving = true; error = null; });
     try {
-      await widget.store.saveProfile({...?widget.store.profile, 'fullName': fullName.text.trim(), 'nickname': fullName.text.trim().split(RegExp(r'\\s+')).first, 'grade': grade, 'year': year,
+      await widget.store.saveProfile({...?widget.store.profile, 'fullName': fullName.text.trim(), 'nickname': fullName.text.trim().split(RegExp(r'\s+')).first, 'grade': grade, 'year': year,
         'field': field.text.trim(), 'goal': goal.text.trim(),
         'aiProfileContextConsent': shareProfileWithAi, 'privacyVersion': 3});
       if (mounted) Navigator.pop(context, true);
@@ -143,7 +143,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
           const SizedBox(height: 8),
           const Text('برای اینکه بهتر بشناسمت و راهنمایی دقیق‌تری داشته باشم، کمی از خودت بگو. نام کامل فقط روی همین گوشی نگهداری می‌شود و برای سرویس پاسخ‌گویی بیرونی فرستاده نمی‌شود.', style: TextStyle(color: Colors.blueGrey, height: 1.7)),
           const SizedBox(height: 18),
-          TextFormField(controller: fullName, maxLength: 80, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'نام و نام خانوادگی', hintText: 'مثلاً سارا احمدی'), validator: (value) { final parts = (value ?? '').trim().split(RegExp(r'\\s+')).where((part) => part.isNotEmpty); return parts.length < 2 ? 'لطفاً نام و نام خانوادگی را وارد کن.' : null; }),
+          TextFormField(controller: fullName, maxLength: 80, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'نام و نام خانوادگی', hintText: 'مثلاً سارا احمدی'), validator: (value) { final parts = (value ?? '').trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty); return parts.length < 2 ? 'لطفاً نام و نام خانوادگی را وارد کن.' : null; }),
           DropdownButtonFormField<String>(initialValue: grade, decoration: const InputDecoration(labelText: 'مقطع تحصیلی'),
             items: gradeYears.keys.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
             onChanged: saving ? null : (value) { if (value != null) setState(() { grade = value; year = gradeYears[value]!.first; }); }),
@@ -162,7 +162,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
             controlAffinity: ListTileControlAffinity.leading,
             onChanged: saving ? null : (value) => setState(() => shareProfileWithAi = value ?? false),
             title: const Text('اجازه استفاده سیمرغ از زمینه تحصیلی'),
-            subtitle: const Text('در صورت فعال‌سازی، مقطع، پایه، رشته و هدف تحصیلی برای شخصی‌سازی پاسخ ارسال می‌شوند. نام مستعار ارسال نمی‌شود. این انتخاب اختیاری است و هر زمان می‌توانی آن را لغو کنی.'),
+            subtitle: const Text('در صورت فعال‌سازی، مقطع، پایه، رشته و هدف تحصیلی برای شخصی‌سازی پاسخ ارسال می‌شوند. نام و نام خانوادگی ارسال نمی‌شود. این انتخاب اختیاری است و هر زمان می‌توانی آن را لغو کنی.'),
           ),
           if (error != null) NoticeCard(text: error!, warning: true),
           const SizedBox(height: 12),
@@ -320,7 +320,7 @@ class HomePage extends StatelessWidget {
     final dailyMinutes = dailyValue is int ? dailyValue : 120;
     final report = buildLearningReport(exams: store.exams, tasks: tasks, cards: store.cards, now: now);
     final suggestions = dailySuggestions(report: report, tasks: tasks, deadlines: store.deadlines, now: now, dailyMinutes: dailyMinutes);
-    final fullName = profile['fullName']?.toString().trim() ?? '';\n    final nickname = fullName.isNotEmpty ? fullName.split(RegExp(r'\\s+')).first : (profile['nickname']?.toString() ?? '');
+    final fullName = profile['fullName']?.toString().trim() ?? '';\n    final nickname = fullName.isNotEmpty ? fullName.split(RegExp(r'\s+')).first : (profile['nickname']?.toString() ?? '');
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
       SimorghHomeHero(
         nickname: nickname,
