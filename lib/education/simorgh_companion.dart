@@ -260,7 +260,7 @@ class _SimorghCompanionState extends State<SimorghCompanion>
     super.initState();
     _animation = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 2600),
     );
   }
 
@@ -282,8 +282,8 @@ class _SimorghCompanionState extends State<SimorghCompanion>
       _animation.stop();
       return;
     }
-    if (_animation.status != AnimationStatus.forward) {
-      _animation.forward(from: 0);
+    if (!_animation.isAnimating) {
+      _animation.repeat(reverse: false);
     }
   }
 
@@ -409,161 +409,243 @@ class _SimorghCompanionState extends State<SimorghCompanion>
   }
 }
 
+/// A mythic Persian Simorgh: broad eagle-like wings, a proud curved neck,
+/// a three-plume crown and long jewel-toned tail feathers. All geometry is
+/// vector-drawn so it stays crisp without adding image assets or dependencies.
 class _SimorghCompanionPainter extends CustomPainter {
   const _SimorghCompanionPainter({required this.phase, required this.mood});
 
   final double phase;
   final SimorghMood mood;
 
+  static const _navy = Color(0xFF142D4E);
+  static const _blue = Color(0xFF236B9A);
+  static const _teal = Color(0xFF20B8AE);
+  static const _gold = Color(0xFFF2BE58);
+  static const _cream = Color(0xFFFFF1D0);
+  static const _deepTeal = Color(0xFF087F83);
+
+  void _feather(Canvas canvas, Path path, Color color, {Color? edge}) {
+    canvas.drawPath(path, Paint()..color = color);
+    if (edge != null) {
+      canvas.drawPath(
+        path,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.9
+          ..color = edge.withValues(alpha: 0.72),
+      );
+    }
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
-    final unit = math.min(size.width, size.height).toDouble();
-    final center = Offset(size.width * 0.5, size.height * 0.55);
-    final bob = math.sin(phase * math.pi) * unit * 0.025;
-    final wingLift = (math.sin(phase * math.pi * 2) * 0.12) +
-        (mood == SimorghMood.celebrating ? -0.12 :
-            mood == SimorghMood.thinking ? 0.05 :
-            mood == SimorghMood.gentle ? 0.025 :
-            mood == SimorghMood.encouraging ? -0.045 : 0.0);
+    if (size.isEmpty) return;
+    final s = math.min(size.width / 100, size.height / 116);
+    final origin = Offset(size.width * 0.5, size.height * 0.53);
+    final flap = math.sin(phase * math.pi * 2);
+    final lift = flap * 3.2 +
+        (mood == SimorghMood.celebrating ? -2.5 : 0) +
+        (mood == SimorghMood.thinking ? 1.2 : 0);
+    final bob = math.sin(phase * math.pi * 2) * 1.2;
 
     canvas.save();
-    canvas.translate(0, bob);
+    canvas.translate(origin.dx, origin.dy + bob * s);
+    canvas.scale(s);
 
-    final glowPaint = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          simorghGold.withValues(alpha: 0.24),
-          teal.withValues(alpha: 0.04),
-          Colors.transparent,
-        ],
-      ).createShader(Rect.fromCircle(center: center, radius: unit * 0.49));
-    canvas.drawCircle(center, unit * 0.49, glowPaint);
-
-    final leftWing = Path()
-      ..moveTo(center.dx - unit * 0.10, center.dy - unit * 0.04)
-      ..cubicTo(center.dx - unit * 0.34, center.dy - unit * (0.40 + wingLift),
-          center.dx - unit * 0.52, center.dy - unit * (0.36 + wingLift),
-          center.dx - unit * 0.43, center.dy - unit * 0.08)
-      ..cubicTo(center.dx - unit * 0.35, center.dy - unit * 0.16,
-          center.dx - unit * 0.30, center.dy - unit * 0.05,
-          center.dx - unit * 0.22, center.dy + unit * 0.03)
-      ..cubicTo(center.dx - unit * 0.31, center.dy - unit * 0.02,
-          center.dx - unit * 0.31, center.dy + unit * 0.10,
-          center.dx - unit * 0.19, center.dy + unit * 0.13)
-      ..close();
-    final rightWing = Path()
-      ..moveTo(center.dx + unit * 0.10, center.dy - unit * 0.04)
-      ..cubicTo(center.dx + unit * 0.34, center.dy - unit * (0.40 + wingLift),
-          center.dx + unit * 0.52, center.dy - unit * (0.36 + wingLift),
-          center.dx + unit * 0.43, center.dy - unit * 0.08)
-      ..cubicTo(center.dx + unit * 0.35, center.dy - unit * 0.16,
-          center.dx + unit * 0.30, center.dy - unit * 0.05,
-          center.dx + unit * 0.22, center.dy + unit * 0.03)
-      ..cubicTo(center.dx + unit * 0.31, center.dy - unit * 0.02,
-          center.dx + unit * 0.31, center.dy + unit * 0.10,
-          center.dx + unit * 0.19, center.dy + unit * 0.13)
-      ..close();
-
-    canvas.drawPath(leftWing, Paint()..color = simorghGold);
-    canvas.drawPath(rightWing, Paint()..color = teal);
-
-    final featherPaint = Paint()
+    // A restrained halo gives the bird a legendary, luminous presence.
+    canvas.drawCircle(
+      Offset.zero,
+      47,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            _gold.withValues(alpha: 0.20),
+            _teal.withValues(alpha: 0.08),
+            Colors.transparent,
+          ],
+        ).createShader(const Rect.fromCircle(center: Offset.zero, radius: 47)),
+    );
+    final halo = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = unit * 0.018
-      ..strokeCap = StrokeCap.round
-      ..color = const Color(0xFFFFE8B2).withValues(alpha: 0.9);
-    for (var i = 0; i < 3; i++) {
-      final offset = unit * (0.12 + i * 0.075);
+      ..strokeWidth = 0.8
+      ..color = _gold.withValues(alpha: 0.25);
+    canvas.drawArc(
+      const Rect.fromCircle(center: Offset(0, 0), radius: 43),
+      math.pi * 1.08,
+      math.pi * 0.84,
+      false,
+      halo,
+    );
+
+    // Long, separated tail streamers: a key silhouette absent from the old
+    // round-bodied bird. The central plume carries the Simorgh jewel motif.
+    final tailColors = [_blue, _deepTeal, _gold, _teal, _blue];
+    for (var i = 0; i < 5; i++) {
+      final x = (i - 2) * 7.0;
+      final sway = flap * (i.isEven ? 1.5 : -1.5);
+      final tail = Path()
+        ..moveTo(-5 + x * 0.18, 17)
+        ..cubicTo(x - 8 + sway, 34, x + 11 + sway, 43, x + sway, 53 - (i == 2 ? 5 : 0))
+        ..cubicTo(x - 5 + sway, 45, x - 9 + sway, 34, -2 + x * 0.2, 18)
+        ..close();
+      _feather(canvas, tail, tailColors[i]);
       canvas.drawLine(
-        Offset(center.dx - offset, center.dy - unit * 0.16),
-        Offset(center.dx - offset * 1.65, center.dy - unit * 0.04),
-        featherPaint,
-      );
-      canvas.drawLine(
-        Offset(center.dx + offset, center.dy - unit * 0.16),
-        Offset(center.dx + offset * 1.65, center.dy - unit * 0.04),
+        Offset(-2 + x * 0.2, 19),
+        Offset(x + sway, 48),
         Paint()
-          ..color = const Color(0xFFB7F0E9)
-          ..strokeWidth = unit * 0.018
+          ..color = _cream.withValues(alpha: 0.55)
+          ..strokeWidth = 0.8
           ..strokeCap = StrokeCap.round,
       );
     }
+    // Jewel/eye at the end of the central tail feather.
+    canvas.drawCircle(const Offset(0, 46), 3.4, Paint()..color = _gold);
+    canvas.drawCircle(const Offset(0, 46), 1.7, Paint()..color = _teal);
 
-    final tail = Path()
-      ..moveTo(center.dx - unit * 0.08, center.dy + unit * 0.20)
-      ..quadraticBezierTo(center.dx - unit * 0.26, center.dy + unit * 0.43,
-          center.dx - unit * 0.12, center.dy + unit * 0.45)
-      ..quadraticBezierTo(center.dx + unit * 0.01, center.dy + unit * 0.36,
-          center.dx + unit * 0.06, center.dy + unit * 0.24)
+    // Far wing first, with individually readable flight feathers.
+    final farWing = Path()
+      ..moveTo(-7, -4)
+      ..cubicTo(-24, -19 - lift, -39, -42 - lift, -47, -39 - lift * 0.55)
+      ..cubicTo(-49, -26, -39, -13, -28, -7)
+      ..cubicTo(-38, -10, -39, 1, -27, 7)
+      ..cubicTo(-34, 7, -32, 16, -20, 17)
+      ..cubicTo(-15, 8, -10, 2, -7, -4)
       ..close();
-    canvas.drawPath(tail, Paint()..color = const Color(0xFF236B9A));
+    _feather(canvas, farWing, _deepTeal);
+    for (var i = 0; i < 6; i++) {
+      final x = -43.0 + i * 4.2;
+      final feather = Path()
+        ..moveTo(-13, -1 + i * 2.0)
+        ..cubicTo(x - 4, -18 - lift, x - 4, -36 - lift * 0.55, x + 1, -39 - lift * 0.55)
+        ..cubicTo(x + 8, -26 - lift * 0.4, x + 5, -12, -8 + i * 1.0, 7)
+        ..close();
+      _feather(canvas, feather, i.isEven ? _blue : _teal, edge: _cream);
+    }
 
+    // Near wing is broad and layered like a great bird's wing, not a tiny
+    // pair of decorative triangles.
+    final nearWing = Path()
+      ..moveTo(5, -7)
+      ..cubicTo(20, -24 - lift, 35, -47 - lift, 47, -41 - lift * 0.6)
+      ..cubicTo(50, -29, 40, -15, 29, -7)
+      ..cubicTo(39, -11, 40, 0, 28, 8)
+      ..cubicTo(35, 8, 32, 17, 19, 18)
+      ..cubicTo(13, 8, 8, 1, 5, -7)
+      ..close();
+    _feather(canvas, nearWing, _blue);
+    for (var i = 0; i < 7; i++) {
+      final x = 39.0 - i * 4.3;
+      final feather = Path()
+        ..moveTo(12, -3 + i * 1.8)
+        ..cubicTo(x + 4, -19 - lift, x + 5, -37 - lift * 0.55, x - 1, -41 - lift * 0.55)
+        ..cubicTo(x - 9, -26 - lift * 0.4, x - 6, -12, 7 - i * 0.8, 8)
+        ..close();
+      _feather(canvas, feather, i.isEven ? _gold : _teal, edge: _cream);
+    }
+    // Wing coverts create a layered, ornamental pattern.
+    for (var row = 0; row < 2; row++) {
+      for (var i = 0; i < 5; i++) {
+        final x = 12.0 + i * 4.1;
+        final y = -13.0 + row * 7;
+        final covert = Path()
+          ..moveTo(x - 2, y)
+          ..quadraticBezierTo(x + 2, y - 5, x + 6, y - 1)
+          ..quadraticBezierTo(x + 4, y + 5, x - 2, y)
+          ..close();
+        _feather(canvas, covert, row == 0 ? _cream : _gold);
+      }
+    }
+
+    // Body: tapered, proud and upright, with a long S-shaped neck.
     final body = Path()
-      ..moveTo(center.dx - unit * 0.13, center.dy - unit * 0.10)
-      ..cubicTo(center.dx - unit * 0.20, center.dy + unit * 0.12,
-          center.dx - unit * 0.10, center.dy + unit * 0.36,
-          center.dx + unit * 0.06, center.dy + unit * 0.38)
-      ..cubicTo(center.dx + unit * 0.25, center.dy + unit * 0.25,
-          center.dx + unit * 0.24, center.dy - unit * 0.02,
-          center.dx + unit * 0.10, center.dy - unit * 0.13)
+      ..moveTo(-12, -13)
+      ..cubicTo(-18, 1, -14, 19, -4, 25)
+      ..cubicTo(4, 30, 14, 21, 13, 9)
+      ..cubicTo(12, -2, 7, -12, 1, -18)
       ..close();
-    canvas.drawPath(
+    _feather(
+      canvas,
       body,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFFFFF0C8), Color(0xFFF2BE58)],
-        ).createShader(Rect.fromCircle(center: center, radius: unit * 0.4)),
+      const Color(0xFFEDB94E),
+      edge: const Color(0xFFFFE6A5),
     );
-
-    final headCenter = Offset(center.dx + unit * 0.07, center.dy - unit * 0.18);
-    canvas.drawCircle(headCenter, unit * 0.16, Paint()..color = simorghGold);
-    final crest = Path()
-      ..moveTo(headCenter.dx - unit * 0.06, headCenter.dy - unit * 0.12)
-      ..quadraticBezierTo(headCenter.dx - unit * 0.22, headCenter.dy - unit * 0.36,
-          headCenter.dx - unit * 0.02, headCenter.dy - unit * 0.27)
-      ..quadraticBezierTo(headCenter.dx + unit * 0.02, headCenter.dy - unit * 0.39,
-          headCenter.dx + unit * 0.09, headCenter.dy - unit * 0.25)
-      ..quadraticBezierTo(headCenter.dx + unit * 0.18, headCenter.dy - unit * 0.31,
-          headCenter.dx + unit * 0.15, headCenter.dy - unit * 0.12)
+    final breast = Path()
+      ..moveTo(-5, -7)
+      ..cubicTo(-10, 7, -6, 20, 2, 23)
+      ..cubicTo(8, 17, 8, 1, 2, -8)
       ..close();
-    canvas.drawPath(crest, Paint()..color = const Color(0xFF236B9A));
+    _feather(canvas, breast, _cream);
 
+    final neck = Path()
+      ..moveTo(2, -12)
+      ..cubicTo(7, -23, 4, -32, 11, -36)
+      ..cubicTo(16, -39, 22, -35, 23, -30)
+      ..cubicTo(16, -32, 13, -28, 14, -21)
+      ..cubicTo(15, -15, 11, -10, 7, -7)
+      ..close();
+    _feather(canvas, neck, _gold, edge: _cream);
+
+    // Head faces right, with a hooked golden beak and alert eye.
+    final head = Offset(20, -34);
+    canvas.drawCircle(head, 8.1, Paint()..color = _cream);
+    canvas.drawCircle(
+      head.translate(-1.4, 1.2),
+      6.6,
+      Paint()..color = _gold.withValues(alpha: 0.8),
+    );
     final beak = Path()
-      ..moveTo(headCenter.dx + unit * 0.12, headCenter.dy - unit * 0.01)
-      ..lineTo(headCenter.dx + unit * 0.27, headCenter.dy + unit * 0.04)
-      ..lineTo(headCenter.dx + unit * 0.11, headCenter.dy + unit * 0.09)
+      ..moveTo(26, -36)
+      ..cubicTo(35, -38, 38, -34, 33, -30)
+      ..cubicTo(31, -28, 29, -29, 28, -31)
       ..close();
-    canvas.drawPath(beak, Paint()..color = teal);
-
-    final eye = Offset(
-      headCenter.dx + unit * 0.065,
-      headCenter.dy - unit * (mood == SimorghMood.thinking ? 0.055 :
-          mood == SimorghMood.gentle ? 0.018 : 0.035),
-    );
-    final pupilShift = mood == SimorghMood.thinking ? -unit * 0.008 :
-        mood == SimorghMood.celebrating ? unit * 0.004 : 0.0;
-    canvas.drawCircle(eye, unit * 0.027, Paint()..color = Colors.white);
-    canvas.drawCircle(eye.translate(unit * 0.008 + pupilShift, 0), unit * 0.014,
-        Paint()..color = navy);
-    canvas.drawCircle(eye.translate(unit * 0.012 + pupilShift, -unit * 0.006),
-        unit * 0.004, Paint()..color = Colors.white);
-
-    final smile = Path()
-      ..moveTo(headCenter.dx + unit * 0.03, headCenter.dy + unit * 0.075)
-      ..quadraticBezierTo(headCenter.dx + unit * 0.08,
-          headCenter.dy + unit * (mood == SimorghMood.gentle ? 0.085 :
-              mood == SimorghMood.thinking ? 0.095 : 0.13),
-          headCenter.dx + unit * 0.13, headCenter.dy + unit * 0.07);
-    canvas.drawPath(
-      smile,
+    _feather(canvas, beak, _teal);
+    canvas.drawLine(
+      const Offset(29, -32),
+      const Offset(34, -33),
       Paint()
-        ..color = navy.withValues(alpha: 0.55)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = unit * 0.012
-        ..strokeCap = StrokeCap.round,
+        ..color = _navy.withValues(alpha: 0.55)
+        ..strokeWidth = 0.65,
     );
+    final eyeY = mood == SimorghMood.thinking ? -37.0 : -35.0;
+    canvas.drawCircle(const Offset(23, eyeY), 2.0, Paint()..color = Colors.white);
+    canvas.drawCircle(const Offset(23.7, eyeY), 1.15, Paint()..color = _navy);
+    canvas.drawCircle(const Offset(24, eyeY - 0.45), 0.35, Paint()..color = Colors.white);
+
+    // Three rising crown plumes, an unmistakable royal silhouette.
+    final crestColors = [_blue, _teal, _gold];
+    for (var i = 0; i < 3; i++) {
+      final x = 17.0 + i * 4.3;
+      final crest = Path()
+        ..moveTo(x - 2, -40)
+        ..cubicTo(x - 8, -48 - i * 1.2, x - 2, -55 - i * 1.5, x + 1, -58 - i * 0.8)
+        ..cubicTo(x + 1, -51, x + 6, -47, x + 3, -40)
+        ..close();
+      _feather(canvas, crest, crestColors[i], edge: _cream);
+    }
+
+    // Small feet and curved talons anchor the silhouette.
+    final legs = Paint()
+      ..color = _navy
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round;
+    for (final x in [-4.0, 6.0]) {
+      canvas.drawLine(Offset(x, 23), Offset(x + 1, 29), legs);
+      final claw = Path()
+        ..moveTo(x + 1, 29)
+        ..quadraticBezierTo(x - 2, 32, x - 5, 30);
+      canvas.drawPath(claw, legs);
+      canvas.drawLine(Offset(x + 1, 29), Offset(x + 4, 31), legs);
+    }
+
+    // Tiny floating sparks respond to the celebratory mood.
+    if (mood == SimorghMood.celebrating) {
+      final sparkPaint = Paint()..color = _gold.withValues(alpha: 0.9);
+      for (final p in const [Offset(-39, -25), Offset(39, -20), Offset(0, -62)]) {
+        canvas.drawCircle(p, 1.5, sparkPaint);
+      }
+    }
 
     canvas.restore();
   }
