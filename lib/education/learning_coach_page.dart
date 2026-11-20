@@ -25,6 +25,20 @@ class LearningCoachStep {
   final int minutes;
   final String reason;
   final String kind;
+
+  /// Navigation target on the main bottom bar: 1=planner, 2=exams, 3=cards, 4=advisor.
+  int get preferredTab {
+    switch (kind) {
+      case 'retrieval':
+        return 3;
+      case 'practice':
+      case 'deadline':
+      case 'overdue':
+        return 1;
+      default:
+        return 1;
+    }
+  }
 }
 
 class LearningCoachPlan {
@@ -39,9 +53,19 @@ class LearningCoachPlan {
   final int availableMinutes;
   final int plannedMinutes;
   final List<String> evidenceNotes;
+
+  /// The single most important next action, or null when nothing useful remains.
+  LearningCoachStep? get primary => steps.isEmpty ? null : steps.first;
 }
 
 /// Returns up to three practical next steps. Thin evidence is never a diagnosis.
+///
+/// Ranking priority (highest first):
+/// 1. Near exam (0–3 days)
+/// 2. Overdue task (oldest / shortest first)
+/// 3. Weak subject with enough evidence
+/// 4. Due flashcards
+/// 5. Gentle starter when data is sparse
 LearningCoachPlan buildLearningCoachPlan({
   required List<Entry> exams,
   required List<Entry> tasks,
@@ -74,6 +98,7 @@ LearningCoachPlan buildLearningCoachPlan({
     notes.add('تعداد نمره‌ها هنوز کم است؛ پیشنهادهای درسی مقدماتی‌اند.');
   }
 
+  // 1. Near exams (highest priority)
   final upcoming = deadlines
       .map((item) => (item: item, date: parseDay(item['date'])))
       .where((entry) => entry.date != null)
@@ -84,17 +109,24 @@ LearningCoachPlan buildLearningCoachPlan({
     ..sort((a, b) => a.date!.compareTo(b.date!));
   if (upcoming.isNotEmpty) {
     final subject = upcoming.first.item['subject']?.toString().trim() ?? '';
+    final daysLeft = upcoming.first.date!.difference(today).inDays;
     if (subject.isNotEmpty) {
+      final when = daysLeft == 0
+          ? 'امروز'
+          : daysLeft == 1
+              ? 'فردا'
+              : 'تا ${toPersianDigits(daysLeft)} روز دیگر';
       steps.add(LearningCoachStep(
-        title: 'مرور هدفمند برای امتحان ${subject}',
+        title: 'مرور هدفمند برای امتحان $subject',
         subject: subject,
         minutes: 20,
         kind: 'deadline',
-        reason: 'امتحان این درس در سه روز آینده است؛ یک مرور کوتاه و چند سؤال نمونه انجام بده.',
+        reason: 'امتحان این درس $when است؛ یک مرور کوتاه و چند سؤال نمونه انجام بده.',
       ));
     }
   }
 
+  // 2. Overdue tasks
   final overdue = tasks.where((task) {
     final due = parseDay(task['dueDate']);
     return task['done'] != true && due != null && due.isBefore(today);
@@ -112,7 +144,7 @@ LearningCoachPlan buildLearningCoachPlan({
     final title = task['title']?.toString().trim() ?? 'کار عقب‌افتاده';
     final subject = task['subject']?.toString().trim() ?? 'عمومی';
     steps.add(LearningCoachStep(
-      title: 'شروع دوباره: ${title}',
+      title: 'شروع دوباره: $title',
       subject: subject,
       minutes: 15,
       kind: 'overdue',
@@ -120,6 +152,7 @@ LearningCoachPlan buildLearningCoachPlan({
     ));
   }
 
+  // 3. Weak subjects (need at least two scored exams)
   final averages = subjectAverages(validExams);
   final weakSubjects = averages.entries
       .where((entry) => entry.value < 60 && (examCounts[entry.key] ?? 0) >= 2)
@@ -136,6 +169,7 @@ LearningCoachPlan buildLearningCoachPlan({
     ));
   }
 
+  // 4. Due flashcards
   final dueCards = cards.where((card) => isCardDue(card, now)).length;
   if (dueCards > 0 && steps.length < 3) {
     steps.add(LearningCoachStep(
@@ -147,14 +181,26 @@ LearningCoachPlan buildLearningCoachPlan({
     ));
   }
 
+  // 5. Gentle starter when nothing else is available
   if (steps.isEmpty) {
-    steps.add(const LearningCoachStep(
-      title: 'یک نوبت یادآوری فعال',
-      subject: 'عمومی',
-      minutes: 15,
-      kind: 'starter',
-      reason: 'یک بخش کوتاه را بخوان، کتاب را ببند و نکته‌های اصلی را از حافظه بنویس؛ بعد پاسخ خودت را بررسی کن.',
-    ));
+    final hasAnyTasks = tasks.any((task) => task['done'] != true);
+    if (hasAnyTasks) {
+      steps.add(const LearningCoachStep(
+        title: 'یک کار کوچک از برنامه امروز',
+        subject: 'عمومی',
+        minutes: 15,
+        kind: 'starter',
+        reason: 'یکی از کارهای باز را انتخاب کن و فقط ۱۵ دقیقه روی آن کار کن. تمام‌کردن یک کار کوچک بهتر از شروع چند کار ناتمام است.',
+      ));
+    } else {
+      steps.add(const LearningCoachStep(
+        title: 'یک نوبت یادآوری فعال',
+        subject: 'عمومی',
+        minutes: 15,
+        kind: 'starter',
+        reason: 'یک بخش کوتاه را بخوان، کتاب را ببند و نکته‌های اصلی را از حافظه بنویس؛ بعد پاسخ خودت را بررسی کن.',
+      ));
+    }
   }
 
   final unique = <String>{};
