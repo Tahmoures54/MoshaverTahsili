@@ -411,6 +411,7 @@ void main() {
     await tester.pumpAndSettle();
 
     Future<void> answer(String value) async {
+      final previousCall = call;
       await tester.enterText(find.byType(TextField).last, value);
       final sendButton = find.ancestor(
         of: find.byTooltip('فراخواندن سیمرغ · مصرف یک پر'),
@@ -422,6 +423,8 @@ void main() {
         () => Future<void>.delayed(const Duration(milliseconds: 100)),
       );
       await tester.pumpAndSettle();
+      print('SIMORGH_TRACE input=$value calls=$call stage=${store.teachingSessions.single['stage']} diag=${store.teachingSessions.single['diagnosticCount']} practice=${store.teachingSessions.single['practiceAttempts']} mastery=${store.teachingSessions.single['masteryCount']} correct=${store.teachingSessions.single['masteryCorrect']}');
+      expect(call, previousCall + 1, reason: 'Exactly one provider turn should be used for: $value');
       expect(tester.takeException(), isNull);
     }
 
