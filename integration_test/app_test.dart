@@ -54,7 +54,7 @@ void main() {
     await tester.tap(find.text('تهیه پر'));
     await tester.pumpAndSettle();
     expect(find.text('کیسه پرهای سیمرغ'), findsOneWidget);
-    expect(find.text('بازیابی خریدها'), findsOneWidget);
+    expect(find.text('بسته‌های پر سیمرغ'), findsOneWidget);
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
 
