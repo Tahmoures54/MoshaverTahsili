@@ -282,14 +282,26 @@ class NoticeCard extends StatelessWidget {
   final IconData icon;
   final bool warning;
   @override
-  Widget build(BuildContext context) => Card(
-    color: warning ? const Color(0xFFFFF5E5) : null,
-    child: Padding(padding: const EdgeInsets.all(16), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Icon(icon, size: 22, color: warning ? Colors.deepOrange.shade800 : teal),
-      const SizedBox(width: 10),
-      Expanded(child: Text(text, style: const TextStyle(height: 1.8))),
-    ])),
-  );
+  Widget build(BuildContext context) {
+    final background = warning ? const Color(0xFFFFF5E5) : const Color(0xFFEAF6F4);
+    final foreground = warning ? const Color(0xFF8A4B12) : navy;
+    return Card(
+      color: background,
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17)),
+      child: Padding(
+        padding: const EdgeInsets.all(15),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(icon, size: 21,
+            color: warning ? const Color(0xFFB65D19) : teal),
+          const SizedBox(width: 11),
+          Expanded(child: Text(text, style: TextStyle(
+            color: foreground, height: 1.8, fontSize: 13,
+          ))),
+        ]),
+      ),
+    );
+  }
 }
 
 class SimorghFeatherMark extends StatelessWidget {
