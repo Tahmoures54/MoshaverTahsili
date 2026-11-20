@@ -92,8 +92,16 @@ class AiAdvisorService {
       throw const AiException(AiErrorKind.credits, 'پر سیمرغ کافی نداری. برای ادامه، یک بسته پر تهیه کن.');
     }
     final messages = _messages(profile, history, question, systemInstruction: systemInstruction);
-    final body = utf8.encode(jsonEncode({'model': model, 'messages': messages,
-      'temperature': 0.55, 'max_tokens': 1200}));
+    // Match the proven direct AvalAI/DeepSeek request shape used by Smart Mechanic.
+    // Explicitly disable provider-side thinking for the configured deepseek-chat
+    // route: Simorgh needs the final teaching response, not a reasoning payload.
+    final body = utf8.encode(jsonEncode({
+      'model': model,
+      'messages': messages,
+      'temperature': 0.55,
+      'thinking': {'type': 'disabled'},
+      'max_tokens': 1200,
+    }));
     if (body.length > maxRequestBytes) {
       throw const AiException(AiErrorKind.input, 'حجم درخواست زیاد است. پرسش یا اطلاعات گفت‌وگو را کوتاه‌تر کن.');
     }
