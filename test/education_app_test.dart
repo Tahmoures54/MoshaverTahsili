@@ -409,6 +409,7 @@ void main() {
         () => Future<void>.delayed(const Duration(milliseconds: 100)),
       );
       await tester.pumpAndSettle();
+      print('SIMORGH_TEST call=$call outcome=${outcomes[call - 1]} stage=${store.teachingSessions.single['stage']} practice=${store.teachingSessions.single['practiceAttempts']} mastery=${store.teachingSessions.single['masteryCount']}');
       expect(tester.takeException(), isNull);
     }
 
