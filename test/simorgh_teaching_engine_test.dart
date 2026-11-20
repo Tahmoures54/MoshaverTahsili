@@ -61,6 +61,12 @@ void main() {
       );
       expect(session.stage, SimorghTeachingStage.explanation);
       expect(session.explanationVariant, 1);
+      final firstInstruction = SimorghTeachingEngine.instructionFor(
+        SimorghTeachingSession(topic: 'کسرها', grade: '', stage: SimorghTeachingStage.explanation),
+      );
+      final alternateInstruction = SimorghTeachingEngine.instructionFor(session);
+      expect(alternateInstruction, isNot(firstInstruction));
+      expect(alternateInstruction, contains('تشبیه روزمره متفاوت'));
       session = SimorghTeachingEngine.recordExplanationCheck(
         session,
         SimorghAnswerOutcome.correct,

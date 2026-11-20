@@ -373,4 +373,21 @@ void main() {
       expect(() => WorkspaceBackup.decode(huge), throwsA(isA<BackupFormatException>()));
     });
   });
+  test('backup encoder refuses documents that its decoder would reject', () {
+    expect(
+      () => WorkspaceBackup.encode(
+        {'edu.ai.wallet': {'credits': 100}},
+        DateTime(2026, 11, 19),
+      ),
+      throwsA(isA<BackupFormatException>()),
+    );
+    expect(
+      () => WorkspaceBackup.encode(
+        {'edu.profile': {'notes': 'x' * WorkspaceBackup.maxBytes}},
+        DateTime(2026, 11, 19),
+      ),
+      throwsA(isA<BackupFormatException>()),
+    );
+  });
+
 }

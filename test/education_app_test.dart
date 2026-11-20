@@ -6,6 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:moshaver_tahsili/education/ai_advisor_service.dart';
+import 'package:moshaver_tahsili/education/assessment_pages.dart';
+import 'package:moshaver_tahsili/education/analytics_page.dart';
+import 'package:moshaver_tahsili/education/learning_coach_page.dart';
+import 'package:moshaver_tahsili/education/study_pages.dart';
 import 'package:moshaver_tahsili/education/bazaar_billing_service.dart';
 import 'package:moshaver_tahsili/education/credit_shop_page.dart';
 import 'package:moshaver_tahsili/education/education_store.dart';
@@ -267,6 +271,11 @@ void main() {
 
   testWidgets('Simorgh teaching evaluates a student answer and persists lesson progress', (tester) async {
     final store = await EducationStore.open();
+    await store.saveProfile({
+      'grade': 'پایه محرمانه',
+      'year': 'یازدهم',
+      'aiProfileContextConsent': false,
+    });
     var teachingProviderCalls = 0;
     String? teachingPrompt;
     final service = AiAdvisorService(
@@ -317,6 +326,9 @@ void main() {
     expect(teachingProviderCalls, 1);
     expect(teachingPrompt, contains('ساختار دقیق'));
     expect(teachingPrompt, contains('ابتدا یک پرسش کوتاه'));
+    expect(teachingPrompt, contains('پایه تحصیلی مشخص نشده'));
+    expect(teachingPrompt, isNot(contains('پایه محرمانه')));
+    expect(teachingPrompt, isNot(contains('یازدهم')));
     expect(store.messages.last['status'], 'completed');
     expect(store.messages.last['content'], contains('آفرین؛ پاسخ تو درست بود.'));
     expect(store.teachingSessions.single['diagnosticCount'], 1);
@@ -468,4 +480,130 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('آمادگی برای امتحان'), findsOneWidget);
   });
+  testWidgets('ConsultationRunner does not dispose an injected shared AI service', (tester) async {
+    final store = await EducationStore.open();
+    final sharedClient = _TrackingHttpClient();
+    final sharedService = AiAdvisorService(
+      apiKey: 'test-key',
+      client: sharedClient,
+    );
+
+    await tester.pumpWidget(frame(ConsultationRunner(
+      store: store,
+      service: sharedService,
+      kind: 'academic',
+      title: 'آزمون مالکیت سرویس',
+      question: 'یک پرسش آزمایشی',
+      autoStart: false,
+    )));
+    await tester.pumpWidget(frame(const SizedBox.shrink()));
+    expect(sharedClient.closed, isFalse);
+
+    final answer = await tester.runAsync(
+      () => sharedService.ask(
+        profile: null,
+        history: const [],
+        question: 'سرویس هنوز فعال است؟',
+      ),
+    );
+    expect(answer, 'پاسخ آزمایشی');
+    expect(sharedClient.calls, 1);
+    sharedService.dispose();
+    expect(sharedClient.closed, isFalse);
+    sharedClient.close();
+  });
+
+
+testWidgets('analytics tolerates malformed legacy teaching counters', (tester) async {
+    final store = await EducationStore.open();
+    await store.saveTeachingSessions([
+      {
+        'id': 'legacy-lesson',
+        'active': false,
+        'topic': 'درس قدیمی',
+        'stage': 'unknown',
+        'diagnosticCount': 'نامعتبر',
+        'masteryCorrect': 1.5,
+      },
+    ]);
+    await tester.pumpWidget(frame(AnalyticsPage(store: store)));
+    await tester.scrollUntilVisible(
+      find.text('درس قدیمی'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('درس قدیمی'), findsOneWidget);
+    expect(find.textContaining('۰ ارزیابی آغازین'), findsOneWidget);
+    expect(find.textContaining('۱ پاسخ درست در سنجش پایانی'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('planner tolerates malformed legacy task durations', (tester) async {
+    final store = await EducationStore.open();
+    await store.addTask({
+      'id': 'legacy-task',
+      'title': 'کار قدیمی',
+      'minutes': 'نامعتبر',
+      'done': false,
+    });
+    await tester.pumpWidget(frame(PlannerPage(store: store, changed: () {})));
+    await tester.pumpAndSettle();
+    expect(find.text('کار قدیمی'), findsOneWidget);
+    expect(find.textContaining('۰ دقیقه مطالعه برنامه‌ریزی کرده‌ای'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  test('learning coach handles malformed legacy task durations', () {
+    final plan = buildLearningCoachPlan(
+      exams: const [],
+      tasks: [
+        {
+          'id': 'legacy-overdue',
+          'title': 'کار عقب‌افتاده',
+          'minutes': 'نامعتبر',
+          'dueDate': '2026-11-18',
+          'done': false,
+        },
+        {
+          'id': 'legacy-overdue-2',
+          'title': 'کار دوم',
+          'minutes': 15,
+          'dueDate': '2026-11-18',
+          'done': false,
+        },
+      ],
+      cards: const [],
+      deadlines: const [],
+      now: DateTime(2026, 11, 19),
+    );
+    expect(plan.steps, isNotEmpty);
+    expect(plan.steps.first.kind, 'overdue');
+  });
+
+}
+
+class _TrackingHttpClient extends http.BaseClient {
+  bool closed = false;
+  int calls = 0;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (closed) throw StateError('shared client was closed');
+    calls++;
+    final body = jsonEncode({
+      'choices': [
+        {'message': {'content': 'پاسخ آزمایشی'}},
+      ],
+    });
+    return http.StreamedResponse(
+      Stream<List<int>>.value(utf8.encode(body)),
+      200,
+      headers: {'content-type': 'application/json; charset=utf-8'},
+    );
+  }
+
+  @override
+  void close() {
+    closed = true;
+  }
 }

@@ -686,25 +686,60 @@ class EducationStore extends ChangeNotifier {
   /// touched. If any write fails, the previous workspace is restored.
   Future<int> importBackup(String raw) => _serialized(() async {
     final data = WorkspaceBackup.decode(raw);
+    // Preserve both the exact on-disk envelopes and decrypted values. A
+    // damaged section may intentionally be absent from _secureData, but its
+    // ciphertext must still survive a failed multi-key restore.
+    final previousStored = <String, String?>{
+      for (final key in workspaceKeys) key: prefs.getString(key),
+    };
+    final previousSecure = <String, String?>{
+      for (final key in workspaceKeys) key: _secureData[key],
+    };
+    final previousErrors = <String, String>{
+      for (final entry in _dataErrors.entries)
+        if (workspaceKeys.contains(entry.key)) entry.key: entry.value,
+    };
     _dataErrors.removeWhere((key, _) => workspaceKeys.contains(key));
-    final previous = <String, String?>{for (final key in workspaceKeys) key: _secureData[key]};
     try {
       for (final key in workspaceKeys) {
         final value = data[key];
         if (value == null) {
           if (!await prefs.remove(key)) throw const LocalDataException('بازیابی انجام نشد.');
           _secureData.remove(key);
+        } else {
+          await _writeSecure(key, jsonEncode(value));
         }
-        else { await _writeSecure(key, jsonEncode(value)); }
       }
     } on Object {
-      for (final entry in previous.entries) {
-        final original = entry.value;
-        if (original == null) {
-          await prefs.remove(entry.key);
-          _secureData.remove(entry.key);
+      final rollbackFailures = <String>[];
+      for (final key in workspaceKeys) {
+        try {
+          final original = previousStored[key];
+          final restored = original == null
+              ? await prefs.remove(key)
+              : await prefs.setString(key, original);
+          if (!restored) rollbackFailures.add(key);
+        } on Object {
+          rollbackFailures.add(key);
         }
-        else { await _writeSecure(entry.key, original); }
+        final plaintext = previousSecure[key];
+        if (plaintext == null) {
+          _secureData.remove(key);
+        } else {
+          _secureData[key] = plaintext;
+        }
+      }
+      _dataErrors.removeWhere((key, _) => workspaceKeys.contains(key));
+      _dataErrors.addAll(previousErrors);
+      for (final key in rollbackFailures) {
+        _secureData.remove(key);
+        _dataErrors[key] = 'بازگردانی این بخش پس از خطای واردسازی کامل نشد.';
+      }
+      if (rollbackFailures.isNotEmpty) {
+        notifyListeners();
+        throw const LocalDataException(
+          'بازیابی ناموفق بود و بازگردانی کامل داده‌های قبلی تأیید نشد؛ پیش از تلاش دوباره از داده‌های محلی نسخه پشتیبان بگیر.',
+        );
       }
       rethrow;
     }

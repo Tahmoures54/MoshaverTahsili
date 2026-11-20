@@ -7,6 +7,13 @@ import 'ui.dart';
 
 String newId(String prefix) => '$prefix-${DateTime.now().microsecondsSinceEpoch}';
 
+int _safeTaskMinutes(Map<String, dynamic> task) {
+  final value = task['minutes'];
+  if (value is num && value.isFinite && value >= 0) return value.toInt();
+  final parsed = int.tryParse(digitsToEnglish(value?.toString() ?? ''));
+  return parsed != null && parsed >= 0 ? parsed : 0;
+}
+
 class PlannerPage extends StatefulWidget {
   const PlannerPage({super.key, required this.store, required this.changed});
   final EducationStore store;
@@ -22,7 +29,10 @@ class _PlannerPageState extends State<PlannerPage> {
   Future<void> mutate(Future<void> Function() action) async {
     if (saving) return;
     setState(() => saving = true);
-    try { await action(); widget.changed(); } on Object catch (error) {
+    try {
+      await action();
+      if (mounted) widget.changed();
+    } on Object catch (error) {
       if (mounted) showMessage(context, friendlyError(error));
     } finally { if (mounted) setState(() => saving = false); }
   }
@@ -84,7 +94,7 @@ class _PlannerPageState extends State<PlannerPage> {
   Widget build(BuildContext context) {
     final tasks = widget.store.tasks;
     final deadlines = widget.store.deadlines;
-    final minutes = tasks.fold<int>(0, (sum, item) => sum + ((item['minutes'] as num?)?.toInt() ?? 0));
+    final minutes = tasks.fold<int>(0, (sum, item) => sum + _safeTaskMinutes(item));
     return Scaffold(backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(heroTag: null, onPressed: saving ? null : add, icon: const Icon(Icons.add), label: const Text('افزودن برنامه')),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 92), children: [
@@ -123,7 +133,7 @@ class _PlannerPageState extends State<PlannerPage> {
           controlAffinity: ListTileControlAffinity.leading,
           title: Text(task['title'].toString(), style: TextStyle(fontWeight: FontWeight.bold,
               decoration: task['done'] == true ? TextDecoration.lineThrough : null)),
-          subtitle: Text('${task['subject']} · ${faNumber(task['minutes'] ?? 0)} دقیقه'
+          subtitle: Text('${task['subject']} · ${faNumber(_safeTaskMinutes(task))} دقیقه'
               '${task['dueDate'] == null ? '' : ' · ${faNumber(task['dueDate'])}'}'),
           secondary: IconButton(tooltip: 'حذف برنامه', icon: const Icon(Icons.delete_outline),
               onPressed: saving ? null : () => mutate(() => widget.store.deleteTask(task['id'].toString()))))),
@@ -188,7 +198,10 @@ class _ExamsPageState extends State<ExamsPage> {
   Future<void> mutate(Future<void> Function() action) async {
     if (saving) return;
     setState(() => saving = true);
-    try { await action(); widget.changed(); } on Object catch (error) {
+    try {
+      await action();
+      if (mounted) widget.changed();
+    } on Object catch (error) {
       if (mounted) showMessage(context, friendlyError(error));
     } finally { if (mounted) setState(() => saving = false); }
   }
@@ -243,7 +256,10 @@ class _CardsPageState extends State<CardsPage> {
   Future<void> mutate(Future<void> Function() action) async {
     if (saving) return;
     setState(() => saving = true);
-    try { await action(); widget.changed(); } on Object catch (error) {
+    try {
+      await action();
+      if (mounted) widget.changed();
+    } on Object catch (error) {
       if (mounted) showMessage(context, friendlyError(error));
     } finally { if (mounted) setState(() => saving = false); }
   }

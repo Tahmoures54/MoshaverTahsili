@@ -91,7 +91,14 @@ void main() {
   });
 
   test('concurrent duplicate request IDs share one call and one charge', () async {
-    final store = await paidStore();
+    SharedPreferences.setMockInitialValues({
+      EducationStore.walletKey: jsonEncode({
+        'successful_uses': 5,
+        'credits': 2,
+        'purchase_tokens': <String>[],
+      }),
+    });
+    final store = await EducationStore.open();
     final gate = Completer<void>();
     var calls = 0;
     final service = AiAdvisorService(store: store, apiKey: 'test-key', client: MockClient((_) async { calls++; await gate.future; return answer('answer'); }));
@@ -343,6 +350,78 @@ void main() {
       question: 'سلام',
     );
     expect(systemPrompt, isNot(contains('پایه قدیمی')));
+    service.dispose();
+  });
+
+  test('an old crisis message does not block study help after three neutral user turns', () async {
+    var called = false;
+    final service = AiAdvisorService(apiKey: 'test-key', client: MockClient((_) async {
+      called = true;
+      return answer('پاسخ آموزشی');
+    }));
+    final history = [
+      {'role': 'user', 'content': 'می‌خوام خودمو بکشم', 'status': 'completed'},
+      {'role': 'assistant', 'content': 'لطفاً تنها نمان', 'status': 'completed'},
+      {'role': 'user', 'content': 'سلام', 'status': 'completed'},
+      {'role': 'assistant', 'content': 'سلام', 'status': 'completed'},
+      {'role': 'user', 'content': 'یک سؤال ریاضی دارم', 'status': 'completed'},
+      {'role': 'assistant', 'content': 'بپرس', 'status': 'completed'},
+      {'role': 'user', 'content': 'حاصل دو به توان سه چیست؟', 'status': 'completed'},
+    ];
+    expect(await service.ask(profile: null, history: history, question: 'توان را توضیح بده'), 'پاسخ آموزشی');
+    expect(called, isTrue);
+    service.dispose();
+  });
+
+  test('disposing a service does not close an injected shared HTTP client', () async {
+    var calls = 0;
+    final sharedClient = MockClient((_) async {
+      calls++;
+      return answer('پاسخ مشترک');
+    });
+    final first = AiAdvisorService(apiKey: 'test-key', client: sharedClient);
+    first.dispose();
+
+    final second = AiAdvisorService(apiKey: 'test-key', client: sharedClient);
+    expect(
+      await second.ask(profile: null, history: const [], question: 'پرسش دوم'),
+      'پاسخ مشترک',
+    );
+    expect(calls, 1);
+    second.dispose();
+    sharedClient.close();
+  });
+
+  test('rejects a different question reusing an active request ID', () async {
+    final store = await paidStore();
+    final gate = Completer<void>();
+    final service = AiAdvisorService(
+      store: store,
+      apiKey: 'test-key',
+      client: MockClient((_) async {
+        await gate.future;
+        return answer('پاسخ پرسش اول');
+      }),
+    );
+    final first = service.ask(
+      profile: null,
+      history: const [],
+      question: 'پرسش اول',
+      requestId: 'reused-id',
+    );
+    final second = service.ask(
+      profile: null,
+      history: const [],
+      question: 'پرسش دوم',
+      requestId: 'reused-id',
+    );
+    await expectLater(
+      second,
+      throwsA(isA<AiException>().having((e) => e.kind, 'kind', AiErrorKind.input)),
+    );
+    gate.complete();
+    expect(await first, 'پاسخ پرسش اول');
+    expect(store.credits, 1);
     service.dispose();
   });
 

@@ -5,6 +5,13 @@ import 'learning_engine.dart';
 import 'mastery_estimator.dart';
 import 'ui.dart';
 
+int _safeLessonCount(Object? value) {
+  if (value is int && value >= 0) return value;
+  if (value is num && value.isFinite && value >= 0) return value.toInt();
+  final parsed = int.tryParse(digitsToEnglish(value?.toString() ?? ''));
+  return parsed != null && parsed >= 0 ? parsed : 0;
+}
+
 /// Local performance analytics. Every figure comes from the student's own
 /// records; a missing record is reported as a gap, never filled with a guess.
 class AnalyticsPage extends StatelessWidget {
@@ -136,8 +143,8 @@ class AnalyticsPage extends StatelessWidget {
                 title: Text(lesson['topic']?.toString() ?? 'مبحث بدون نام'),
                 subtitle: Text(
                   '${_teachingStageText(lesson['stage']?.toString())} · '
-                  '${faNumber(lesson['diagnosticCount'] as int? ?? 0)} ارزیابی آغازین · '
-                  '${faNumber(lesson['masteryCorrect'] as int? ?? 0)} پاسخ درست در سنجش پایانی',
+                  '${faNumber(_safeLessonCount(lesson['diagnosticCount']))} ارزیابی آغازین · '
+                  '${faNumber(_safeLessonCount(lesson['masteryCorrect']))} پاسخ درست در سنجش پایانی',
                 ),
                 isThreeLine: true,
               ),
