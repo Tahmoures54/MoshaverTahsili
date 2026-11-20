@@ -193,9 +193,11 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
       await save('pending');
       final result = await service.ask(profile: widget.store.profile, history: const [],
           question: widget.question, requestId: id);
+      // Persist the completed consultation even if the user has already
+      // navigated away. The local AI ledger alone is not the report history.
+      await save('completed', answer: result);
       if (!mounted) return;
       setState(() => answer = result);
-      await save('completed', answer: result);
     } on Object catch (value) {
       if (mounted) setState(() => error = friendlyError(value));
       try { await save('failed'); } on Object { /* Preserve wallet; never fabricate a report. */ }
