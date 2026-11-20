@@ -1,6 +1,6 @@
 # analysis_options.yaml
 # تحلیل و بهسازی شده برای پروژه مشاور هوشمند تحصیلی
-# Flutter 3.24.5 / Dart 3.5
+# Flutter 3.35.7 (version pinned in .fvmrc)
 
 include: package:flutter_lints/flutter.yaml
 
@@ -25,7 +25,7 @@ analyzer:
   language:
     strict-casts: true
     strict-inference: true
-    strict-raw-types: true    # ✅ جدید: List بدون <T> خطا می‌دهد
+    strict-raw-types: true    # هشدارهای نوع خام را در تحلیل ایستا فعال می‌کند
 
 # ─── قوانین Linter ────────────────────────────────────────
 linter:
