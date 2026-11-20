@@ -16,6 +16,8 @@ void main() {
       final result = AiSafetyPolicy.assess(message);
       expect(result.shouldBlockRemoteAi, isTrue, reason: message);
       expect(result.localResponse, contains('تنها نمان'));
+      expect(result.localResponse, contains('بیرون از گوشی فرستاده نشد'));
+      expect(result.localResponse, isNot(contains('هوش مصنوعی')));
     }
   });
 
