@@ -368,7 +368,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
         try {
           final turn = _decodeTeachingTurn(answer);
           final updated = _applyTeachingEvaluation(sessionAtRequest, turn);
-          await _persistTeachingSession(updated);
+          await _persistTeachingSession(updated, active: !updated.isComplete);
           teachingSession = updated;
           displayedAnswer = turn.feedback;
           if (updated.isComplete) {
