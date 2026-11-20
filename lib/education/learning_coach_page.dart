@@ -139,7 +139,7 @@ LearningCoachPlan buildLearningCoachPlan({
       return _safeCoachMinutes(a['minutes'], fallback: 30)
           .compareTo(_safeCoachMinutes(b['minutes'], fallback: 30));
     });
-  if (overdue.isNotEmpty && steps.length < 3) {
+  if (overdue.isNotEmpty) {
     final task = overdue.first;
     final title = task['title']?.toString().trim() ?? 'کار عقب‌افتاده';
     final subject = task['subject']?.toString().trim() ?? 'عمومی';
@@ -158,7 +158,7 @@ LearningCoachPlan buildLearningCoachPlan({
       .where((entry) => entry.value < 60 && (examCounts[entry.key] ?? 0) >= 2)
       .toList()
     ..sort((a, b) => a.value.compareTo(b.value));
-  if (weakSubjects.isNotEmpty && steps.length < 3) {
+  if (weakSubjects.isNotEmpty) {
     final weak = weakSubjects.first;
     steps.add(LearningCoachStep(
       title: 'تمرین مفهومی ${weak.key}',
@@ -171,7 +171,7 @@ LearningCoachPlan buildLearningCoachPlan({
 
   // 4. Due flashcards
   final dueCards = cards.where((card) => isCardDue(card, now)).length;
-  if (dueCards > 0 && steps.length < 3) {
+  if (dueCards > 0) {
     steps.add(LearningCoachStep(
       title: 'مرور فلش‌کارت‌های سررسیدشده',
       subject: 'مرور',
