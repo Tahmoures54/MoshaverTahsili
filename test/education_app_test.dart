@@ -53,8 +53,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('ذخیره پروفایل'));
     await tester.pumpAndSettle();
-    expect(find.text('درود بر جوینده دانایی!'), findsOneWidget);
+    expect(find.text('درود، سارا!'), findsOneWidget);
     final store = await EducationStore.open();
+    expect(store.profile?['fullName'], 'سارا احمدی');
+    expect(store.profile?['nickname'], 'سارا');
     expect(store.profile?['grade'], 'متوسطه اول');
     expect(store.profile?['year'], 'هفتم');
   });
