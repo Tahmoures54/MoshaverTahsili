@@ -545,7 +545,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
       ),
     Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: CreditSummary(store: widget.store, onShop: busy ? null : openShop)),
     if (!service.isConfigured) const Padding(padding: EdgeInsets.symmetric(horizontal: 16),
-      child: NoticeCard(text: 'مشاور هوش مصنوعی در این نسخه پیکربندی نشده است. برنامه مطالعه، نمرات، مرور و راهنمای روش مطالعه بدون اینترنت کار می‌کنند.', warning: true)),
+      child: NoticeCard(text: 'گفت‌وگو با سیمرغ در حال حاضر آماده نیست. برنامه مطالعه، نمرات، مرور و راهنمای روش مطالعه همچنان بدون اینترنت کار می‌کنند.', warning: true)),
     if (error != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: NoticeCard(text: error!, icon: Icons.error_outline, warning: true)),
         ],
       ),
@@ -555,7 +555,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
       const SizedBox(height: 18), const Icon(Icons.auto_awesome, color: blue, size: 46),
       const SizedBox(height: 14), const Text('سلام! من سیمرغم؛ بیا با هم مسیر یادگیری‌ات را پیدا کنیم.', textAlign: TextAlign.center,
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-      const SizedBox(height: 8), const Text('من یک همراه گفت‌وگویی با کمک هوش مصنوعی هستم؛ می‌توانم در فهم درس، برنامه‌ریزی و شناخت مسیرها کمکت کنم. پاسخ‌ها ممکن است اشتباه باشند؛ تصمیم‌های مهم را با معلم، مشاور مدرسه یا بزرگسال مورد اعتماد هم بررسی کن.',
+      const SizedBox(height: 8), const Text('من سیمرغم؛ همراه تو در فهم درس‌ها، برنامه‌ریزی و شناخت مسیرهای پیش رو. با هم فکر می‌کنیم، سؤال می‌پرسیم و قدم بعدی را پیدا می‌کنیم. ممکن است گاهی پاسخ من کامل یا درست نباشد؛ تصمیم‌های مهم را با معلم، مشاور مدرسه یا بزرگسال مورد اعتماد هم بررسی کن.',
           textAlign: TextAlign.center, style: TextStyle(color: Colors.blueGrey, height: 1.8)),
       const SizedBox(height: 20),
       for (final prompt in ['برای این هفته یک برنامه مطالعه واقع‌بینانه پیشنهاد بده.', 'چطور نقاط قوت و ضعف درسی‌ام را بشناسم؟', 'برای بهتر شدن تمرکزم چه تمرین‌هایی انجام دهم؟'])
