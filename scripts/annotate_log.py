@@ -36,6 +36,11 @@ for name in sys.argv[1:]:
         if not line.strip():
             continue
         safe = line.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
-        print(f'::error file=integration_test/app_test.dart,line=1::{safe[:900]}')
+        if path.name == 'app-integration.txt':
+            print(f'::error file=integration_test/app_test.dart,line=1::{safe[:900]}')
+        elif path.name == 'secure-storage-integration.txt':
+            print(f'::error file=integration_test/secure_storage_test.dart,line=1::{safe[:900]}')
+        else:
+            print(f'::error::{safe[:900]}')
 if summary:
     summary.close()

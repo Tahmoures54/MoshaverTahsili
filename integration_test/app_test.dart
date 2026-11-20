@@ -64,10 +64,16 @@ void main() {
     expect(store.profile?['year'], 'هفتم');
     expect(store.tasks.single['title'], 'مرور ریاضی');
     expect(prefs.getString('edu.tasks'), startsWith(EducationStore.encryptedPrefix));
-    expect(prefs.getString(EducationStore.walletKey), isNull);
+    final encryptedWallet = prefs.getString(EducationStore.walletKey);
+    expect(encryptedWallet, startsWith(EducationStore.encryptedPrefix));
+    expect(encryptedWallet, isNot(contains('"credits"')));
     expect(store.exams.single['score'], 17);
-    expect(store.credits, 0);
-    expect(store.freeAiUsesRemaining, 2);
+    expect(store.credits, 5);
+    expect(store.freeAiUsesRemaining, 0);
+    expect(
+      store.creditHistory.any((entry) => entry['id'] == 'welcome-credits-v1'),
+      isTrue,
+    );
     await tester.pumpAndSettle();
   }, timeout: const Timeout(Duration(minutes: 5)));
 }
