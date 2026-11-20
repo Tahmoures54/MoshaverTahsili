@@ -261,6 +261,30 @@ void main() {
     expect(store.creditHistory, hasLength(3));
   });
 
+  test('failed workspace reset restores the original encrypted sections', () async {
+    final initial = await EducationStore.open();
+    await initial.saveProfile({'nickname': 'پروفایل قبلی'});
+    await initial.addTask({'id': 'old-task', 'title': 'کار قبلی'});
+    final prefs = initial.prefs;
+    final originalProfile = prefs.getString('edu.profile');
+    final originalTasks = prefs.getString('edu.tasks');
+    final store = await EducationStore.open(
+      preferences: prefs,
+      removePreference: (key) async {
+        if (key == 'edu.tasks') return false;
+        return prefs.remove(key);
+      },
+    );
+
+    await expectLater(store.clear(), throwsA(isA<LocalDataException>()));
+    expect(prefs.getString('edu.profile'), originalProfile);
+    expect(prefs.getString('edu.tasks'), originalTasks);
+    expect(store.profile?['nickname'], 'پروفایل قبلی');
+    expect(store.tasks.single['id'], 'old-task');
+    expect(store.dataError('edu.profile'), isNull);
+    expect(store.dataError('edu.tasks'), isNull);
+  });
+
   test('damaged workspace lists are preserved instead of overwritten', () async {
     SharedPreferences.setMockInitialValues({'edu.tasks': '{broken'});
     final store = await EducationStore.open();

@@ -48,9 +48,14 @@ class AiReservation {
 /// serialized. Balance, request state and its ledger are persisted in ONE key.
 /// This is not a tamper-proof or server-verified financial ledger.
 class EducationStore extends ChangeNotifier {
-  EducationStore(this.prefs, {required this.cipher}) : _wallet = _emptyWallet();
+  EducationStore(this.prefs, {
+    required this.cipher,
+    @visibleForTesting Future<bool> Function(String key)? removePreference,
+  }) : _wallet = _emptyWallet(),
+       _removePreference = removePreference ?? prefs.remove;
   final SharedPreferences prefs;
   final SecureLocalCipher cipher;
+  final Future<bool> Function(String key) _removePreference;
   final Map<String, String> _secureData = {};
   static SecureLocalCipher? secureCipherOverride;
   static const encryptedPrefix = 'enc:v2:';
@@ -78,9 +83,14 @@ class EducationStore extends ChangeNotifier {
   String? get walletError => _walletError;
   String? dataError(String key) => _dataErrors[key];
 
-  static Future<EducationStore> open({SharedPreferences? preferences, SecureLocalCipher? cipher}) async {
+  static Future<EducationStore> open({
+    SharedPreferences? preferences,
+    SecureLocalCipher? cipher,
+    @visibleForTesting Future<bool> Function(String key)? removePreference,
+  }) async {
     final store = EducationStore(preferences ?? await SharedPreferences.getInstance(),
-      cipher: cipher ?? secureCipherOverride ?? const AndroidKeystoreCipher());
+      cipher: cipher ?? secureCipherOverride ?? const AndroidKeystoreCipher(),
+      removePreference: removePreference);
     await store._initializeSecureData();
     await store.refundInterruptedRequests();
     return store;
@@ -748,11 +758,62 @@ class EducationStore extends ChangeNotifier {
     return data.length;
   });
 
+  /// Deletes only the study workspace. If any preference removal fails,
+  /// restore every original ciphertext and in-memory value before reporting it.
+  /// The wallet and purchase ledger are deliberately outside this transaction.
   Future<void> clear() => _serialized(() async {
-    for (final key in workspaceKeys) {
-      if (!await prefs.remove(key)) {
-        throw const LocalDataException('حذف کامل اطلاعات انجام نشد. دوباره تلاش کن.');
+    final previousStored = <String, String?>{
+      for (final key in workspaceKeys) key: prefs.getString(key),
+    };
+    final previousSecure = <String, String?>{
+      for (final key in workspaceKeys) key: _secureData[key],
+    };
+    final previousErrors = <String, String>{
+      for (final entry in _dataErrors.entries)
+        if (workspaceKeys.contains(entry.key)) entry.key: entry.value,
+    };
+
+    try {
+      for (final key in workspaceKeys) {
+        if (!await _removePreference(key)) {
+          throw const LocalDataException('حذف کامل اطلاعات انجام نشد. داده‌های قبلی حفظ شدند؛ دوباره تلاش کن.');
+        }
       }
+    } on Object {
+      final rollbackFailures = <String>[];
+      for (final key in workspaceKeys) {
+        try {
+          final original = previousStored[key];
+          final restored = original == null
+              ? await prefs.remove(key)
+              : await prefs.setString(key, original);
+          if (!restored) rollbackFailures.add(key);
+        } on Object {
+          rollbackFailures.add(key);
+        }
+        final plaintext = previousSecure[key];
+        if (plaintext == null) {
+          _secureData.remove(key);
+        } else {
+          _secureData[key] = plaintext;
+        }
+      }
+      _dataErrors.removeWhere((key, _) => workspaceKeys.contains(key));
+      _dataErrors.addAll(previousErrors);
+      for (final key in rollbackFailures) {
+        _secureData.remove(key);
+        _dataErrors[key] = 'بازگردانی این بخش پس از خطای حذف کامل نشد.';
+      }
+      if (rollbackFailures.isNotEmpty) {
+        notifyListeners();
+        throw const LocalDataException(
+          'حذف اطلاعات ناموفق بود و بازگردانی کامل داده‌های قبلی تأیید نشد؛ پیش از تلاش دوباره از داده‌های محلی نسخه پشتیبان بگیر.',
+        );
+      }
+      rethrow;
+    }
+
+    for (final key in workspaceKeys) {
       _secureData.remove(key);
       _dataErrors.remove(key);
     }
