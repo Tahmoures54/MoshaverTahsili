@@ -338,8 +338,8 @@ class HomePage extends StatelessWidget {
       ]),
       const SizedBox(height: 4),
       NoticeCard(
-        text: 'در هفت روز اخیر، ${faNumber(completed.length)} کار را تکمیل کردی؛ '
-            '${faNumber(minutes)} دقیقه برای این کارها برنامه‌ریزی شده بود.',
+        text: 'هفت روز اخیر: ${faNumber(completed.length)} کار تکمیل شده؛ '
+            '${faNumber(minutes)} دقیقه زمان برای این کارها برنامه‌ریزی شده است.',
         icon: Icons.insights_outlined,
       ),
       const SimorghSectionTitle(
