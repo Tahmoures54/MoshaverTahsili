@@ -205,6 +205,8 @@ LearningCoachPlan buildLearningCoachPlan({
 
   final unique = <String>{};
   final filtered = steps.where((step) {
+    // Never recommend a step that cannot fit into the learner's remaining time.
+    if (step.minutes > available) return false;
     final key = '${step.kind}|${step.subject}|${step.title}';
     if (!unique.add(key)) return false;
     final alreadyOpen = tasks.any((task) =>
