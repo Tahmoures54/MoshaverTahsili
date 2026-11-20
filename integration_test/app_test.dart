@@ -37,7 +37,12 @@ void main() {
     await tester.enterText(find.byType(TextFormField).at(2), '۳۰');
     await tester.tap(find.text('افزودن'));
     await tester.pumpAndSettle();
+    // The Android Keystore call is a real platform-channel operation. The
+    // first settled frame can occur while its Future is still pending, so
+    // keep pumping until the persisted task is reflected by the UI.
+    await _pumpUntilFound(tester, find.text('مرور ریاضی'));
     expect(find.text('مرور ریاضی'), findsOneWidget);
+    expect(prefs.getString('edu.tasks'), startsWith(EducationStore.encryptedPrefix));
 
     await tester.tap(find.byIcon(Icons.assessment_outlined).last);
     await tester.pumpAndSettle();
@@ -76,4 +81,12 @@ void main() {
     );
     await tester.pumpAndSettle();
   }, timeout: const Timeout(Duration(minutes: 5)));
+}
+Future<void> _pumpUntilFound(WidgetTester tester, Finder finder, {
+  int maxPumps = 40,
+}) async {
+  for (var attempt = 0; attempt < maxPumps; attempt++) {
+    if (finder.evaluate().isNotEmpty) return;
+    await tester.pump(const Duration(milliseconds: 100));
+  }
 }
