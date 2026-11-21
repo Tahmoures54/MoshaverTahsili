@@ -20,7 +20,16 @@ jobs:
     if: github.ref == 'refs/heads/main' && inputs.confirm == 'BACKUP_EXISTING_KEY'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+
     steps:
+      # ۱. اطمینان از وجود keytool (Java) — در صورت نصب نبودن، نصب میشود
+      - name: Set up Java (provides keytool)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # ۲. اعتبارسنجی اولیهی همهی secretها (بدون نوشتن هیچ فایل حساسی)
       - name: Validate existing signing secrets
         env:
           KEYSTORE: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
@@ -43,6 +52,7 @@ jobs:
           fi
           echo "All required secret inputs are present."
 
+      # ۳. ساخت بکاپ رمزنگاریشده — trap قبل از هرگونه نوشتن داده حساس ثبت میشود
       - name: Create encrypted backup (no plaintext artifact)
         env:
           KEYSTORE: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
@@ -54,18 +64,36 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
+
           work="$RUNNER_TEMP/signing-backup"
           mkdir -p "$work/plain" "$work/output"
+
+          # ← trap قبل از نوشتن هر دادهی حساس ثبت میشود تا در هر شرایطی پاکسازی شود
           trap 'rm -rf "$work/plain"; rm -f "$work/output/android-signing-backup.tar.gz"' EXIT
 
+          # ۳.۱. رمزگشایی keystore و اعتبارسنجی آن
           printf '%s' "$KEYSTORE" | base64 --decode > "$work/plain/upload-keystore.jks"
           test -s "$work/plain/upload-keystore.jks"
-          keytool -list -keystore "$work/plain/upload-keystore.jks" \
-            -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
 
+          # اعتبارسنجی store password و alias
+          keytool -list -keystore "$work/plain/upload-keystore.jks" \
+            -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>&1
+
+          # اعتبارسنجی key password (با تولید یک CSR آزمایشی و دور ریختن خروجی)
+          keytool -certreq -alias "$KEY_ALIAS" \
+            -keystore "$work/plain/upload-keystore.jks" \
+            -storepass "$STORE_PASSWORD" -keypass "$KEY_PASSWORD" \
+            -file /dev/null >/dev/null 2>&1 || {
+              echo "::error::KEY_PASSWORD does not match the private key for alias '${KEY_ALIAS}'."
+              exit 1
+            }
+
+          # ۳.۲. نوشتن رمزها و راهنمای بازیابی با Python
+          # نکته: heredoc با <<'PY' و بدون تودرتویی اضافی، از خطای YAML جلوگیری میکند.
           python3 - <<'PY'
           import os
           from pathlib import Path
+
           root = Path(os.environ["RUNNER_TEMP"]) / "signing-backup" / "plain"
           values = {
               "store-password.txt": os.environ["STORE_PASSWORD"],
@@ -74,24 +102,30 @@ jobs:
           }
           for name, value in values.items():
               (root / name).write_text(value, encoding="utf-8")
+
           (root / "RESTORE.txt").write_text(
               "Keep this archive offline and private.\n"
               "Decrypt the .enc file with the SIGNING_BACKUP_PASSPHRASE value.\n"
               "Restore upload-keystore.jks and enter the three accompanying values "
               "as RELEASE_KEYSTORE_BASE64 (base64-encode the JKS), "
               "RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_PASSWORD and RELEASE_KEY_ALIAS.\n",
-              encoding="utf-8")
+              encoding="utf-8",
+          )
           PY
 
+          # ۳.۳. ساخت آرشیو و رمزنگاری آن با AES-256
           tar -czf "$work/output/android-signing-backup.tar.gz" -C "$work/plain" .
-          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 600000 \
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 600000 -md sha256 \
             -in "$work/output/android-signing-backup.tar.gz" \
             -out "$work/output/android-signing-backup.tar.gz.enc" \
             -pass env:BACKUP_PASSPHRASE
+
+          # ۳.۴. حذف فوری نسخهی plaintext و آرشیو رمزنگارینشده
           rm -rf "$work/plain" "$work/output/android-signing-backup.tar.gz"
           test -s "$work/output/android-signing-backup.tar.gz.enc"
           echo "Encrypted signing backup created. No plaintext key or password is uploaded."
 
+      # ۴. آپلود فقط فایل رمزنگاریشده
       - name: Upload encrypted backup only
         uses: actions/upload-artifact@v7
         with:
@@ -100,11 +134,13 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      # ۵. پاکسازی نهایی (حتی در صورت خطا در مراحل قبل)
       - name: Clean temporary signing backup files
         if: always()
         shell: bash
         run: rm -rf "$RUNNER_TEMP/signing-backup"
 
+      # ۶. انتشار خلاصهی امن در GitHub Step Summary
       - name: Publish safe instructions
         run: |
           {
