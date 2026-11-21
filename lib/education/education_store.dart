@@ -395,8 +395,11 @@ class EducationStore extends ChangeNotifier {
       wallet['successful_uses'] = successfulAiUses + 1;
     }
     _markTransaction(wallet, (request['transactionId'] as String?) ?? id, 'completed');
-    _activeRequests.remove(id);
+    // Keep the in-memory reservation active until the durable write succeeds.
+    // If encryption or SharedPreferences fails, callers can retry safely and
+    // the request cannot be mistaken for an idle operation.
     await _saveWallet(wallet);
+    _activeRequests.remove(id);
   });
 
   Future<void> refundAiRequest(String id) => _serialized(() async {
@@ -409,8 +412,9 @@ class EducationStore extends ChangeNotifier {
     _markTransaction(wallet, transactionId, 'refunded');
     _transaction(wallet, '$transactionId-refund', 'refund', request['charge'] == 'credit' ? questionFeatherCost : 0,
         'بازگشت یک پر سیمرغ · درخواست ناموفق', 'completed');
-    _activeRequests.remove(id);
+    // Do not release the in-memory lock before the refund is durable.
     await _saveWallet(wallet);
+    _activeRequests.remove(id);
   });
 
   /// Refund a completed model call when its payload cannot be used by the app
