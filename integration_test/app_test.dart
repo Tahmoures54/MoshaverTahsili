@@ -17,9 +17,17 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byType(Checkbox));
     await tester.pumpAndSettle();
+    // The consent card and start button can extend below the viewport on
+    // the emulator's 411x914 screen. Scroll the actual control into view
+    // before tapping; a tap at an off-screen coordinate silently misses.
+    await tester.ensureVisible(find.text('بزن بریم'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('بزن بریم'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField).first, 'دانش‌آموز آزمون');
+    final fullNameField = find.byType(TextFormField).first;
+    await tester.ensureVisible(fullNameField);
+    await tester.pumpAndSettle();
+    await tester.enterText(fullNameField, 'دانش‌آموز آزمون');
     await tester.ensureVisible(find.text('ذخیره پروفایل'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('ذخیره پروفایل'));
