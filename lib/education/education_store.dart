@@ -59,9 +59,12 @@ class EducationStore extends ChangeNotifier {
   final Map<String, String> _secureData = {};
   static SecureLocalCipher? secureCipherOverride;
   static const encryptedPrefix = 'enc:v2:';
+  // Diagnostic/test access only. Never render or log these plaintext values.
   String? get walletRaw => _secureData[walletKey];
-  Map<String, dynamic> get walletSnapshot => _decodeWallet(jsonEncode(_checkedWallet()));
+  Map<String, dynamic> get walletSnapshot =>
+      _decodeWallet(jsonEncode(_checkedWallet()));
   static const walletKey = 'edu.ai.wallet';
+  static const currentWalletVersion = 3;
   static const freeUses = 2; // Retained only for pre-v3 wallets.
   /// One student-submitted AI question reserves exactly one Simorgh feather.
   static const questionFeatherCost = 1;
@@ -133,8 +136,31 @@ class EducationStore extends ChangeNotifier {
     }
   }
 
+  void _ensureKnownStorageKey(String key) {
+    if (key != walletKey && !workspaceKeys.contains(key)) {
+      throw const LocalDataException('کلید ذخیره‌سازی ناشناخته است.');
+    }
+  }
+
+  void _validateWorkspacePayload(String key, String plaintext) {
+    _ensureKnownStorageKey(key);
+    if (key == walletKey) return;
+    try {
+      final value = jsonDecode(plaintext);
+      // Reuse the backup schema as the single source of truth for workspace
+      // key types, item counts, IDs and serialized size limits.
+      WorkspaceBackup.encode({key: value}, DateTime.now());
+    } on BackupFormatException catch (error) {
+      throw LocalDataException(error.message);
+    } on FormatException {
+      throw const LocalDataException('ساختار اطلاعاتی که قرار است ذخیره شود معتبر نیست.');
+    }
+  }
+
   Future<void> _writeSecure(String key, String plaintext) async {
+    _ensureKnownStorageKey(key);
     if (_dataErrors.containsKey(key)) throw LocalDataException(_dataErrors[key]!);
+    _validateWorkspacePayload(key, plaintext);
     final encrypted = await cipher.encrypt(plaintext, key: key);
     if (await cipher.decrypt(encrypted, key: key) != plaintext) throw const LocalDataException('اعتبارسنجی رمزنگاری اطلاعات ناموفق بود؛ داده قبلی حفظ شد.');
     if (!await prefs.setString(key, encrypted)) throw const LocalDataException('ذخیره امن اطلاعات انجام نشد. داده قبلی حفظ شد.');
@@ -149,7 +175,7 @@ class EducationStore extends ChangeNotifier {
   }
 
   static Map<String, dynamic> _emptyWallet() => {
-    'version': 3,
+    'version': currentWalletVersion,
     // Only a genuinely new wallet receives this welcome grant. Decoding an
     // existing wallet always restores its stored balance without top-ups.
     'credits': 5,
@@ -193,7 +219,13 @@ class EducationStore extends ChangeNotifier {
     }
     final source = _map(jsonDecode(raw));
     final result = _emptyWallet();
-    result['version'] = _nonNegativeInt(source['version'] ?? 1);
+    final version = _nonNegativeInt(source['version'] ?? 1);
+    if (version < 1 || version > currentWalletVersion) {
+      throw const FormatException('Unsupported wallet version');
+    }
+    // Keep legacy versions intact so their remaining legacy free uses are not
+    // accidentally reset by a migration that only changes the file format.
+    result['version'] = version;
     result['credits'] = _nonNegativeInt(source['credits'] ?? 0);
     result['successful_uses'] = _nonNegativeInt(source['successful_uses'] ?? 0);
     final tokens = <String, dynamic>{};
@@ -220,6 +252,10 @@ class EducationStore extends ChangeNotifier {
     final requests = <String, dynamic>{};
     if (source['requests'] != null) {
       _map(source['requests']).forEach((id, Object? value) {
+        if (id.trim().isEmpty || id.length > 160 ||
+            id.contains(RegExp(r'[\x00-\x1F\x7F]'))) {
+          throw const FormatException('Invalid request ID');
+        }
         final item = _map(value);
         final status = _string(item['status'], 20);
         final charge = _string(item['charge'], 20);
@@ -239,6 +275,9 @@ class EducationStore extends ChangeNotifier {
         if (status == 'completed' && requests[id]['answer'] == null) {
           throw const FormatException('Missing saved answer');
         }
+        if (requests[id]['attempt'] != null && (requests[id]['attempt'] as int) < 1) {
+          throw const FormatException('Invalid request attempt');
+        }
       });
     }
     result['requests'] = requests;
@@ -248,14 +287,18 @@ class EducationStore extends ChangeNotifier {
       for (final Object? value in source['transactions'] as List) {
         final item = _map(value);
         final kind = _string(item['kind'], 20);
-        if (!{'purchase', 'ai', 'refund', 'bonus'}.contains(kind)) throw const FormatException('Invalid transaction');
+        final status = _string(item['status'], 20);
+        if (!{'purchase', 'ai', 'refund', 'bonus'}.contains(kind) ||
+            !{'pending', 'completed', 'refunded'}.contains(status)) {
+          throw const FormatException('Invalid transaction');
+        }
         transactions.add({
           'id': _string(item['id'], 512),
           'kind': kind,
           'amount': _nonNegativeInt(item['amount']),
           'title': _string(item['title'], 160),
           'createdAt': _string(item['createdAt'], 40),
-          'status': _string(item['status'], 20),
+          'status': status,
         });
       }
     }
@@ -312,7 +355,9 @@ class EducationStore extends ChangeNotifier {
     final history = wallet['transactions'] as List;
     history.add({'id': id, 'kind': kind, 'amount': amount, 'title': title,
       'createdAt': _now(), 'status': status});
-    if (history.length > maxHistoryEntries) history.removeAt(0);
+    while (history.length > maxHistoryEntries) {
+      history.removeAt(0);
+    }
   }
 
   void _markTransaction(Map<String, dynamic> wallet, String id, String status) {
@@ -357,6 +402,12 @@ class EducationStore extends ChangeNotifier {
         if (previous != null && previous['question'] != question) {
           throw const LocalDataException('شناسه درخواست برای متن دیگری ثبت شده است.');
         }
+        if (previous?['status'] == 'pending' && !_activeRequests.contains(id)) {
+          // A persisted pending request is not a new request. Startup recovery
+          // normally refunds it; this guard also protects callers that build a
+          // store directly or invoke the API before recovery has completed.
+          throw const LocalDataException('این درخواست قبلاً رزرو شده و هنوز تعیین‌تکلیف نشده است.');
+        }
         if (previous?['status'] == 'completed') {
           return AiReservation(cachedAnswer: previous!['answer'] as String,
               usesFreeUse: previous['charge'] == 'free');
@@ -365,10 +416,12 @@ class EducationStore extends ChangeNotifier {
         if (charge == 'free' && previous?['status'] == 'refunded' && freeAiUsesRemaining == 0) {
           charge = 'credit';
         }
-        if (charge == 'credit' && credits < 1) {
+        if (charge == 'credit' && (wallet['credits'] as int) < questionFeatherCost) {
           throw const LocalDataException('پر سیمرغ کافی نداری. برای ادامه، یک بسته پر تهیه کن.');
         }
-        if (charge == 'credit') wallet['credits'] = credits - questionFeatherCost;
+        if (charge == 'credit') {
+          wallet['credits'] = (wallet['credits'] as int) - questionFeatherCost;
+        }
         final attempt = previous == null ? 1 : ((previous['attempt'] as int?) ?? 1) + 1;
         final transactionId = '$id-attempt-$attempt';
         requests[id] = {'question': question, 'status': 'pending', 'charge': charge,
@@ -392,7 +445,7 @@ class EducationStore extends ChangeNotifier {
     request['status'] = 'completed';
     request['answer'] = answer;
     if (request['charge'] == 'free') {
-      wallet['successful_uses'] = successfulAiUses + 1;
+      wallet['successful_uses'] = (wallet['successful_uses'] as int) + 1;
     }
     _markTransaction(wallet, (request['transactionId'] as String?) ?? id, 'completed');
     // Keep the in-memory reservation active until the durable write succeeds.
@@ -407,7 +460,9 @@ class EducationStore extends ChangeNotifier {
     final request = (wallet['requests'] as Map)[id] as Map?;
     if (request == null || request['status'] != 'pending') return;
     request['status'] = 'refunded';
-    if (request['charge'] == 'credit') wallet['credits'] = credits + questionFeatherCost;
+    if (request['charge'] == 'credit') {
+      wallet['credits'] = (wallet['credits'] as int) + questionFeatherCost;
+    }
     final transactionId = (request['transactionId'] as String?) ?? id;
     _markTransaction(wallet, transactionId, 'refunded');
     _transaction(wallet, '$transactionId-refund', 'refund', request['charge'] == 'credit' ? questionFeatherCost : 0,
@@ -472,9 +527,9 @@ class EducationStore extends ChangeNotifier {
     final free = freeAiUsesRemaining > 0;
     if (!free && credits < 1) return false;
     if (free) {
-      wallet['successful_uses'] = successfulAiUses + 1;
+      wallet['successful_uses'] = (wallet['successful_uses'] as int) + 1;
     } else {
-      wallet['credits'] = credits - questionFeatherCost;
+      wallet['credits'] = (wallet['credits'] as int) - questionFeatherCost;
     }
     requests[id] = {'question': 'درخواست ثبت‌شده', 'status': 'completed',
       'charge': free ? 'free' : 'credit', 'createdAt': _now(), 'answer': 'پاسخ دریافت شده'};
@@ -497,7 +552,7 @@ class EducationStore extends ChangeNotifier {
         final tokens = wallet['purchase_tokens'] as Map;
         if (tokens.containsKey(purchaseToken)) return false;
         tokens[purchaseToken] = {'productId': productId, 'credits': creditsToAdd, 'createdAt': _now()};
-        wallet['credits'] = credits + creditsToAdd;
+        wallet['credits'] = (wallet['credits'] as int) + creditsToAdd;
         _transaction(wallet, 'purchase-${tokens.length}', 'purchase', creditsToAdd,
             product.title, 'completed');
         await _saveWallet(wallet);
@@ -505,7 +560,8 @@ class EducationStore extends ChangeNotifier {
       });
 
   static void _validateId(String value, {int limit = 160}) {
-    if (value.trim().isEmpty || value.length > limit) {
+    if (value.trim().isEmpty || value.length > limit ||
+        value.contains(RegExp(r'[\x00-\x1F\x7F]'))) {
       throw const LocalDataException('شناسه محلی معتبر نیست.');
     }
   }
@@ -524,12 +580,20 @@ class EducationStore extends ChangeNotifier {
 
   Future<void> saveProfile(Map<String, dynamic> value) => _writeMap('edu.profile', value);
   Future<void> _writeMap(String key, Map<String, dynamic> value) => _serialized(() async {
+    _ensureKnownStorageKey(key);
+    if (!WorkspaceBackup.objectKeys.contains(key)) {
+      throw const LocalDataException('این بخش برای ذخیره‌سازی به‌صورت شیء تعریف نشده است.');
+    }
     if (_dataErrors.containsKey(key)) throw LocalDataException(_dataErrors[key]!);
     await _writeSecure(key, jsonEncode(value));
     notifyListeners();
   });
 
   List<Map<String, dynamic>> readList(String key) {
+    _ensureKnownStorageKey(key);
+    if (!WorkspaceBackup.listKeys.contains(key)) {
+      throw const LocalDataException('این بخش برای خواندن به‌صورت فهرست تعریف نشده است.');
+    }
     final raw = _secureData[key];
     if (raw == null) return [];
     try {
@@ -543,6 +607,10 @@ class EducationStore extends ChangeNotifier {
   }
 
   Future<void> writeList(String key, List<Map<String, dynamic>> value) => _serialized(() async {
+    _ensureKnownStorageKey(key);
+    if (!WorkspaceBackup.listKeys.contains(key)) {
+      throw const LocalDataException('این بخش برای ذخیره‌سازی به‌صورت فهرست تعریف نشده است.');
+    }
     if (_dataErrors.containsKey(key)) throw LocalDataException(_dataErrors[key]!);
     await _writeSecure(key, jsonEncode(value));
     notifyListeners();
@@ -551,6 +619,10 @@ class EducationStore extends ChangeNotifier {
   Future<void> _mutateList(String key,
       List<Map<String, dynamic>> Function(List<Map<String, dynamic>>) update) =>
       _serialized(() async {
+        _ensureKnownStorageKey(key);
+        if (!WorkspaceBackup.listKeys.contains(key)) {
+          throw const LocalDataException('این بخش برای تغییر به‌صورت فهرست تعریف نشده است.');
+        }
         if (_dataErrors.containsKey(key)) throw LocalDataException(_dataErrors[key]!);
         final current = readList(key);
         final next = update(current);
