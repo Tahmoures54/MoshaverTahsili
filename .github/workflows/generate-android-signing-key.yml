@@ -17,9 +17,13 @@ concurrency:
 
 jobs:
   generate-and-store:
-    if: github.ref == 'refs/heads/main' && inputs.confirm == 'CREATE_AND_STORE'
+    # استفاده از github.event.inputs به‌جای inputs برای اطمینان از دسترسی در job-level if
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.event.inputs.confirm == 'CREATE_AND_STORE'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+
     steps:
       - name: Validate bootstrap token and prevent key replacement
         env:
@@ -31,14 +35,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "$BOOTSTRAP_TOKEN" ]]; then
-            echo "::error::Add a temporary fine-grained PAT as GH_SECRETS_BOOTSTRAP_TOKEN. It needs Secrets: Read and write for this repository."
+
+          if [[ -z "${BOOTSTRAP_TOKEN:-}" ]]; then
+            echo "::error::Add a temporary fine-grained PAT as GH_SECRETS_BOOTSTRAP_TOKEN."
+            echo "The token needs repository permission: Secrets — Read and write."
             exit 1
           fi
-          if [[ -n "$EXISTING_KEYSTORE$EXISTING_ALIAS$EXISTING_STORE_PASSWORD$EXISTING_KEY_PASSWORD" ]]; then
+
+          if [[ -n "${EXISTING_KEYSTORE}${EXISTING_ALIAS}${EXISTING_STORE_PASSWORD}${EXISTING_KEY_PASSWORD}" ]]; then
             echo "::error::At least one release signing secret already exists. Refusing to overwrite signing identity."
             exit 1
           fi
+
           echo "Preconditions passed."
 
       - name: Generate keystore on GitHub runner
@@ -47,34 +55,48 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
-          mkdir -p "$RUNNER_TEMP/moshaver-signing"
+
+          work="$RUNNER_TEMP/moshaver-signing"
+          mkdir -p "$work"
+
+          # trap پیش از هرگونه نوشتن داده حساس ثبت می‌شود
+          trap 'rm -rf "$work"' EXIT
+
           STORE_PASSWORD="$(openssl rand -hex 32)"
           KEY_PASSWORD="$(openssl rand -hex 32)"
           KEY_ALIAS="moshaver-tahsili-upload"
-          KEYSTORE="$RUNNER_TEMP/moshaver-signing/upload-keystore.jks"
+          KEYSTORE="$work/upload-keystore.jks"
 
           keytool -genkeypair -noprompt \
-            -keystore "$KEYSTORE" -storetype JKS \
+            -keystore "$KEYSTORE" -storetype PKCS12 \
             -storepass "$STORE_PASSWORD" -keypass "$KEY_PASSWORD" \
-            -alias "$KEY_ALIAS" -keyalg RSA -keysize 4096 -validity 10000 \
+            -alias "$KEY_ALIAS" \
+            -keyalg RSA -keysize 4096 -validity 10000 \
             -dname "CN=Moshaver Tahsili, OU=Android, O=Tahmoures54, L=Unknown, ST=Unknown, C=IR"
 
           keytool -list -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
 
+          # نوشتن مقادیر در GITHUB_OUTPUT به‌صورت multiline برای base64 طولانی
           {
-            echo "STORE_PASSWORD=$STORE_PASSWORD"
-            echo "KEY_PASSWORD=$KEY_PASSWORD"
+            echo "STORE_PASSWORD<<EOF_STORE"
+            echo "$STORE_PASSWORD"
+            echo "EOF_STORE"
+            echo "KEY_PASSWORD<<EOF_KEY"
+            echo "$KEY_PASSWORD"
+            echo "EOF_KEY"
             echo "KEY_ALIAS=$KEY_ALIAS"
-            echo "KEYSTORE_BASE64=$(base64 -w 0 "$KEYSTORE")"
+            echo "KEYSTORE_BASE64<<EOF_B64"
+            base64 -w 0 "$KEYSTORE"
+            echo ""
+            echo "EOF_B64"
           } >> "$GITHUB_OUTPUT"
 
           echo "Keystore generated and validated in the ephemeral GitHub runner."
 
-      - name: Store signing values directly as GitHub Actions secrets
+      - name: Store signing values as GitHub Actions secrets (via gh CLI)
         env:
           GH_TOKEN: ${{ secrets.GH_SECRETS_BOOTSTRAP_TOKEN }}
-          OWNER: ${{ github.repository_owner }}
-          REPO: ${{ github.event.repository.name }}
+          GH_REPO: ${{ github.repository }}
           STORE_PASSWORD: ${{ steps.generate.outputs.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ steps.generate.outputs.KEY_PASSWORD }}
           KEY_ALIAS: ${{ steps.generate.outputs.KEY_ALIAS }}
@@ -82,66 +104,37 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m pip install --quiet PyNaCl
-          python3 - <<'PY'
-          import base64
-          import json
-          import os
-          import urllib.error
-          import urllib.request
-          from nacl.public import PublicKey, SealedBox
 
-          owner = os.environ["OWNER"]
-          repo = os.environ["REPO"]
-          token = os.environ["GH_TOKEN"]
-          base = f"https://api.github.com/repos/{owner}/{repo}/actions/secrets"
-          headers = {
-              "Accept": "application/vnd.github+json",
-              "Authorization": f"Bearer {token}",
-              "X-GitHub-Api-Version": "2022-11-28",
-              "Content-Type": "application/json",
-          }
+          # gh secret set رمزنگاری را به‌صورت محلی انجام می‌دهد؛ نیازی به PyNaCl نیست.
+          # --body در argv قرار می‌گیرد؛ برای کاهش قرارگیری در فرآیند، از stdin استفاده می‌کنیم.
+          printf '%s' "$KEYSTORE_BASE64" | gh secret set RELEASE_KEYSTORE_BASE64
+          printf '%s' "$STORE_PASSWORD" | gh secret set RELEASE_KEYSTORE_PASSWORD
+          printf '%s' "$KEY_ALIAS"      | gh secret set RELEASE_KEY_ALIAS
+          printf '%s' "$KEY_PASSWORD"   | gh secret set RELEASE_KEY_PASSWORD
 
-          def request(url, method="GET", payload=None):
-              data = None if payload is None else json.dumps(payload).encode()
-              req = urllib.request.Request(url, data=data, headers=headers, method=method)
-              try:
-                  with urllib.request.urlopen(req, timeout=30) as response:
-                      body = response.read()
-                      return response.status, json.loads(body) if body else {}
-              except urllib.error.HTTPError as exc:
-                  detail = exc.read().decode(errors="replace")
-                  raise RuntimeError(f"GitHub API returned HTTP {exc.code}: {detail[:500]}") from exc
+          echo "Stored four RELEASE_* secrets."
 
-          _, key_data = request(base + "/public-key")
-          public_key = PublicKey(base64.b64decode(key_data["key"]))
-          sealed_box = SealedBox(public_key)
+      - name: Remove temporary bootstrap token secret
+        env:
+          GH_TOKEN: ${{ secrets.GH_SECRETS_BOOTSTRAP_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
 
-          values = {
-              "RELEASE_KEYSTORE_BASE64": os.environ["KEYSTORE_BASE64"],
-              "RELEASE_KEYSTORE_PASSWORD": os.environ["STORE_PASSWORD"],
-              "RELEASE_KEY_ALIAS": os.environ["KEY_ALIAS"],
-              "RELEASE_KEY_PASSWORD": os.environ["KEY_PASSWORD"],
-          }
-
-          for name, value in values.items():
-              encrypted = base64.b64encode(sealed_box.encrypt(value.encode())).decode()
-              request(f"{base}/{name}", "PUT", {
-                  "encrypted_value": encrypted,
-                  "key_id": key_data["key_id"],
-              })
-              print(f"Stored Actions secret: {name}")
-
-          # Remove the temporary bootstrap credential from repository secrets.
-          request(base + "/GH_SECRETS_BOOTSTRAP_TOKEN", "DELETE")
-          print("Removed temporary GH_SECRETS_BOOTSTRAP_TOKEN repository secret.")
-          PY
+          # حذف secret نیازمند مجوز Secrets: Write است (نه Administration).
+          if gh secret delete GH_SECRETS_BOOTSTRAP_TOKEN --yes 2>/dev/null; then
+            echo "Removed temporary GH_SECRETS_BOOTSTRAP_TOKEN repository secret."
+          else
+            echo "::warning::Could not delete GH_SECRETS_BOOTSTRAP_TOKEN automatically."
+            echo "Delete it manually in Settings → Secrets and variables → Actions,"
+            echo "then revoke the fine-grained PAT in Developer settings."
+          fi
 
       - name: Verify signing configuration and clean temporary files
         if: always()
         shell: bash
         run: |
-          set -euo pipefail
           rm -rf "$RUNNER_TEMP/moshaver-signing"
           echo "Runner-local keystore files cleaned. GitHub-hosted runner will be discarded."
 
@@ -153,7 +146,7 @@ jobs:
             echo "- The keystore was generated inside this ephemeral GitHub Actions runner."
             echo "- Four RELEASE_* values were saved directly as repository Actions secrets."
             echo "- No keystore, password file, plaintext artifact, or encrypted artifact was uploaded."
-            echo "- The temporary GH_SECRETS_BOOTSTRAP_TOKEN repository secret was deleted."
-            echo "- Revoke the fine-grained PAT in GitHub Settings > Developer settings > Personal access tokens."
+            echo "- The temporary GH_SECRETS_BOOTSTRAP_TOKEN repository secret was deleted automatically."
+            echo "- Revoke the fine-grained PAT in GitHub Settings → Developer settings → Personal access tokens."
             echo "- Keep a separate secure offline backup of the signing key before publishing updates."
           } >> "$GITHUB_STEP_SUMMARY"
