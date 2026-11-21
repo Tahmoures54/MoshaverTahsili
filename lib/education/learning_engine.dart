@@ -28,6 +28,14 @@ DateTime? parseDay(Object? value) {
   return parsed == null ? null : startOfDay(parsed);
 }
 
+/// Difference between local calendar dates, independent of daylight-saving
+/// transitions (where a local day may contain 23 or 25 hours).
+int _calendarDaysBetween(DateTime from, DateTime to) {
+  final a = DateTime.utc(from.year, from.month, from.day);
+  final b = DateTime.utc(to.year, to.month, to.day);
+  return b.difference(a).inDays;
+}
+
 int _intOf(Object? value, int fallback) =>
     value is num && value.isFinite ? value.round() : fallback;
 
@@ -86,9 +94,9 @@ class ReviewState {
 
 ReviewState reviewStateOf(Entry card) => ReviewState(
       ease: _doubleOf(card['ease'], 2.5).clamp(1.3, 3.0).toDouble(),
-      interval: _intOf(card['interval'], 0).clamp(0, 365),
-      reps: _intOf(card['reps'], 0).clamp(0, 100000),
-      lapses: _intOf(card['lapses'], 0).clamp(0, 100000),
+      interval: _intOf(card['interval'], 0).clamp(0, 365).toInt(),
+      reps: _intOf(card['reps'], 0).clamp(0, 100000).toInt(),
+      lapses: _intOf(card['lapses'], 0).clamp(0, 100000).toInt(),
     );
 
 /// SM-2 scheduling. Quality: 1 = forgot, 3 = recalled with difficulty,
@@ -104,7 +112,7 @@ ReviewState sm2Next(ReviewState state, int quality) {
   final interval = switch (reps) {
     1 => 1,
     2 => 6,
-    _ => (state.interval * ease).round().clamp(1, 365),
+    _ => (state.interval * ease).round().clamp(1, 365).toInt(),
   };
   return ReviewState(ease: ease, interval: interval, reps: reps, lapses: state.lapses);
 }
@@ -188,7 +196,9 @@ AdaptivePlan buildAdaptivePlan({
   Set<int> restWeekdays = const {},
 }) {
   final start = startOfDay(today);
-  final cap = dailyMinutes.clamp(15, 240);
+  final cap = dailyMinutes.clamp(15, 240).toInt();
+  // Bound caller-controlled horizons to keep planning predictable.
+  final safeHorizonDays = horizonDays.clamp(1, 90).toInt();
   final mastery = subjectAverages(exams);
 
   final nearestDeadline = <String, int>{};
@@ -196,7 +206,7 @@ AdaptivePlan buildAdaptivePlan({
     final date = parseDay(deadline['date']);
     final subject = deadline['subject']?.toString().trim() ?? '';
     if (date == null || subject.isEmpty) continue;
-    final days = date.difference(start).inDays;
+    final days = _calendarDaysBetween(start, date);
     if (days < 0) continue;
     final previous = nearestDeadline[subject];
     if (previous == null || days < previous) nearestDeadline[subject] = days;
@@ -207,8 +217,8 @@ AdaptivePlan buildAdaptivePlan({
     final average = mastery[subject] ?? 50.0;
     final weakness = 100.0 - average;
     final days = nearestDeadline[subject];
-    final urgency = days == null ? 0 : (30 - days).clamp(0, 30) * 2;
-    return weakness + urgency;
+    final urgency = days == null ? 0 : (30 - days).clamp(0, 30).toInt() * 2;
+    return weakness + urgency.toDouble();
   }
 
   final open = tasks.where((task) => task['done'] != true && task['id'] != null).toList()
@@ -229,10 +239,10 @@ AdaptivePlan buildAdaptivePlan({
   for (final task in open) {
     final id = task['id'].toString();
     final title = task['title']?.toString() ?? '';
-    final minutes = _intOf(task['minutes'], 30).clamp(1, 1440);
+    final minutes = _intOf(task['minutes'], 30).clamp(1, 1440).toInt();
 
     int? chosen;
-    for (var index = 0; index < horizonDays; index++) {
+    for (var index = 0; index < safeHorizonDays; index++) {
       if (remaining(index) >= minutes) {
         chosen = index;
         break;
@@ -313,7 +323,12 @@ class LearningReport {
   final List<String> dataGaps;
 
   List<SubjectProgress> get strengths => subjects.where((s) => s.average >= 75).toList();
-  List<SubjectProgress> get weaknesses => subjects.where((s) => s.average < 60).toList();
+  /// Weakest subjects first, so coaching always starts with the greatest need.
+  List<SubjectProgress> get weaknesses => subjects.where((s) => s.average < 60).toList()
+    ..sort((a, b) {
+      final byAverage = a.average.compareTo(b.average);
+      return byAverage != 0 ? byAverage : a.subject.compareTo(b.subject);
+    });
 }
 
 LearningReport buildLearningReport({
@@ -409,8 +424,8 @@ List<String> dailySuggestions({
   int dailyMinutes = 120,
 }) {
   final today = startOfDay(now);
-  final todayKey = isoDay(today);
   final suggestions = <String>[];
+  final dailyCap = dailyMinutes.clamp(15, 240).toInt();
 
   final overdue = tasks.where((task) {
     final due = parseDay(task['dueDate']);
@@ -422,11 +437,14 @@ List<String> dailySuggestions({
     );
   }
 
-  final todays = tasks.where((task) => task['done'] != true && task['dueDate']?.toString() == todayKey);
-  final load = todays.fold<int>(0, (sum, task) => sum + _intOf(task['minutes'], 0));
-  if (load > dailyMinutes) {
+  final todays = tasks.where((task) {
+    final due = parseDay(task['dueDate']);
+    return task['done'] != true && due != null && isoDay(due) == isoDay(today);
+  });
+  final load = todays.fold<int>(0, (sum, task) => sum + _intOf(task['minutes'], 0).clamp(0, 1440).toInt());
+  if (load > dailyCap) {
     suggestions.add(
-      'بار امروز ${toPersianDigits(load)} دقیقه است و از سقف ${toPersianDigits(dailyMinutes)} دقیقه‌ای تو بیشتر است. '
+      'بار امروز ${toPersianDigits(load)} دقیقه است و از سقف ${toPersianDigits(dailyCap)} دقیقه‌ای تو بیشتر است. '
       'بعضی کارها را به فردا منتقل کن.',
     );
   }
@@ -434,11 +452,13 @@ List<String> dailySuggestions({
   for (final deadline in deadlines) {
     final date = parseDay(deadline['date']);
     if (date == null) continue;
-    final days = date.difference(today).inDays;
+    final subject = deadline['subject']?.toString().trim() ?? '';
+    if (subject.isEmpty) continue;
+    final days = _calendarDaysBetween(today, date);
     if (days < 0 || days > 3) continue;
     final when = days == 0 ? 'امروز' : 'تا ${toPersianDigits(days)} روز دیگر';
     suggestions.add(
-      'امتحان ${deadline['subject']} $when است؛ مرور خلاصه و حل نمونه‌سؤال را اولویت بده.',
+      'امتحان $subject $when است؛ مرور خلاصه و حل نمونه‌سؤال را اولویت بده.',
     );
     break;
   }
