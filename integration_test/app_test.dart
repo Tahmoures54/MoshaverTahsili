@@ -32,7 +32,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('ذخیره پروفایل'));
     await tester.pumpAndSettle();
-    expect(find.text('درود، دانش‌آموز آزمون!'), findsOneWidget);
+    expect(find.text('درود، دانش‌آموز!'), findsOneWidget);
     final encryptedProfile = prefs.getString('edu.profile')!;
     expect(encryptedProfile, startsWith(EducationStore.encryptedPrefix));
     expect(encryptedProfile, isNot(contains('دانش‌آموز آزمون')));
