@@ -198,7 +198,7 @@ void main() {
     await tester.pump();
     expect(selectedAction, SimorghAction.planner);
 
-    await tester.tap(find.text('گفت‌وگو با مشاور'));
+    await tester.tap(find.text('گفت‌وگو با سیمرغ'));
     await tester.pump();
     expect(chatOpened, isTrue);
 

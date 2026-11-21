@@ -49,9 +49,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('پایه تحصیلی'), findsOneWidget);
     await tester.enterText(find.byType(TextFormField).first, 'سارا احمدی');
-    await tester.ensureVisible(find.text('ذخیره پروفایل'));
+    FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
-    await tester.tap(find.text('ذخیره پروفایل'));
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'ذخیره پروفایل'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'ذخیره پروفایل'));
     await tester.pumpAndSettle();
     expect(find.text('درود، سارا!'), findsOneWidget);
     final store = await EducationStore.open();
