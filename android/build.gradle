@@ -1,17 +1,90 @@
-allprojects {
+# ═══════════════════════════════════════════════════════════
+#  settings.gradle – مشاور هوشمند تحصیلی (سیمرغ)
+#  Groovy DSL (نه Kotlin DSL)
+#  مسیر جایگزینی: android/settings.gradle
+# ═══════════════════════════════════════════════════════════
+
+# ─────────────────────────────────────────────
+#  1. Plugin Management (الزامی برای Gradle 7+)
+# ─────────────────────────────────────────────
+pluginManagement {
+    def flutterSdkPath = {
+        def properties = new Properties()
+        file("local.properties").withInputStream { properties.load(it) }
+        def flutterSdkPath = properties.getProperty("flutter.sdk")
+        assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
+        return flutterSdkPath
+    }()
+
+    includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+# ─────────────────────────────────────────────
+#  2. Dependency Resolution Management
+# ─────────────────────────────────────────────
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+
     repositories {
         google()
         mavenCentral()
         // Required by the pinned Cafe Bazaar plugin's Poolakey dependency.
         maven { url 'https://jitpack.io' }
+
+        // Mirrorهای ایرانی (اختیاری — اگه فعال هستن، سرعت دانلود بهتر)
+        // اکشن: اگر فعال نیستن، comment کنید
+        // maven { url 'https://maven.ir-mirror.com/maven2' }
     }
 }
 
+# ─────────────────────────────────────────────
+#  3. Feature Previews (Gradle 8.x)
+# ─────────────────────────────────────────────
+enableFeaturePreview('TYPESAFE_PROJECT_ACCESSORS')
+enableFeaturePreview('STABLE_CONFIGURATION_CACHE')
+
+# ─────────────────────────────────────────────
+#  4. Build Cache (برای سرعت build مجدد)
+# ─────────────────────────────────────────────
+buildCache {
+    local {
+        isEnabled = true
+        directory = file("${rootDir}/.gradle/build-cache")
+        removeUnusedEntriesAfterDays = 30
+    }
+}
+
+# ─────────────────────────────────────────────
+#  5. Root Project Configuration
+# ─────────────────────────────────────────────
 rootProject.buildDir = '../build'
+
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
 
+# ─────────────────────────────────────────────
+#  6. Subprojects: repository inheritance
+#  (اگه RepositoriesMode.PREFER_SETTINGS یا FAIL_ON_PROJECT_REPOS تنظیم کردیم، این بلاک نادیده گرفته می‌شود)
+#  برای سازگاری با plugin‌های قدیمی که نیاز به repository دارند اینجا نگه می‌داریم.
+# ─────────────────────────────────────────────
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+}
+
+# ─────────────────────────────────────────────
+#  7. Clean Task
+# ─────────────────────────────────────────────
 tasks.register('clean', Delete) {
     delete rootProject.buildDir
 }
