@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Splash screen — نسخه‌ی توسعه‌یافته.
+  - پس‌زمینه: @color/splash_bg (همان رنگ قبلی، بدون تغییر).
+  - نشان: @drawable/simorgh_logo (لوگوی بهینه‌شده‌ی سیمرغ).
+  - اندازه‌ی نشان: 144dp × 144dp — برای نمایش بهتر روی صفحه‌های بزرگ‌تر.
+  - gravity: center — در مرکز صفحه.
+  - اندازه‌ی نشان بر اساس Material Design splash guideline (حداقل 144dp برای Android 12+).
+  مسیر جایگزین برای: android/app/src/main/res/drawable/splash_background.xml
+  (یا هر نام دیگری که در styles.xml برای LaunchTheme به آن ارجاع داده‌اید).
+-->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- پس‌زمینه: آبی برند اپ -->
@@ -7,8 +17,8 @@
     <!-- نشان سیمرغ -->
     <item
         android:gravity="center"
-        android:width="120dp"
-        android:height="120dp"
-        android:drawable="@drawable/ic_education" />
+        android:width="144dp"
+        android:height="144dp"
+        android:drawable="@drawable/simorgh_logo" />
 
 </layer-list>
