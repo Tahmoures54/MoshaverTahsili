@@ -7,6 +7,7 @@ pluginManagement {
             def path = properties.getProperty('flutter.sdk')
             if (path != null) return path
         }
+        // Fallback to environment variables for CI/CD environments
         def envPath = System.getenv('FLUTTER_ROOT') ?: System.getenv('FLUTTER_HOME')
         if (envPath != null) return envPath
         throw new GradleException('flutter.sdk or FLUTTER_ROOT must be configured')
@@ -21,8 +22,9 @@ pluginManagement {
 
 plugins {
     id 'dev.flutter.flutter-plugin-loader' version '1.0.0'
-    id 'com.android.application' version '8.7.3' apply false
-    id 'org.jetbrains.kotlin.android' version '2.1.0' apply false
+    // Upgraded to the latest stable AGP and KGP as of November 2026
+    id 'com.android.application' version '9.5.2' apply false
+    id 'org.jetbrains.kotlin.android' version '2.2.10' apply false
 }
 
 include ':app'
