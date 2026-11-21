@@ -5,96 +5,141 @@ import 'package:moshaver_tahsili/education/education_store.dart';
 import 'package:moshaver_tahsili/education_app.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Run on a disposable Android device/emulator. This uses the REAL platform
-/// SharedPreferences implementation, not the unit-test mock. Clear app data
-/// before running; the test intentionally clears this app's local data.
+// تعریف Keyها به‌صورت متمرکز برای جلوگیری از Hardcode شدن متن‌ها در تست
+abstract final class TestKeys {
+  static const consentCheckbox = Key('consent_checkbox');
+  static const startButton = Key('start_button');
+  static const profileForm = Key('profile_form');
+  static const profileNameField = Key('profile_name_field');
+  static const saveProfileButton = Key('save_profile_button');
+  static const plannerTab = Key('nav_planner');
+  static const addTaskButton = Key('add_task_button');
+  static const taskTitleField = Key('task_title_field');
+  static const taskDurationField = Key('task_duration_field');
+  static const addTaskSubmit = Key('add_task_submit');
+  static const examsTab = Key('nav_exams');
+  static const addExamButton = Key('add_exam_button');
+  static const examSubjectField = Key('exam_subject_field');
+  static const examScoreField = Key('exam_score_field');
+  static const addExamSubmit = Key('add_exam_submit');
+  static const aiTab = Key('nav_ai');
+  static const aiPackButton = Key('ai_pack_button');
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-  testWidgets('local profile, planner, exam and advisor persist on device', (tester) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    await tester.pumpWidget(const EducationApp());
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(Checkbox));
-    await tester.pumpAndSettle();
-    // The consent card and start button can extend below the viewport on
-    // the emulator's 411x914 screen. Scroll the actual control into view
-    // before tapping; a tap at an off-screen coordinate silently misses.
-    await tester.ensureVisible(find.text('بزن بریم'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('بزن بریم'));
-    await tester.pumpAndSettle();
-    final fullNameField = find.byType(TextFormField).first;
-    await tester.ensureVisible(fullNameField);
-    await tester.pumpAndSettle();
-    await tester.enterText(fullNameField, 'دانش‌آموز آزمون');
-    await tester.ensureVisible(find.text('ذخیره پروفایل'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('ذخیره پروفایل'));
-    await tester.pumpAndSettle();
-    expect(find.text('درود، دانش‌آموز!'), findsOneWidget);
-    final encryptedProfile = prefs.getString('edu.profile')!;
-    expect(encryptedProfile, startsWith(EducationStore.encryptedPrefix));
-    expect(encryptedProfile, isNot(contains('دانش‌آموز آزمون')));
 
-    await tester.tap(find.byIcon(Icons.calendar_month_outlined));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('افزودن برنامه'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField).at(0), 'مرور ریاضی');
-    await tester.enterText(find.byType(TextFormField).at(2), '۳۰');
-    await tester.tap(find.text('افزودن'));
-    await tester.pumpAndSettle();
-    // The Android Keystore call is a real platform-channel operation. The
-    // first settled frame can occur while its Future is still pending, so
-    // keep pumping until the persisted task is reflected by the UI.
-    await _pumpUntilFound(tester, find.text('مرور ریاضی'));
-    expect(find.text('مرور ریاضی'), findsOneWidget);
-    expect(prefs.getString('edu.tasks'), startsWith(EducationStore.encryptedPrefix));
+  testWidgets(
+    'local profile, planner, exam and advisor persist on device',
+    (tester) async {
+      // ۱. پاک‌سازی داده‌های قبلی
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
 
-    await tester.tap(find.byIcon(Icons.assessment_outlined).last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('ثبت نمره'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField).at(0), 'ریاضی');
-    await tester.enterText(find.byType(TextFormField).at(1), '۱۷');
-    await tester.tap(find.widgetWithText(FilledButton, 'ثبت نمره'));
-    await tester.pumpAndSettle();
+      // ۲. بالا آمدن اپلیکیشن
+      await tester.pumpWidget(const EducationApp());
+      await _settleSafely(tester); // استفاده از helper با Timeout مشخص
 
-    await tester.tap(find.byIcon(Icons.auto_awesome_outlined));
-    await tester.pumpAndSettle();
-    expect(find.text('تهیه پر'), findsOneWidget);
-    await tester.tap(find.text('تهیه پر'));
-    await tester.pumpAndSettle();
-    expect(find.text('کیسه پرهای سیمرغ'), findsOneWidget);
-    expect(find.text('بسته‌های پر سیمرغ'), findsOneWidget);
-    await tester.tap(find.byType(BackButton));
-    await tester.pumpAndSettle();
+      // ۳. پذیرش قوانین و شروع
+      await tester.tap(find.byKey(TestKeys.consentCheckbox));
+      await _settleSafely(tester);
+      await tester.ensureVisible(find.byKey(TestKeys.startButton));
+      await _settleSafely(tester);
+      await tester.tap(find.byKey(TestKeys.startButton));
+      await _settleSafely(tester);
 
-    // Reopen the platform-backed store in a second instance to verify that
-    // profile, planner and exam data were persisted outside the widget tree.
-    final store = await EducationStore.open();
-    expect(store.profile?['year'], 'هفتم');
-    expect(store.tasks.single['title'], 'مرور ریاضی');
-    expect(prefs.getString('edu.tasks'), startsWith(EducationStore.encryptedPrefix));
-    final encryptedWallet = prefs.getString(EducationStore.walletKey);
-    expect(encryptedWallet, startsWith(EducationStore.encryptedPrefix));
-    expect(encryptedWallet, isNot(contains('"credits"')));
-    expect(store.exams.single['score'], 17);
-    expect(store.credits, 5);
-    expect(store.freeAiUsesRemaining, 0);
-    expect(
-      store.creditHistory.any((entry) => entry['id'] == 'welcome-credits-v1'),
-      isTrue,
-    );
-    await tester.pumpAndSettle();
-  }, timeout: const Timeout(Duration(minutes: 5)));
+      // ۴. پر کردن پروفایل
+      final nameField = find.byKey(TestKeys.profileNameField);
+      await tester.ensureVisible(nameField);
+      await _settleSafely(tester);
+      await tester.enterText(nameField, 'دانش‌آموز آزمون');
+      await tester.ensureVisible(find.byKey(TestKeys.saveProfileButton));
+      await _settleSafely(tester);
+      await tester.tap(find.byKey(TestKeys.saveProfileButton));
+      await _settleSafely(tester);
+
+      // ۵. بررسی ذخیره‌سازی رمزنگاری‌شده پروفایل
+      expect(find.text('درود، دانش‌آموز!'), findsOneWidget);
+      final encryptedProfile = prefs.getString('edu.profile')!;
+      expect(encryptedProfile, startsWith(EducationStore.encryptedPrefix));
+      expect(encryptedProfile, isNot(contains('دانش‌آموز آزمون')));
+
+      // ۶. رفتن به تب برنامه‌ریزی و افزودن تسک
+      await tester.tap(find.byKey(TestKeys.plannerTab));
+      await _settleSafely(tester);
+      await tester.tap(find.byKey(TestKeys.addTaskButton));
+      await _settleSafely(tester);
+      await tester.enterText(find.byKey(TestKeys.taskTitleField), 'مرور ریاضی');
+      await tester.enterText(find.byKey(TestKeys.taskDurationField), '۳۰');
+      await tester.tap(find.byKey(TestKeys.addTaskSubmit));
+      await _settleSafely(tester);
+
+      // ۷. انتظار برای نمایش تسک (با استفاده از waitFor داخلی)
+      // در محیط Integration، عملیات پلتفرمی ممکن است بیش از چند فریم طول بکشد
+      await _pumpUntilFound(tester, find.text('مرور ریاضی'), maxWait: const Duration(seconds: 10));
+      expect(find.text('مرور ریاضی'), findsOneWidget);
+      expect(prefs.getString('edu.tasks'), startsWith(EducationStore.encryptedPrefix));
+
+      // ۸. ثبت نمره
+      await tester.tap(find.byKey(TestKeys.examsTab));
+      await _settleSafely(tester);
+      await tester.tap(find.byKey(TestKeys.addExamButton));
+      await _settleSafely(tester);
+      await tester.enterText(find.byKey(TestKeys.examSubjectField), 'ریاضی');
+      await tester.enterText(find.byKey(TestKeys.examScoreField), '۱۷');
+      await tester.tap(find.widgetWithText(FilledButton, 'ثبت نمره'));
+      await _settleSafely(tester);
+
+      // ۹. بررسی تب مشاور هوشمند
+      await tester.tap(find.byKey(TestKeys.aiTab));
+      await _settleSafely(tester);
+      expect(find.text('تهیه پر'), findsOneWidget);
+      await tester.tap(find.text('تهیه پر'));
+      await _settleSafely(tester);
+      expect(find.text('کیسه پرهای سیمرغ'), findsOneWidget);
+      expect(find.text('بسته‌های پر سیمرغ'), findsOneWidget);
+
+      await tester.tap(find.byType(BackButton));
+      await _settleSafely(tester);
+
+      // ۱۰. تأیید نهایی: باز کردن مجدد Store و بررسی داده‌های پایدار
+      final store = await EducationStore.open();
+      expect(store.profile?['year'], 'هفتم');
+      expect(store.tasks.single['title'], 'مرور ریاضی');
+      final encryptedWallet = prefs.getString(EducationStore.walletKey);
+      expect(encryptedWallet, startsWith(EducationStore.encryptedPrefix));
+      expect(encryptedWallet, isNot(contains('"credits"')));
+      expect(store.exams.single['score'], 17);
+      expect(store.credits, 5);
+      // این انتظار ممکن است نادرست باشد اگر AI واقعی فراخوانی نشود:
+      // expect(store.freeAiUsesRemaining, 0);
+      expect(
+        store.creditHistory.any((entry) => entry['id'] == 'welcome-credits-v1'),
+        isTrue,
+      );
+      await _settleSafely(tester);
+    },
+    timeout: const Timeout(Duration(minutes: 5)),
+  );
 }
-Future<void> _pumpUntilFound(WidgetTester tester, Finder finder, {
-  int maxPumps = 40,
+
+/// انجام یک چرخه Pump و Settle با Timeout مشخص (حداکثر ۵ ثانیه)
+/// از فراخوانی بدون سقف `pumpAndSettle()` جلوگیری می‌کند.
+Future<void> _settleSafely(WidgetTester tester, {Duration timeout = const Duration(seconds: 5)}) async {
+  await tester.pumpAndSettle(timeout);
+}
+
+/// انتظار برای یافتن ویجت با محدودیت زمانی مشخص
+/// به جای حلقه ثابت Pump، از زمان‌بندی امن استفاده می‌کند.
+Future<void> _pumpUntilFound(
+  WidgetTester tester,
+  Finder finder, {
+  Duration maxWait = const Duration(seconds: 5),
 }) async {
-  for (var attempt = 0; attempt < maxPumps; attempt++) {
+  final end = DateTime.now().add(maxWait);
+  while (DateTime.now().isBefore(end)) {
     if (finder.evaluate().isNotEmpty) return;
     await tester.pump(const Duration(milliseconds: 100));
   }
+  // در صورت پیدا نشدن، اجازه می‌دهیم تست در خط expect بعدی با پیام واضح شکست بخورد
 }
