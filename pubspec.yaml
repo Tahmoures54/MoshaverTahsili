@@ -1,20 +1,25 @@
+
 name: moshaver_tahsili
 description: همراه فارسی و آفلاین‌محور یادگیری و مشاوره تحصیلی
 publish_to: 'none'
 version: 1.1.2+5
 
 environment:
-  sdk: '>=3.5.0 <4.0.0'
-  flutter: '>=3.24.0'
+  sdk: '>=3.9.0 <4.0.0'
+  flutter: '>=3.35.0'
 
 dependencies:
   flutter:
     sdk: flutter
+
   flutter_localizations:
     sdk: flutter
+
   http: ^1.2.2
+
   shared_preferences: ^2.3.2
-  # Exact published 1.2.0 source commit; do not follow a moving branch.
+
+  # Pinned to a specific commit for reproducible builds.
   cafebazaar_billing:
     git:
       url: https://github.com/mavan-innovative-studio/cafebazaar-billing-package.git
@@ -23,8 +28,10 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
   integration_test:
     sdk: flutter
+
   flutter_lints: ^4.0.0
 
 flutter:
