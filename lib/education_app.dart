@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/services.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -27,41 +26,128 @@ const appBuildNumber = String.fromEnvironment('APP_BUILD_NUMBER', defaultValue: 
 const appVersionLabel = 'نسخه $appVersion · ساخت $appBuildNumber';
 
 int _safeHomeMinutes(Object? value) {
-  if (value is num && value.isFinite) {
-    return value.clamp(0, 1440).toInt();
+  if (value is num) {
+    if (!value.isFinite) return 0;
+    return value.round().clamp(0, 1440).toInt();
   }
-  final parsed = int.tryParse(digitsToEnglish(value?.toString() ?? '').trim());
-  return parsed?.clamp(0, 1440).toInt() ?? 0;
+
+  final normalized = digitsToEnglish(value?.toString() ?? '').trim();
+  final parsed = num.tryParse(normalized);
+  if (parsed == null || !parsed.isFinite) return 0;
+  return parsed.round().clamp(0, 1440).toInt();
+}
+
+/// Removes control characters and collapses accidental whitespace without
+/// restricting Persian, Arabic, Latin, or other legitimate name characters.
+String _normalizeProfileText(String value) {
+  return value
+      .replaceAll(RegExp(r'[\u0000-\u001F\u007F]'), '')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+}
+
+String? _validateFullName(String? value) {
+  final normalized = _normalizeProfileText(value ?? '');
+  if (normalized.isEmpty) {
+    return 'نام و نام خانوادگی را وارد کن.';
+  }
+  if (normalized.length > 80) {
+    return 'نام واردشده بیش از حد طولانی است.';
+  }
+
+  final parts = normalized.split(' ').where((part) => part.isNotEmpty);
+  if (parts.length < 2) {
+    return 'لطفاً نام و نام خانوادگی را وارد کن.';
+  }
+  return null;
 }
 
 class EducationApp extends StatefulWidget {
   const EducationApp({super.key, this.store});
+
   final EducationStore? store;
+
   @override
   State<EducationApp> createState() => _EducationAppState();
 }
 
 class _EducationAppState extends State<EducationApp> {
   late Future<EducationStore> future;
+
+  Future<EducationStore> _createStore() {
+    final suppliedStore = widget.store;
+    return suppliedStore == null
+        ? EducationStore.open()
+        : Future<EducationStore>.value(suppliedStore);
+  }
+
   @override
-  void initState() { super.initState(); future = widget.store == null ? EducationStore.open() : Future.value(widget.store); }
+  void initState() {
+    super.initState();
+    future = _createStore();
+  }
+
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'سیمرغ | مشاور هوشمند تحصیلی', debugShowCheckedModeBanner: false,
-    locale: const Locale('fa'), supportedLocales: const [Locale('fa'), Locale('en')],
-    localizationsDelegates: GlobalMaterialLocalizations.delegates,
-    theme: buildAppTheme(),
-    home: FutureBuilder<EducationStore>(future: future, builder: (context, snapshot) {
-      if (snapshot.hasData) return EntryScreen(store: snapshot.data!);
-      if (snapshot.hasError) {
-        return Scaffold(body: Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const NoticeCard(text: 'ذخیره‌سازی گوشی آماده نشد. اطلاعات قبلی بازنویسی نشده است. فضای خالی گوشی را بررسی کن و دوباره برنامه را باز کن.', warning: true),
-          FilledButton(onPressed: () => setState(() => future = EducationStore.open()), child: const Text('تلاش دوباره')),
-        ]))));
-      }
-      return const LoadingPage();
-    }),
-  );
+  void didUpdateWidget(covariant EducationApp oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.store, widget.store)) {
+      future = _createStore();
+    }
+  }
+
+  void _retry() {
+    setState(() {
+      future = _createStore();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'سیمرغ | مشاور هوشمند تحصیلی',
+      debugShowCheckedModeBanner: false,
+      locale: const Locale('fa'),
+      supportedLocales: const [Locale('fa'), Locale('en')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      theme: buildAppTheme(),
+      home: FutureBuilder<EducationStore>(
+        key: ObjectKey(future),
+        future: future,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return EntryScreen(store: snapshot.data!);
+          }
+
+          if (snapshot.hasError) {
+            return Scaffold(
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const NoticeCard(
+                        text:
+                            'ذخیره‌سازی گوشی آماده نشد. اطلاعات قبلی بازنویسی نشده است. فضای خالی گوشی را بررسی کن و دوباره برنامه را باز کن.',
+                        warning: true,
+                      ),
+                      const SizedBox(height: 12),
+                      FilledButton(
+                        onPressed: _retry,
+                        child: const Text('تلاش دوباره'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+
+          return const LoadingPage();
+        },
+      ),
+    );
+  }
 }
 
 const gradeYears = <String, List<String>>{
@@ -120,15 +206,42 @@ class _ProfileSheetState extends State<_ProfileSheet> {
   }
 
   Future<void> _save() async {
-    if (!form.currentState!.validate()) return;
-    setState(() { saving = true; error = null; });
+    if (saving) return;
+    final currentForm = form.currentState;
+    if (currentForm == null || !currentForm.validate()) return;
+
+    final normalizedName = _normalizeProfileText(fullName.text);
+    final normalizedField = _normalizeProfileText(field.text);
+    final normalizedGoal = _normalizeProfileText(goal.text);
+
+    setState(() {
+      saving = true;
+      error = null;
+    });
+
     try {
-      await widget.store.saveProfile({...?widget.store.profile, 'fullName': fullName.text.trim(), 'nickname': fullName.text.trim().split(RegExp(r'\s+')).first, 'grade': grade, 'year': year,
-        'field': field.text.trim(), 'goal': goal.text.trim(),
-        'aiProfileContextConsent': shareProfileWithAi, 'privacyVersion': 3});
-      if (mounted) Navigator.pop(context, true);
+      await widget.store.saveProfile({
+        ...?widget.store.profile,
+        'fullName': normalizedName,
+        'nickname': normalizedName.split(' ').first,
+        'grade': grade,
+        'year': year,
+        'field': normalizedField,
+        'goal': normalizedGoal,
+        'aiProfileContextConsent': shareProfileWithAi,
+        'privacyVersion': 3,
+      });
+
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
     } on Object catch (value) {
-      if (mounted) setState(() { saving = false; error = friendlyError(value); });
+      if (mounted) {
+        setState(() {
+          saving = false;
+          error = friendlyError(value);
+        });
+      }
     }
   }
 
@@ -143,7 +256,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
           const SizedBox(height: 8),
           const Text('برای اینکه بهتر بشناسمت و راهنمایی دقیق‌تری داشته باشم، نام و نام خانوادگی واقعی‌ات را وارد کن. نام ثبت‌شده در پروفایل فقط روی همین گوشی می‌ماند و به‌صورت خودکار برای سرویس بیرونی فرستاده نمی‌شود. توجه کن متن پرسش‌ها و پیام‌هایی که در گفت‌وگو می‌نویسی به سرویس پاسخ‌گویی ارسال می‌شوند؛ پس نام، شماره تماس یا اطلاعات شناسایی‌کننده را داخل پیام‌ها ننویس.', style: TextStyle(color: Colors.blueGrey, height: 1.7)),
           const SizedBox(height: 18),
-          TextFormField(controller: fullName, maxLength: 80, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'نام و نام خانوادگی', hintText: 'مثلاً سارا احمدی'), validator: (value) { final parts = (value ?? '').trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty); return parts.length < 2 ? 'لطفاً نام و نام خانوادگی را وارد کن.' : null; }),
+          TextFormField(controller: fullName, enabled: !saving, maxLength: 80, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'نام و نام خانوادگی', hintText: 'مثلاً سارا احمدی'), validator: _validateFullName),
           DropdownButtonFormField<String>(initialValue: grade, decoration: const InputDecoration(labelText: 'مقطع تحصیلی'),
             items: gradeYears.keys.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
             onChanged: saving ? null : (value) { if (value != null) setState(() { grade = value; year = gradeYears[value]!.first; }); }),
@@ -152,9 +265,9 @@ class _ProfileSheetState extends State<_ProfileSheet> {
             items: gradeYears[grade]!.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
             onChanged: saving ? null : (value) { if (value != null) setState(() => year = value); }),
           const SizedBox(height: 14),
-          TextFormField(controller: field, maxLength: 80, decoration: const InputDecoration(labelText: 'رشته یا زمینه مورد علاقه'),
-            validator: (value) => value == null || value.trim().isEmpty ? 'رشته یا «عمومی» را بنویس.' : null),
-          TextFormField(controller: goal, maxLines: 2, maxLength: 300, decoration: const InputDecoration(labelText: 'هدف تحصیلی (اختیاری)')),
+          TextFormField(controller: field, enabled: !saving, maxLength: 80, decoration: const InputDecoration(labelText: 'رشته یا زمینه مورد علاقه'),
+            validator: (value) => _normalizeProfileText(value ?? '').isEmpty ? 'رشته یا «عمومی» را بنویس.' : null),
+          TextFormField(controller: goal, enabled: !saving, maxLines: 2, maxLength: 300, decoration: const InputDecoration(labelText: 'هدف تحصیلی (اختیاری)')),
           const SizedBox(height: 8),
           CheckboxListTile(
             value: shareProfileWithAi,
@@ -182,13 +295,69 @@ class EntryScreen extends StatefulWidget {
 
 class _EntryScreenState extends State<EntryScreen> {
   bool accepted = false;
+  bool openingProfile = false;
+  late bool _hadProfile;
+
+  @override
+  void initState() {
+    super.initState();
+    _hadProfile = widget.store.profile != null;
+    widget.store.addListener(_handleStoreChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant EntryScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.store, widget.store)) {
+      oldWidget.store.removeListener(_handleStoreChanged);
+      _hadProfile = widget.store.profile != null;
+      widget.store.addListener(_handleStoreChanged);
+    }
+  }
+
+  void _handleStoreChanged() {
+    final hasProfile = widget.store.profile != null;
+    if (_hadProfile && !hasProfile && mounted) {
+      setState(() {
+        accepted = false;
+        openingProfile = false;
+      });
+    }
+    _hadProfile = hasProfile;
+  }
+
+  @override
+  void dispose() {
+    widget.store.removeListener(_handleStoreChanged);
+    super.dispose();
+  }
+
   Future<void> start() async {
-    if (!accepted) return;
-    if (await showProfileSheet(context, widget.store) && mounted) setState(() {});
+    if (!accepted || openingProfile) return;
+
+    setState(() => openingProfile = true);
+    try {
+      await showProfileSheet(context, widget.store);
+    } finally {
+      if (mounted) {
+        setState(() => openingProfile = false);
+      }
+    }
   }
   @override
   Widget build(BuildContext context) {
-    if (widget.store.profile != null) return Dashboard(store: widget.store);
+    return AnimatedBuilder(
+      animation: widget.store,
+      builder: (context, _) {
+        if (widget.store.profile != null) {
+          return Dashboard(store: widget.store);
+        }
+        return _buildWelcome();
+      },
+    );
+  }
+
+  Widget _buildWelcome() {
     return Scaffold(body: SafeArea(child: Center(child: SingleChildScrollView(
       padding: const EdgeInsets.all(22), child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 500), child: Column(children: [
         const SizedBox(height: 16),
@@ -216,11 +385,12 @@ class _EntryScreenState extends State<EntryScreen> {
         if (widget.store.walletError != null) NoticeCard(text: widget.store.walletError!, warning: true),
         if (widget.store.dataError('edu.profile') != null) NoticeCard(text: widget.store.dataError('edu.profile')!, warning: true),
         const SizedBox(height: 14),
-        SizedBox(width: double.infinity, child: FilledButton(onPressed: accepted ? start : null,
-            child: const Text('بزن بریم', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)))),
+        SizedBox(width: double.infinity, child: FilledButton(onPressed: accepted && !openingProfile ? start : null,
+            child: Text(openingProfile ? 'در حال آماده‌سازی…' : 'بزن بریم', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)))),
       ]))),
     )));
   }
+
 }
 
 class Dashboard extends StatefulWidget {
@@ -232,6 +402,7 @@ class Dashboard extends StatefulWidget {
 
 class _DashboardState extends State<Dashboard> {
   int index = 0;
+  bool deletingWorkspace = false;
   void refresh() { if (mounted) setState(() {}); }
   void go(int value) => setState(() => index = value);
   void push(Widget page) => unawaited(Navigator.push<void>(context, MaterialPageRoute(builder: (_) => page)).then((_) => refresh()));
@@ -261,15 +432,52 @@ class _DashboardState extends State<Dashboard> {
   }
 
   Future<void> deleteWorkspace() async {
-    if (widget.store.hasActiveAiRequests) { showMessage(context, 'صبر کن تا درخواست فعلی مشاور کامل شود.'); return; }
-    final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
-      title: const Text('اطلاعات تحصیلی پاک شود؟'),
-      content: const Text('پروفایل، برنامه‌ها، نمرات، فلش‌کارت‌ها و سابقه مشاوره پاک می‌شوند. اعتبار خریداری‌شده و سابقه خرید پاک نمی‌شوند. این کار برگشت‌پذیر نیست.'),
-      actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
-        FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('حذف اطلاعات'))]));
+    if (deletingWorkspace) return;
+
+    if (widget.store.hasActiveAiRequests) {
+      showMessage(context, 'صبر کن تا درخواست فعلی مشاور کامل شود.');
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('اطلاعات تحصیلی پاک شود؟'),
+        content: const Text(
+          'پروفایل، برنامه‌ها، نمرات، فلش‌کارت‌ها و سابقه مشاوره پاک می‌شوند. '
+          'اعتبار خریداری‌شده و سابقه خرید پاک نمی‌شوند. این کار برگشت‌پذیر نیست.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('انصراف'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('حذف اطلاعات'),
+          ),
+        ],
+      ),
+    );
+
     if (confirmed != true || !mounted) return;
-    try { await widget.store.clear(); if (mounted) setState(() => index = 0); }
-    on Object catch (error) { if (mounted) showMessage(context, friendlyError(error)); }
+
+    setState(() => deletingWorkspace = true);
+    try {
+      await widget.store.clear();
+      if (mounted) {
+        // The next build replaces the dashboard with the welcome screen.
+        setState(() => index = 0);
+      }
+    } on Object catch (error) {
+      if (mounted) {
+        showMessage(context, friendlyError(error));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => deletingWorkspace = false);
+      }
+    }
   }
 
   @override
@@ -278,7 +486,7 @@ class _DashboardState extends State<Dashboard> {
     return Scaffold(appBar: AppBar(title: Text(titles[index], style: const TextStyle(fontWeight: FontWeight.bold)),
         actions: [IconButton(tooltip: 'تنظیمات', onPressed: settings, icon: const Icon(Icons.settings_outlined))]),
       body: IndexedStack(index: index, children: [
-        HomePage(store: widget.store, go: go, active: index == 0),
+        HomePage(store: widget.store, go: go, active: index == 0, onReturn: refresh),
         PlannerPage(store: widget.store, changed: refresh),
         ExamsPage(store: widget.store, changed: refresh),
         CardsPage(store: widget.store, changed: refresh),
@@ -295,11 +503,29 @@ class _DashboardState extends State<Dashboard> {
 }
 
 class HomePage extends StatelessWidget {
-  const HomePage({super.key, required this.store, required this.go, this.active = false});
+  const HomePage({
+    super.key,
+    required this.store,
+    required this.go,
+    this.active = false,
+    this.onReturn,
+  });
+
   final EducationStore store;
   final ValueChanged<int> go;
   final bool active;
-  void push(BuildContext context, Widget page) => Navigator.push<void>(context, MaterialPageRoute(builder: (_) => page));
+  final VoidCallback? onReturn;
+
+  void push(BuildContext context, Widget page) {
+    unawaited(
+      Navigator.push<void>(
+        context,
+        MaterialPageRoute(builder: (_) => page),
+      ).then((_) {
+        if (context.mounted) onReturn?.call();
+      }),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -316,8 +542,9 @@ class HomePage extends StatelessWidget {
     }).toList();
     final minutes = completed.fold<int>(0, (sum, task) => sum + _safeHomeMinutes(task['minutes']));
     final now = DateTime.now();
-    final dailyValue = profile['dailyMinutes'];
-    final dailyMinutes = dailyValue is int ? dailyValue : 120;
+    final dailyMinutes = profile.containsKey('dailyMinutes')
+        ? _safeHomeMinutes(profile['dailyMinutes'])
+        : 120;
     final report = buildLearningReport(exams: store.exams, tasks: tasks, cards: store.cards, now: now);
     final suggestions = dailySuggestions(report: report, tasks: tasks, deadlines: store.deadlines, now: now, dailyMinutes: dailyMinutes);
     final fullName = profile['fullName']?.toString().trim() ?? '';
