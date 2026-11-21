@@ -49,10 +49,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('پایه تحصیلی'), findsOneWidget);
     await tester.enterText(find.byType(TextFormField).first, 'سارا احمدی');
-    await tester.ensureVisible(find.text('ذخیره پروفایل'));
+    FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
-    await tester.tap(find.text('ذخیره پروفایل'));
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'ذخیره پروفایل'));
     await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'ذخیره پروفایل'));
+    // The dashboard contains an intentionally repeating companion animation;
+    // pump a bounded frame instead of waiting for all tickers to settle.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('درود، سارا!'), findsOneWidget);
     final store = await EducationStore.open();
     expect(store.profile?['fullName'], 'سارا احمدی');

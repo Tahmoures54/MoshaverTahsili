@@ -317,6 +317,7 @@ void main() {
       );
       await service.ask(
         profile: {
+          'fullName': 'REAL_FULL_NAME_MUST_STAY_LOCAL',
           'nickname': 'PRIVATE_NICKNAME',
           'grade': 'پایه آزمایشی',
           'year': 'یازدهم',
@@ -329,6 +330,7 @@ void main() {
       );
       expect(systemPrompt, isNotNull);
       expect(systemPrompt!.contains('PRIVATE_NICKNAME'), isFalse);
+      expect(systemPrompt!.contains('REAL_FULL_NAME_MUST_STAY_LOCAL'), isFalse);
       expect(systemPrompt!.contains('پایه آزمایشی'), consent);
       expect(systemPrompt!.contains('هدف آزمایشی'), consent);
       service.dispose();
