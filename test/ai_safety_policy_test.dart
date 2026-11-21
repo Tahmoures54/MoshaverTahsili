@@ -17,7 +17,7 @@ void main() {
       expect(result.shouldBlockRemoteAi, isTrue, reason: message);
       expect(result.localResponse, contains('تنها نمان'));
       expect(result.localResponse, contains('پیام تو به سرویس هوش مصنوعی ارسال نشد'));
-      expect(result.localResponse, isNot(contains('هوش مصنوعی')));
+      expect(result.localResponse, isNot(contains('این پاسخ را هوش مصنوعی تولید کرده')));
     }
   });
 
