@@ -28,6 +28,24 @@ extension SimorghChatStatePresentation on SimorghChatState {
   };
 }
 
+/// Normalizes common Persian/Arabic variants without changing the stored text.
+String _normalizePersianText(Object? value) {
+  return (value?.toString() ?? '')
+      .replaceAll('ي', 'ی')
+      .replaceAll('ك', 'ک')
+      .replaceAll(RegExp(r'[\u200c\u200f\u202a-\u202e]'), '')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+}
+
+final RegExp _empatheticLanguage = RegExp(
+  r'نگران|می ?ترسم|خسته|استرس|ناامید|غمگین|سخته|دشوارم|'
+  r'نمی ?توانم|نمی ?تونم|از عهده اش برنمیایم|کم آوردم',
+);
+final RegExp _encouragingLanguage = RegExp(
+  r'آفرین|پیشرفت|تبریک|تمام کردی|موفق شدی|به پایان رساندی',
+);
+
 /// The state is derived only from the visible conversation and request status.
 /// It does not claim to detect or diagnose the student's emotions.
 SimorghChatState resolveSimorghChatState({
@@ -36,17 +54,16 @@ SimorghChatState resolveSimorghChatState({
 }) {
   if (busy) return SimorghChatState.thinking;
   if (messages.isEmpty) return SimorghChatState.listening;
+
   final last = messages.last;
-  if (last['role'] == 'assistant') {
-    final answer = last['content']?.toString() ?? '';
-    if (RegExp(r'آفرین|پیشرفت|تبریک|تمام کردی|موفق شدی').hasMatch(answer)) {
-      return SimorghChatState.happy;
-    }
-    return SimorghChatState.guiding;
+  final role = _normalizePersianText(last['role']).toLowerCase();
+  final content = _normalizePersianText(last['content']);
+  if (role == 'assistant') {
+    return _encouragingLanguage.hasMatch(content)
+        ? SimorghChatState.happy
+        : SimorghChatState.guiding;
   }
-  final text = last['content']?.toString() ?? '';
-  if (RegExp(r'نگران|می‌ترسم|میترسم|خسته|استرس|ناامید|غمگین|سخته|نمی‌توانم|نمی‌تونم')
-      .hasMatch(text)) {
+  if (role == 'user' && _empatheticLanguage.hasMatch(content)) {
     return SimorghChatState.empathetic;
   }
   return SimorghChatState.listening;
@@ -115,6 +132,33 @@ class SimorghGuidance {
   final SimorghMood mood;
 }
 
+/// Parses a task due date as a calendar date, preserving its written day even
+/// when a timestamp contains a UTC offset. Task due dates are day-based.
+DateTime? _parseTaskDay(Object? value) {
+  final text = _normalizePersianText(value);
+  final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(text);
+  if (match != null) {
+    final year = int.tryParse(match.group(1)!);
+    final month = int.tryParse(match.group(2)!);
+    final day = int.tryParse(match.group(3)!);
+    if (year == null || month == null || day == null) return null;
+    final parsed = DateTime(year, month, day);
+    if (parsed.year != year || parsed.month != month || parsed.day != day) return null;
+    return parsed;
+  }
+  final parsed = DateTime.tryParse(text);
+  return parsed == null ? null : DateTime(parsed.year, parsed.month, parsed.day);
+}
+
+bool _isSameLocalDay(DateTime value, DateTime reference) {
+  final local = value.toLocal();
+  return local.year == reference.year &&
+      local.month == reference.month &&
+      local.day == reference.day;
+}
+
+String _normalizedGrade(String grade) => _normalizePersianText(grade);
+
 /// Selects a short, supportive prompt from facts already stored on the device.
 /// It does not infer emotions, diagnose the student, or send data anywhere.
 SimorghGuidance buildSimorghGuidance({
@@ -128,27 +172,32 @@ SimorghGuidance buildSimorghGuidance({
 
   final overdueTasks = tasks.where((task) {
     if (task['done'] == true) return false;
-    final due = DateTime.tryParse(task['dueDate']?.toString() ?? '');
-    return due != null && DateTime(due.year, due.month, due.day).isBefore(day);
+    final due = _parseTaskDay(task['dueDate']);
+    return due != null && due.isBefore(day);
   }).length;
 
+  // A missing dueAt is treated as a new/due card for compatibility with the
+  // store's review rules. A malformed non-empty date is ignored, not counted.
   final dueCards = cards.where((card) {
-    final due = DateTime.tryParse(card['dueAt']?.toString() ?? '');
-    return due == null || !due.isAfter(today);
+    final rawDue = card['dueAt'];
+    if (rawDue == null || _normalizePersianText(rawDue).isEmpty) return true;
+    final due = DateTime.tryParse(rawDue.toString());
+    return due != null && !due.isAfter(today);
   }).length;
 
   final completedToday = tasks.where((task) {
     if (task['done'] != true) return false;
-    final completedAt = DateTime.tryParse(task['completedAt']?.toString() ?? '');
-    return completedAt != null &&
-        completedAt.year == today.year &&
-        completedAt.month == today.month &&
-        completedAt.day == today.day;
+    final raw = task['completedAt'];
+    final completedAt = DateTime.tryParse(raw?.toString() ?? '');
+    return completedAt != null && _isSameLocalDay(completedAt, today);
   }).length;
 
   final pendingTasks = tasks.where((task) => task['done'] != true).length;
-  final isPrimary = grade == 'ابتدایی';
-  final isOlderStudent = grade == 'متوسطه دوم' || grade == 'دانش‌آموز کنکوری' || grade == 'دانشجو';
+  final normalizedGrade = _normalizedGrade(grade);
+  final isPrimary = normalizedGrade == 'ابتدایی';
+  final isOlderStudent = const {
+    'متوسطه دوم', 'دانشآموز کنکوری', 'دانش آموز کنکوری', 'دانشجو',
+  }.contains(normalizedGrade);
 
   if (overdueTasks > 0) {
     return SimorghGuidance(
