@@ -517,10 +517,8 @@ class AnalyticsPage extends StatelessWidget {
 
   Widget _buildAdherenceSection(LearningReport report) {
     final adherence = report.adherence;
-
-    final percentage = adherence != null && adherence.isFinite
-        ? _safePercentage(adherence * 100)
-        : 0.0;
+    final hasData = adherence != null && adherence.isFinite;
+    final percentage = _safePercentage((adherence ?? 0) * 100);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
