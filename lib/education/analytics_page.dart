@@ -518,10 +518,8 @@ class AnalyticsPage extends StatelessWidget {
   Widget _buildAdherenceSection(LearningReport report) {
     final adherence = report.adherence;
 
-    final hasData = adherence != null && adherence.isFinite;
-
-    final percentage = hasData
-        ? _safePercentage(adherence! * 100)
+    final percentage = adherence != null && adherence.isFinite
+        ? _safePercentage(adherence * 100)
         : 0.0;
 
     return Column(
