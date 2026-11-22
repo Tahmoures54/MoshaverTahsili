@@ -415,7 +415,8 @@ for attempt in $(seq 1 30); do
   if [[ -n "$FINAL_PID" ]]; then
     adb -s "$DEVICE_ID" shell dumpsys activity activities \
       > "$REPORT_DIR/final-activities.txt" 2>&1 || true
-    if grep -Eq "Resumed: ActivityRecord.*\${PACKAGE_NAME}" \
+    # dumpsys activity uses different resumed-activity labels across Android API levels.
+    if grep -Eiq "(mResumedActivity|topResumedActivity|Resumed: ActivityRecord).*\${PACKAGE_NAME}|\${PACKAGE_NAME}.*(mResumedActivity|topResumedActivity|Resumed: ActivityRecord)" \
       "$REPORT_DIR/final-activities.txt"; then
       ACTIVITY_RESUMED="yes"
       break
