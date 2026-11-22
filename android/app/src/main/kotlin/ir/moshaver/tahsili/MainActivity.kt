@@ -250,7 +250,7 @@ class MainActivity : FlutterActivity() {
             "ساختار داده رمزنگاری‌شده معتبر نیست."
         }
         val version = payload[0].toInt()
-        require(version == ENCRYPTED_V2_VERSION) {
+        require(version == ENCRYPTED_V2_VERSION.toInt()) {
             "نسخه داده رمزنگاری‌شده پشتیبانی نمی‌شود: $version"
         }
         val iv = payload.copyOfRange(1, 1 + GCM_IV_BYTES)
