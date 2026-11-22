@@ -14,7 +14,7 @@
         android:fillColor="#00000000"
         android:strokeColor="#29F2BE58"
         android:strokeWidth="2"
-        android:pathData="M320,62a160,160 0,1 0,0.1 0" />
+        android:pathData="M480,222a160,160 0 1 1 -320,0a160,160 0 1 1 320,0" />
 
     <path
         android:fillColor="#F2BE58"
@@ -38,7 +38,7 @@
 
     <path
         android:fillColor="#142D4E"
-        android:pathData="M378,113a6,6 0,1 0,0.1 0Z" />
+        android:pathData="M384,119a6,6 0 1 1 -12,0a6,6 0 1 1 12,0Z" />
 
     <path
         android:fillColor="#00000000"
