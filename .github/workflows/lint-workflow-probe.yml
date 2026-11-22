@@ -1,0 +1,20 @@
+name: Lint Android workflow definition
+
+on:
+  push:
+    branches:
+      - fix/stabilize-ci-security-review
+    paths:
+      - .github/workflows/lint-workflow-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate the Android workflow with actionlint
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@latest -color .github/workflows/build-apk.yml
