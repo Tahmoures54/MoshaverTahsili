@@ -1,0 +1,25 @@
+name: Build workflow probe 3
+
+on:
+  push:
+    branches:
+      - fix/stabilize-ci-security-review
+    paths:
+      - .github/workflows/build-apk-probe-3.yml
+
+permissions:
+  contents: read
+
+jobs:
+  startup:
+    runs-on: ubuntu-latest
+    outputs:
+      production_ready: ${{ steps.config.outputs.production_ready }}
+      version: ${{ steps.config.outputs.version }}
+    steps:
+      - name: Probe output
+        id: config
+        run: |
+          echo "production_ready=false" >> "$GITHUB_OUTPUT"
+          echo "version=1.1.2" >> "$GITHUB_OUTPUT"
+          echo "output probe"
