@@ -1123,7 +1123,7 @@ class _TaskDialogState extends State<_TaskDialog> {
               ),
               const SizedBox(height: 10),
               TextFormField(
-                key: const Key('exam_subject_field'),
+                key: const Key('task_subject_field'),
                 controller: subject,
                 maxLength: 80,
                 textCapitalization: TextCapitalization.sentences,
@@ -1237,6 +1237,7 @@ class _ExamDialogState extends State<_ExamDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextFormField(
+                key: const Key('exam_subject_field'),
                 controller: subject,
                 maxLength: 80,
                 textCapitalization: TextCapitalization.sentences,
