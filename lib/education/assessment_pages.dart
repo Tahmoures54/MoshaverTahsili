@@ -66,7 +66,7 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
     for (final exam in widget.store.exams) {
       final rawPercentage = examPercentage(exam);
 
-      if (rawPercentage is! num || !rawPercentage.isFinite) {
+      if (rawPercentage == null) {
         continue;
       }
 
