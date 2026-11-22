@@ -137,7 +137,8 @@ Future<void> _settleSafely(
 }) async {
   await tester.pumpAndSettle(
     const Duration(milliseconds: 100),
-    timeout: timeout,
+    EnginePhase.sendSemanticsUpdate,
+    timeout,
   );
 }
 
