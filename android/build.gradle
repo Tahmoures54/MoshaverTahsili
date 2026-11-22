@@ -1,5 +1,14 @@
 // Root Android Gradle configuration for Simorgh.
-// Plugin versions and dependency repositories are declared in settings.gradle.
+// Plugin versions are declared in settings.gradle. Keep project repositories
+// here because the Flutter Gradle plugin registers its engine Maven repository.
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+}
 
 rootProject.buildDir = '../build'
 
