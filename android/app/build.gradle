@@ -68,14 +68,6 @@ android {
             shrinkResources = false
             signingConfig = signingConfigs.debug
         }
-        profile {
-            applicationIdSuffix = '.profile'
-            versionNameSuffix = '-profile'
-            debuggable = false
-            minifyEnabled = false
-            shrinkResources = false
-            signingConfig = signingConfigs.debug
-        }
         release {
             signingConfig = hasReleaseSigning ? signingConfigs.release : (ciTestBuild ? signingConfigs.debug : null)
             minifyEnabled true
