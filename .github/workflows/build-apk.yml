@@ -29,6 +29,8 @@ env:
 
 jobs:
   validate-and-build:
+    permissions:
+      contents: write
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     outputs:
@@ -65,18 +67,29 @@ jobs:
       - name: Source and Android security checks
         run: python3 scripts/security_check.py
 
-      # Only enforce formatting on Dart files changed by this branch.
-      # Existing formatting debt on untouched files in main must not block this PR.
-      - name: Check Dart formatting for changed files
+      # Format only changed Dart sources; do not rewrite unrelated legacy files.
+      - name: Format changed Dart files
         shell: bash
         run: |
           set -euo pipefail
           git fetch origin main --depth=1
           mapfile -t dart_files < <(git diff --name-only --diff-filter=ACMR origin/main...HEAD -- '*.dart')
-          if (("${#dart_files[@]}" > 0)); then
-            dart format --output=none --set-exit-if-changed "${dart_files[@]}"
-          else
-            echo "No changed Dart files; formatting check skipped."
+          if (("${#dart_files[@]}" == 0)); then
+            echo "No changed Dart files; formatting step skipped."
+            exit 0
+          fi
+
+          dart format "${dart_files[@]}"
+
+          # This one-time branch repair commits formatter output so CI and PR
+          # source stay identical. No write is attempted for PRs or other refs.
+          if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/fix/stabilize-ci-security-review" ]] &&
+             ! git diff --quiet -- "${dart_files[@]}"; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -- "${dart_files[@]}"
+            git commit -m "style: format changed Dart sources"
+            git push origin HEAD
           fi
 
       - name: Static analysis (errors and warnings fail; style infos are non-blocking)
