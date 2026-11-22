@@ -54,8 +54,8 @@ String _normalizeSimorghGrade(String value) {
   return value
       .replaceAll('ي', 'ی')
       .replaceAll('ك', 'ک')
-      .replaceAll(RegExp(r'[\\u200B-\\u200F\\u202A-\\u202E\\u2060\\uFEFF]'), '')
-      .replaceAll(RegExp(r'\\s+'), ' ')
+      .replaceAll(RegExp(r'[\u200B-\u200F\u202A-\u202E\u2060\uFEFF]'), '')
+      .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
 }
 
@@ -65,7 +65,7 @@ String _normalizeSimorghGrade(String value) {
 /// text by the model-facing prompt, not as markup delimiters.
 String _escapeProfileContext(String value) {
   return value
-      .replaceAll('&', r'\\u0026')
-      .replaceAll('<', r'\\u003c')
-      .replaceAll('>', r'\\u003e');
+      .replaceAll('&', r'\u0026')
+      .replaceAll('<', r'\u003c')
+      .replaceAll('>', r'\u003e');
 }
