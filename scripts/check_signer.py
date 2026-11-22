@@ -16,7 +16,8 @@ REPORT_ARGUMENTS = 1
 DEBUG_CERTIFICATE_MARKER = "CN=Android Debug"
 
 SHA256_PATTERN = re.compile(
-    r"(?im)^\s*Signer\s+#\d+\s+certificate\s+SHA-256\s+digest:\s*"
+    r"(?im)^\s*(?:(?:V\d+\s+)?Signer(?:\s+#\d+)?\s*:?\s*)"
+    r"certificate\s+SHA-256\s+digest:\s*"
     r"([0-9a-fA-F:]{64,95})\s*$"
 )
 
