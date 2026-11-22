@@ -53,18 +53,19 @@ String buildFamilyProgressReport({
   final dueCards = report.dueCards;
 
   final today = startOfDay(now);
-  final upcoming = deadlines
-      .map((item) {
-        final date = parseDay(item['date']);
-        return (item: item, date: date);
-      })
-      .where((entry) {
-        if (entry.date == null) return false;
-        final days = _calendarDayDistance(today, entry.date!);
-        return days >= 0 && days <= 7;
-      })
-      .toList()
-    ..sort((a, b) => a.date!.compareTo(b.date!));
+  final upcoming =
+      deadlines
+          .map((item) {
+            final date = parseDay(item['date']);
+            return (item: item, date: date);
+          })
+          .where((entry) {
+            if (entry.date == null) return false;
+            final days = _calendarDayDistance(today, entry.date!);
+            return days >= 0 && days <= 7;
+          })
+          .toList()
+        ..sort((a, b) => a.date!.compareTo(b.date!));
 
   final overdueDeadlines = deadlines.where((item) {
     final date = parseDay(item['date']);
@@ -87,7 +88,8 @@ String buildFamilyProgressReport({
       'مقطع و پایه: ${[grade, year].where((value) => value.isNotEmpty).join(' · ')}',
     '',
     '۱) وضعیت درس‌ها',
-    if (report.subjects.isEmpty) 'هنوز نمره معتبر و قابل محاسبه‌ای ثبت نشده است.',
+    if (report.subjects.isEmpty)
+      'هنوز نمره معتبر و قابل محاسبه‌ای ثبت نشده است.',
     for (final subject in report.subjects)
       '- ${_reportText(subject.subject)}: میانگین ${faNumber(subject.average.toStringAsFixed(1))}٪ از ${faNumber(subject.examCount)} آزمون${subject.trend == null ? '' : '؛ آخرین نمره نسبت به میانگین آزمون‌های قبلی ${subject.trend! >= 0 ? '+' : ''}${faNumber(subject.trend!.toStringAsFixed(1))} واحد درصد'}',
     '',
@@ -102,7 +104,8 @@ String buildFamilyProgressReport({
     'فلش‌کارت‌های آماده مرور: ${faNumber(dueCards)}',
     '',
     '۴) امتحان‌های هفت روز آینده',
-    if (upcoming.isEmpty) 'امتحانی با تاریخ معتبر در هفت روز آینده ثبت نشده است.',
+    if (upcoming.isEmpty)
+      'امتحانی با تاریخ معتبر در هفت روز آینده ثبت نشده است.',
     for (final entry in upcoming)
       '- ${_reportText(entry.item['subject']).isEmpty ? 'درس نامشخص' : _reportText(entry.item['subject'])} · ${faNumber(isoDay(entry.date!))}',
     if (overdueDeadlines > 0)
@@ -128,97 +131,106 @@ class FamilyProgressReportPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-        animation: store,
-        builder: (context, _) {
-          final report = buildFamilyProgressReport(
-            profile: store.profile,
-            exams: store.exams,
-            tasks: store.tasks,
-            cards: store.cards,
-            deadlines: store.deadlines,
-            now: DateTime.now(),
-          );
-
-          const relevantKeys = [
-            'edu.profile',
-            'edu.exams',
-            'edu.tasks',
-            'edu.cards',
-            'edu.deadlines',
-          ];
-          final readErrors = <String>[
-            for (final key in relevantKeys)
-              if (store.dataError(key) != null) store.dataError(key)!,
-          ];
-          final canCopy = readErrors.isEmpty;
-
-          return Scaffold(
-            appBar: AppBar(title: const Text('گزارش قابل اشتراک با خانواده')),
-            body: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                const NoticeCard(
-                  text: 'این گزارش ابتدا فقط روی گوشی ساخته می‌شود. خودت آن را بخوان و فقط اگر راحت بودی، متن انتخابی را با خانواده به اشتراک بگذار. هیچ اطلاعاتی خودکار ارسال نمی‌شود.',
-                  icon: Icons.privacy_tip_outlined,
-                ),
-                if (readErrors.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  const NoticeCard(
-                    text: 'بخشی از اطلاعات قبلی قابل خواندن نیست. برای جلوگیری از ارسال گزارشی ناقص یا گمراه‌کننده، کپی گزارش تا زمان بررسی اطلاعات غیرفعال است.',
-                    icon: Icons.warning_amber_rounded,
-                    warning: true,
-                  ),
-                  for (final error in readErrors)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        error,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
-                ],
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: SelectableText(
-                      report,
-                      style: const TextStyle(height: 1.9),
-                    ),
-                  ),
-                ),
-                FilledButton.icon(
-                  onPressed: canCopy
-                      ? () async {
-                          try {
-                            await Clipboard.setData(ClipboardData(text: report));
-                            if (context.mounted) {
-                              showMessage(
-                                context,
-                                'گزارش کپی شد؛ پیش از ارسال، یک بار آن را مرور کن.',
-                              );
-                            }
-                          } on PlatformException {
-                            if (context.mounted) {
-                              showMessage(context, 'کپی گزارش انجام نشد. دوباره تلاش کن.');
-                            }
-                          } on Object {
-                            if (context.mounted) {
-                              showMessage(context, 'کپی گزارش انجام نشد. دوباره تلاش کن.');
-                            }
-                          }
-                        }
-                      : null,
-                  icon: const Icon(Icons.copy_outlined),
-                  label: const Text('کپی گزارش برای ارسال دلخواه'),
-                ),
-                const SizedBox(height: 8),
-                const NoticeCard(
-                  text: 'این گزارش برای حمایت و گفت‌وگو طراحی شده است، نه نظارت تنبیهی. زمان‌های نمایش‌داده‌شده بر اساس مدت کارهای ثبت‌شده‌اند و زمان واقعی مطالعه را اندازه‌گیری نمی‌کنند.',
-                  icon: Icons.favorite_outline,
-                ),
-              ],
-            ),
-          );
-        },
+    animation: store,
+    builder: (context, _) {
+      final report = buildFamilyProgressReport(
+        profile: store.profile,
+        exams: store.exams,
+        tasks: store.tasks,
+        cards: store.cards,
+        deadlines: store.deadlines,
+        now: DateTime.now(),
       );
+
+      const relevantKeys = [
+        'edu.profile',
+        'edu.exams',
+        'edu.tasks',
+        'edu.cards',
+        'edu.deadlines',
+      ];
+      final readErrors = <String>[
+        for (final key in relevantKeys)
+          if (store.dataError(key) != null) store.dataError(key)!,
+      ];
+      final canCopy = readErrors.isEmpty;
+
+      return Scaffold(
+        appBar: AppBar(title: const Text('گزارش قابل اشتراک با خانواده')),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            const NoticeCard(
+              text:
+                  'این گزارش ابتدا فقط روی گوشی ساخته می‌شود. خودت آن را بخوان و فقط اگر راحت بودی، متن انتخابی را با خانواده به اشتراک بگذار. هیچ اطلاعاتی خودکار ارسال نمی‌شود.',
+              icon: Icons.privacy_tip_outlined,
+            ),
+            if (readErrors.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              const NoticeCard(
+                text:
+                    'بخشی از اطلاعات قبلی قابل خواندن نیست. برای جلوگیری از ارسال گزارشی ناقص یا گمراه‌کننده، کپی گزارش تا زمان بررسی اطلاعات غیرفعال است.',
+                icon: Icons.warning_amber_rounded,
+                warning: true,
+              ),
+              for (final error in readErrors)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    error,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+            ],
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: SelectableText(
+                  report,
+                  style: const TextStyle(height: 1.9),
+                ),
+              ),
+            ),
+            FilledButton.icon(
+              onPressed: canCopy
+                  ? () async {
+                      try {
+                        await Clipboard.setData(ClipboardData(text: report));
+                        if (context.mounted) {
+                          showMessage(
+                            context,
+                            'گزارش کپی شد؛ پیش از ارسال، یک بار آن را مرور کن.',
+                          );
+                        }
+                      } on PlatformException {
+                        if (context.mounted) {
+                          showMessage(
+                            context,
+                            'کپی گزارش انجام نشد. دوباره تلاش کن.',
+                          );
+                        }
+                      } on Object {
+                        if (context.mounted) {
+                          showMessage(
+                            context,
+                            'کپی گزارش انجام نشد. دوباره تلاش کن.',
+                          );
+                        }
+                      }
+                    }
+                  : null,
+              icon: const Icon(Icons.copy_outlined),
+              label: const Text('کپی گزارش برای ارسال دلخواه'),
+            ),
+            const SizedBox(height: 8),
+            const NoticeCard(
+              text:
+                  'این گزارش برای حمایت و گفت‌وگو طراحی شده است، نه نظارت تنبیهی. زمان‌های نمایش‌داده‌شده بر اساس مدت کارهای ثبت‌شده‌اند و زمان واقعی مطالعه را اندازه‌گیری نمی‌کنند.',
+              icon: Icons.favorite_outline,
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }
