@@ -53,6 +53,8 @@ jobs:
       # wrapper را اعتبارسنجی می‌کند و توزیع Gradle را خودکار کش می‌کند.
       - name: Setup Gradle (wrapper validation + distribution cache)
         uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: false
 
       - uses: subosito/flutter-action@v2.23.0
         with:
@@ -187,7 +189,7 @@ jobs:
                 return 0
               fi
               if [[ -f "$log" ]] && grep -Eq \
-                'SocketTimeoutException|HTTP response code: 5|Downloading from|Read timed out|Could not GET|Could not HEAD' \
+                'SocketTimeoutException|HTTP response code: 5|Received status code 429|Too Many Requests|Read timed out' \
                 "$log"; then
                 echo "::warning::Transient build/download failure; retrying ${label} (attempt ${attempt})"
                 sleep 20
