@@ -622,7 +622,7 @@ testWidgets('analytics tolerates malformed legacy teaching counters', (tester) a
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('کار قدیمی'), findsOneWidget);
-    expect(find.textContaining('۰ دقیقه مطالعه برنامه‌ریزی کرده‌ای'), findsOneWidget);
+    expect(find.textContaining('۰ دقیقه زمان برای برنامه‌ها ثبت کرده‌ای'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
