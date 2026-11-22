@@ -2,7 +2,7 @@ name: Flutter checks and Android build
 
 on:
   push:
-    branches: [main, 'arena/**']
+    branches: ['**']
     tags: ['v*']
   pull_request:
     branches: [main]
