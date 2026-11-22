@@ -358,7 +358,23 @@ flutter test integration_test/secure_storage_test.dart \
 SECURE_TEST_STATUS="PASSED"
 
 # ------------------------------------------------------------
-# 10. Final application process and crash verification
+# 10. Restore the app package after Flutter integration runner
+# ------------------------------------------------------------
+
+CURRENT_STEP="Restore application package after integration tests"
+log "Restoring the standalone debug APK after Flutter's instrumentation runner..."
+
+# flutter test integration_test builds and installs a separate instrumentation
+# target and may remove/replace the standalone app package during teardown.
+# Reinstall the exact APK whose initial launch was already verified.
+adb -s "$DEVICE_ID" install -r "$APK_PATH" \
+  2>&1 | tee "$REPORT_DIR/reinstall-after-tests.txt"
+
+grep -q "Success" "$REPORT_DIR/reinstall-after-tests.txt" \
+  || fail "Standalone application APK could not be restored after integration tests."
+
+# ------------------------------------------------------------
+# 11. Final application process and crash verification
 # ------------------------------------------------------------
 
 CURRENT_STEP="Final application verification"
