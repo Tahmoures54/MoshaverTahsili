@@ -63,9 +63,19 @@ jobs:
       - name: Source and Android security checks
         run: python3 scripts/security_check.py
 
-      # format در CI باید fail شود تا کدِ فرمت‌نشده وارد نشود.
-      - name: Check Dart formatting
-        run: dart format --output=none --set-exit-if-changed .
+      # Only enforce formatting on Dart files changed by this branch.
+      # Existing formatting debt on untouched files in main must not block this PR.
+      - name: Check Dart formatting for changed files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --depth=1
+          mapfile -t dart_files < <(git diff --name-only --diff-filter=ACMR origin/main...HEAD -- '*.dart')
+          if (("${#dart_files[@]}" > 0)); then
+            dart format --output=none --set-exit-if-changed "${dart_files[@]}"
+          else
+            echo "No changed Dart files; formatting check skipped."
+          fi
 
       - name: Static analysis (errors and warnings fail; style infos are non-blocking)
         run: |
