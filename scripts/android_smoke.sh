@@ -14,8 +14,8 @@ set -Eeuo pipefail
 #   - integration_test/app_test.dart
 #   - integration_test/secure_storage_test.dart
 
-PACKAGE_NAME="ir.moshaver.tahsili"
-ACTIVITY_NAME=".MainActivity"
+PACKAGE_NAME="ir.moshaver.tahsili.debug"
+ACTIVITY_NAME="ir.moshaver.tahsili.MainActivity"
 
 REPORT_DIR="build/reports/device"
 APK_PATH="build/app/outputs/flutter-apk/app-debug.apk"
