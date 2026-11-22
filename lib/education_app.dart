@@ -256,7 +256,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
           const SizedBox(height: 8),
           const Text('برای اینکه بهتر بشناسمت و راهنمایی دقیق‌تری داشته باشم، نام و نام خانوادگی واقعی‌ات را وارد کن. نام ثبت‌شده در پروفایل فقط روی همین گوشی می‌ماند و به‌صورت خودکار برای سرویس بیرونی فرستاده نمی‌شود. توجه کن متن پرسش‌ها و پیام‌هایی که در گفت‌وگو می‌نویسی به سرویس پاسخ‌گویی ارسال می‌شوند؛ پس نام، شماره تماس یا اطلاعات شناسایی‌کننده را داخل پیام‌ها ننویس.', style: TextStyle(color: Colors.blueGrey, height: 1.7)),
           const SizedBox(height: 18),
-          TextFormField(controller: fullName, enabled: !saving, maxLength: 80, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'نام و نام خانوادگی', hintText: 'مثلاً سارا احمدی'), validator: _validateFullName),
+          TextFormField(key: const Key('profile_name_field'), controller: fullName, enabled: !saving, maxLength: 80, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'نام و نام خانوادگی', hintText: 'مثلاً سارا احمدی'), validator: _validateFullName),
           DropdownButtonFormField<String>(initialValue: grade, decoration: const InputDecoration(labelText: 'مقطع تحصیلی'),
             items: gradeYears.keys.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
             onChanged: saving ? null : (value) { if (value != null) setState(() { grade = value; year = gradeYears[value]!.first; }); }),
@@ -279,7 +279,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
           ),
           if (error != null) NoticeCard(text: error!, warning: true),
           const SizedBox(height: 12),
-          FilledButton(onPressed: saving ? null : _save, child: Text(saving ? 'در حال ذخیره…' : 'ذخیره پروفایل')),
+          FilledButton(key: const Key('save_profile_button'), onPressed: saving ? null : _save, child: Text(saving ? 'در حال ذخیره…' : 'ذخیره پروفایل')),
         ],
       ))),
     ));
@@ -379,13 +379,13 @@ class _EntryScreenState extends State<EntryScreen> {
               'نشانی، شماره تماس و اطلاعات حساس را در پیام‌ها وارد نکن. نام و نام خانوادگی پروفایل روی همین گوشی می‌ماند و به‌صورت خودکار ارسال نمی‌شود؛ اما هر اطلاعاتی که خودت داخل متن پرسش یا گفت‌وگو بنویسی، ممکن است به سرویس بیرونی فرستاده شود. '
               'پاسخ‌های سیمرغ ممکن است اشتباه باشند و جایگزین معلم، مشاور مدرسه یا منابع رسمی نیستند. '
               'با حذف برنامه، اطلاعات و اعتبار محلی از دست می‌روند.', style: TextStyle(height: 1.9)),
-          CheckboxListTile(value: accepted, contentPadding: EdgeInsets.zero, controlAffinity: ListTileControlAffinity.leading,
+          CheckboxListTile(key: const Key('consent_checkbox'), value: accepted, contentPadding: EdgeInsets.zero, controlAffinity: ListTileControlAffinity.leading,
               onChanged: (value) => setState(() => accepted = value ?? false), title: const Text('توضیحات و نکات حریم خصوصی را خواندم.')),
         ]))),
         if (widget.store.walletError != null) NoticeCard(text: widget.store.walletError!, warning: true),
         if (widget.store.dataError('edu.profile') != null) NoticeCard(text: widget.store.dataError('edu.profile')!, warning: true),
         const SizedBox(height: 14),
-        SizedBox(width: double.infinity, child: FilledButton(onPressed: accepted && !openingProfile ? start : null,
+        SizedBox(width: double.infinity, child: FilledButton(key: const Key('start_button'), onPressed: accepted && !openingProfile ? start : null,
             child: Text(openingProfile ? 'در حال آماده‌سازی…' : 'بزن بریم', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)))),
       ]))),
     )));
@@ -494,10 +494,10 @@ class _DashboardState extends State<Dashboard> {
       ]),
       bottomNavigationBar: NavigationBar(selectedIndex: index, onDestinationSelected: go, destinations: const [
         NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'خانه'),
-        NavigationDestination(icon: Icon(Icons.calendar_month_outlined), selectedIcon: Icon(Icons.calendar_month), label: 'برنامه'),
-        NavigationDestination(icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'آزمون'),
+        NavigationDestination(key: Key('nav_planner'), icon: Icon(Icons.calendar_month_outlined), selectedIcon: Icon(Icons.calendar_month), label: 'برنامه'),
+        NavigationDestination(key: Key('nav_exams'), icon: Icon(Icons.assessment_outlined), selectedIcon: Icon(Icons.assessment), label: 'آزمون'),
         NavigationDestination(icon: Icon(Icons.style_outlined), selectedIcon: Icon(Icons.style), label: 'مرور'),
-        NavigationDestination(icon: Icon(Icons.auto_awesome_outlined), selectedIcon: Icon(Icons.auto_awesome), label: 'مشاور'),
+        NavigationDestination(key: Key('nav_ai'), icon: Icon(Icons.auto_awesome_outlined), selectedIcon: Icon(Icons.auto_awesome), label: 'مشاور'),
       ]));
   }
 }
