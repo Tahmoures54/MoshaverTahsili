@@ -450,6 +450,7 @@ class _PlanReportDialog extends StatelessWidget {
           FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('اعمال برنامه')),
         ],
       );
+}
 
 class ExamsPage extends StatefulWidget {
   const ExamsPage({super.key, required this.store, required this.changed});
