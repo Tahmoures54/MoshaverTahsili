@@ -151,10 +151,23 @@ def validate_arguments(args: list[str]) -> str:
 
 
 def build_label(target: str, args: list[str]) -> str:
-    """Create a predictable report filename."""
+    """Create a predictable report filename matching the requested ABI."""
 
     if "--split-per-abi" in args:
         return f"{target}-split"
+
+    platform = None
+    for index, argument in enumerate(args):
+        if argument == "--target-platform" and index + 1 < len(args):
+            platform = args[index + 1]
+            break
+        if argument.startswith("--target-platform="):
+            platform = argument.split("=", 1)[1]
+            break
+
+    if platform:
+        suffix = platform.replace("android-", "").replace("android_", "")
+        return f"{target}-{suffix}"
 
     if target == "apk":
         return "apk-universal"
