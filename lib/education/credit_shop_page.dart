@@ -293,7 +293,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
     );
   }
 
-  Widget _buildProductCard(dynamic product) {
+  Widget _buildProductCard(CreditProduct product) {
     final price = prices[product.id];
     final isBuying = operation == product.id;
 
