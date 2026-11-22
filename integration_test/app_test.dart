@@ -105,9 +105,6 @@ void main() {
       // verifies the local wallet entry point; payment-provider behavior is
       // covered separately and requires a Bazaar-capable test environment.
 
-      await tester.tap(find.byType(BackButton));
-      await _settleSafely(tester);
-
       // ۱۰. تأیید نهایی: باز کردن مجدد Store و بررسی داده‌های پایدار
       final store = await EducationStore.open();
       expect(store.profile?['year'], 'هفتم');
