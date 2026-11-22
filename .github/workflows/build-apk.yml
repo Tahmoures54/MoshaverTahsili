@@ -216,6 +216,9 @@ jobs:
       - name: Verify release signature
         env:
           PRODUCTION_READY: ${{ steps.config.outputs.production_ready }}
+          # Public certificate fingerprint pinned from the configured release keystore.
+          # It is not a private key or password; update it only when rotating the release certificate.
+          EXPECTED_RELEASE_CERT_SHA256: ${{ vars.EXPECTED_RELEASE_CERT_SHA256 || secrets.EXPECTED_RELEASE_CERT_SHA256 || 'f3585bb66e15d5beff9dc189bcb7c989f1e8afd3e4499de42d7dab90355087ea' }}
         run: |
           set -euo pipefail
           signer=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
