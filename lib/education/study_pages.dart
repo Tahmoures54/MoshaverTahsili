@@ -239,6 +239,7 @@ class _PlannerPageState extends State<PlannerPage> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(
+        key: const Key('add_task_button'),
         heroTag: null,
         onPressed: saving ? null : add,
         icon: const Icon(Icons.add),
@@ -595,6 +596,7 @@ class _ExamsPageState extends State<ExamsPage> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(
+        key: const Key('add_exam_button'),
         heroTag: null,
         onPressed: saving ? null : add,
         icon: const Icon(Icons.add),
@@ -1108,6 +1110,7 @@ class _TaskDialogState extends State<_TaskDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextFormField(
+                key: const Key('task_title_field'),
                 controller: title,
                 maxLength: 120,
                 textCapitalization: TextCapitalization.sentences,
@@ -1120,12 +1123,14 @@ class _TaskDialogState extends State<_TaskDialog> {
               ),
               const SizedBox(height: 10),
               TextFormField(
+                key: const Key('exam_subject_field'),
                 controller: subject,
                 maxLength: 80,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(labelText: 'درس (اختیاری)'),
               ),
               TextFormField(
+                key: const Key('task_duration_field'),
                 controller: duration,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
@@ -1153,6 +1158,7 @@ class _TaskDialogState extends State<_TaskDialog> {
         child: const Text('انصراف'),
       ),
       FilledButton(
+        key: const Key('add_task_submit'),
         onPressed: () {
           if (form.currentState?.validate() == true) {
             Navigator.pop(context, {
@@ -1240,6 +1246,7 @@ class _ExamDialogState extends State<_ExamDialog> {
                     : null,
               ),
               TextFormField(
+                key: const Key('exam_score_field'),
                 controller: score,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
