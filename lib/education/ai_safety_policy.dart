@@ -1,4 +1,3 @@
-
 /// Offline safety preflight for explicit self-harm signals.
 ///
 /// IMPORTANT:
@@ -10,22 +9,15 @@
 ///
 /// Keep this policy independent from remote AI services.
 
-enum AiSafetyDisposition {
-  allow,
-  urgentHumanSupport,
-}
+enum AiSafetyDisposition { allow, urgentHumanSupport }
 
 class AiSafetyResult {
-  const AiSafetyResult(
-    this.disposition, {
-    this.localResponse,
-  });
+  const AiSafetyResult(this.disposition, {this.localResponse});
 
   final AiSafetyDisposition disposition;
   final String? localResponse;
 
-  bool get shouldBlockRemoteAi =>
-      disposition != AiSafetyDisposition.allow;
+  bool get shouldBlockRemoteAi => disposition != AiSafetyDisposition.allow;
 
   bool get requiresHumanSupport =>
       disposition == AiSafetyDisposition.urgentHumanSupport;
@@ -160,44 +152,27 @@ class AiSafetyPolicy {
         .replaceAll('ي', 'ی')
         .replaceAll('ى', 'ی')
         .replaceAll('ك', 'ک')
-
         // Remove Arabic tatweel.
         .replaceAll('ـ', '')
-
         // Remove Arabic diacritics.
-        .replaceAll(
-          RegExp(r'[\u064B-\u065F\u0670]'),
-          '',
-        )
-
+        .replaceAll(RegExp(r'[\u064B-\u065F\u0670]'), '')
         // Normalize invisible direction and zero-width characters.
-        .replaceAll(
-          RegExp(r'[\u200B-\u200F\u202A-\u202E\u2060\uFEFF]'),
-          ' ',
-        )
-
+        .replaceAll(RegExp(r'[\u200B-\u200F\u202A-\u202E\u2060\uFEFF]'), ' ')
         // Normalize Arabic and Persian digits to English digits.
-        .replaceAllMapped(
-          RegExp(r'[۰-۹٠-٩]'),
-          (match) {
-            final character = match.group(0)!;
-            final code = character.codeUnitAt(0);
+        .replaceAllMapped(RegExp(r'[۰-۹٠-٩]'), (match) {
+          final character = match.group(0)!;
+          final code = character.codeUnitAt(0);
 
-            if (code >= 0x06F0 && code <= 0x06F9) {
-              return String.fromCharCode(
-                code - 0x06F0 + 0x30,
-              );
-            }
+          if (code >= 0x06F0 && code <= 0x06F9) {
+            return String.fromCharCode(code - 0x06F0 + 0x30);
+          }
 
-            if (code >= 0x0660 && code <= 0x0669) {
-              return String.fromCharCode(
-                code - 0x0660 + 0x30,
-              );
-            }
+          if (code >= 0x0660 && code <= 0x0669) {
+            return String.fromCharCode(code - 0x0660 + 0x30);
+          }
 
-            return character;
-          },
-        );
+          return character;
+        });
 
     // Convert punctuation and line breaks to spaces.
     result = result
@@ -215,37 +190,26 @@ class AiSafetyPolicy {
 
   static AiSafetyResult assess(String message) {
     if (message.trim().isEmpty) {
-      return const AiSafetyResult(
-        AiSafetyDisposition.allow,
-      );
+      return const AiSafetyResult(AiSafetyDisposition.allow);
     }
 
     final normalized = normalize(message);
 
     if (normalized.isEmpty) {
-      return const AiSafetyResult(
-        AiSafetyDisposition.allow,
-      );
+      return const AiSafetyResult(AiSafetyDisposition.allow);
     }
 
-    final hasPersianIntent =
-        _persianIntentAndAction.hasMatch(normalized);
+    final hasPersianIntent = _persianIntentAndAction.hasMatch(normalized);
 
-    final hasDirectPersianSignal =
-        _directPersianSignals.hasMatch(normalized);
+    final hasDirectPersianSignal = _directPersianSignals.hasMatch(normalized);
 
-    final hasEnglishSignal =
-        _englishSignals.hasMatch(normalized);
+    final hasEnglishSignal = _englishSignals.hasMatch(normalized);
 
-    if (hasPersianIntent ||
-        hasDirectPersianSignal ||
-        hasEnglishSignal) {
+    if (hasPersianIntent || hasDirectPersianSignal || hasEnglishSignal) {
       return _urgentResult;
     }
 
-    return const AiSafetyResult(
-      AiSafetyDisposition.allow,
-    );
+    return const AiSafetyResult(AiSafetyDisposition.allow);
   }
 
   // ---------------------------------------------------------------------------
@@ -306,8 +270,7 @@ class AiSafetyPolicy {
       if (status is String) {
         final normalizedStatus = status.toLowerCase();
 
-        if (normalizedStatus == 'failed' ||
-            normalizedStatus == 'pending') {
+        if (normalizedStatus == 'failed' || normalizedStatus == 'pending') {
           continue;
         }
       }

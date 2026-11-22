@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import 'education_store.dart';
@@ -15,9 +14,7 @@ int _safeLessonCount(Object? value) {
     return value.toInt();
   }
 
-  final parsed = int.tryParse(
-    digitsToEnglish(value?.toString() ?? ''),
-  );
+  final parsed = int.tryParse(digitsToEnglish(value?.toString() ?? ''));
 
   return parsed != null && parsed >= 0 ? parsed : 0;
 }
@@ -41,10 +38,7 @@ double _safePercentage(double value) {
 ///
 /// This page does not upload student records to remote services.
 class AnalyticsPage extends StatelessWidget {
-  const AnalyticsPage({
-    super.key,
-    required this.store,
-  });
+  const AnalyticsPage({super.key, required this.store});
 
   final EducationStore store;
 
@@ -60,9 +54,7 @@ class AnalyticsPage extends StatelessWidget {
     final topicMastery = estimateTopicMastery(store.cards);
 
     // Display only the eight most recent teaching sessions.
-    final teachingSessions = store.teachingSessions.reversed
-        .take(8)
-        .toList();
+    final teachingSessions = store.teachingSessions.reversed.take(8).toList();
 
     final totalSessions = store.teachingSessions.length;
 
@@ -95,10 +87,7 @@ class AnalyticsPage extends StatelessWidget {
 
           // Data quality warnings.
           for (final gap in report.dataGaps)
-            NoticeCard(
-              text: gap,
-              warning: true,
-            ),
+            NoticeCard(text: gap, warning: true),
 
           // General academic overview.
           _buildAcademicHighlights(report),
@@ -132,7 +121,8 @@ class AnalyticsPage extends StatelessWidget {
 
   Widget _buildIntroduction() {
     return const NoticeCard(
-      text: 'این تحلیل فقط از داده‌های ثبت‌شده خودت ساخته می‌شود و روی گوشی می‌ماند. '
+      text:
+          'این تحلیل فقط از داده‌های ثبت‌شده خودت ساخته می‌شود و روی گوشی می‌ماند. '
           'نتیجه‌ها نشانه‌هایی برای تصمیم‌گیری‌اند، نه حکم قطعی درباره توانایی تو.',
       icon: Icons.insights_outlined,
     );
@@ -148,14 +138,16 @@ class AnalyticsPage extends StatelessWidget {
       children: [
         if (report.strengths.isNotEmpty)
           NoticeCard(
-            text: 'نقاط قوت: '
+            text:
+                'نقاط قوت: '
                 '${report.strengths.map((s) => s.subject).join('، ')}',
             icon: Icons.emoji_events_outlined,
           ),
 
         if (report.weaknesses.isNotEmpty)
           NoticeCard(
-            text: 'درس‌های نیازمند تمرین بیشتر: '
+            text:
+                'درس‌های نیازمند تمرین بیشتر: '
                 '${report.weaknesses.map((s) => s.subject).join('، ')}',
             warning: true,
           ),
@@ -176,12 +168,12 @@ class AnalyticsPage extends StatelessWidget {
         if (report.subjects.isEmpty)
           const EmptyState(
             title: 'هنوز داده‌ای نداریم',
-            subtitle: 'با ثبت نمره آزمون، میانگین و روند هر درس نمایش داده می‌شود.',
+            subtitle:
+                'با ثبت نمره آزمون، میانگین و روند هر درس نمایش داده می‌شود.',
             icon: Icons.assessment_outlined,
           ),
 
-        for (final subject in report.subjects)
-          _buildSubjectCard(subject),
+        for (final subject in report.subjects) _buildSubjectCard(subject),
       ],
     );
   }
@@ -200,9 +192,7 @@ class AnalyticsPage extends StatelessWidget {
                 Expanded(
                   child: Text(
                     subject.subject,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
                 Text(
@@ -232,10 +222,7 @@ class AnalyticsPage extends StatelessWidget {
 
             Text(
               _trendText(subject),
-              style: const TextStyle(
-                fontSize: 13,
-                height: 1.7,
-              ),
+              style: const TextStyle(fontSize: 13, height: 1.7),
             ),
           ],
         ),
@@ -256,16 +243,17 @@ class AnalyticsPage extends StatelessWidget {
         if (topicMastery.isEmpty)
           const EmptyState(
             title: 'هنوز شواهد موضوعی ثبت نشده',
-            subtitle: 'برای هر فلش‌کارت، نام مبحث را ثبت کن و پس از مرور، '
+            subtitle:
+                'برای هر فلش‌کارت، نام مبحث را ثبت کن و پس از مرور، '
                 'نتیجه یادآوری را ارزیابی کن.',
             icon: Icons.school_outlined,
           ),
 
-        for (final item in topicMastery)
-          _buildTopicCard(item),
+        for (final item in topicMastery) _buildTopicCard(item),
 
         const NoticeCard(
-          text: 'این درصد، برآوردی از سابقه یادآوری فلش‌کارت‌هاست؛ '
+          text:
+              'این درصد، برآوردی از سابقه یادآوری فلش‌کارت‌هاست؛ '
               'نمره امتحان یا احتمال قطعی موفقیت نیست. '
               'شواهد بیشتر، برآورد را قابل اتکاتر می‌کند.',
           icon: Icons.info_outline,
@@ -298,9 +286,7 @@ class AnalyticsPage extends StatelessWidget {
                 Expanded(
                   child: Text(
                     item.topic.toString(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
                 Text(
@@ -334,10 +320,7 @@ class AnalyticsPage extends StatelessWidget {
               'بازه برآورد '
               '${faNumber(lowerBound.round())} تا '
               '${faNumber(upperBound.round())} درصد',
-              style: const TextStyle(
-                fontSize: 12,
-                height: 1.8,
-              ),
+              style: const TextStyle(fontSize: 12, height: 1.8),
             ),
           ],
         ),
@@ -362,20 +345,18 @@ class AnalyticsPage extends StatelessWidget {
         if (totalSessions == 0)
           const EmptyState(
             title: 'هنوز جلسه تدریسی ثبت نشده',
-            subtitle: 'از صفحه گفت‌وگوی سیمرغ یک مبحث را برای یادگیری انتخاب کن.',
+            subtitle:
+                'از صفحه گفت‌وگوی سیمرغ یک مبحث را برای یادگیری انتخاب کن.',
             icon: Icons.school_outlined,
           )
         else ...[
-          _buildTeachingSummary(
-            totalSessions,
-            completedLessons,
-          ),
+          _buildTeachingSummary(totalSessions, completedLessons),
 
-          for (final lesson in sessions)
-            _buildTeachingCard(lesson),
+          for (final lesson in sessions) _buildTeachingCard(lesson),
 
           const NoticeCard(
-            text: 'تکمیل جلسه یعنی عبور از معیار داخلی تمرین و سنجش این جلسه؛ '
+            text:
+                'تکمیل جلسه یعنی عبور از معیار داخلی تمرین و سنجش این جلسه؛ '
                 'این شاخص جایگزین نمره امتحان یا ارزیابی معلم نیست.',
             icon: Icons.info_outline,
           ),
@@ -384,27 +365,16 @@ class AnalyticsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildTeachingSummary(
-    int totalSessions,
-    int completedLessons,
-  ) {
+  Widget _buildTeachingSummary(int totalSessions, int completedLessons) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Row(
           children: [
-            Expanded(
-              child: _teachingMetric(
-                'جلسه‌های ثبت‌شده',
-                totalSessions,
-              ),
-            ),
+            Expanded(child: _teachingMetric('جلسه‌های ثبت‌شده', totalSessions)),
             const SizedBox(width: 12),
             Expanded(
-              child: _teachingMetric(
-                'جلسه‌های تکمیل‌شده',
-                completedLessons,
-              ),
+              child: _teachingMetric('جلسه‌های تکمیل‌شده', completedLessons),
             ),
           ],
         ),
@@ -425,13 +395,7 @@ class AnalyticsPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            height: 1.5,
-          ),
-        ),
+        Text(label, style: const TextStyle(fontSize: 12, height: 1.5)),
       ],
     );
   }
@@ -443,43 +407,27 @@ class AnalyticsPage extends StatelessWidget {
 
     final topic = lesson['topic']?.toString().trim();
 
-    final diagnosticCount = _safeLessonCount(
-      lesson['diagnosticCount'],
-    );
+    final diagnosticCount = _safeLessonCount(lesson['diagnosticCount']);
 
-    final masteryCorrect = _safeLessonCount(
-      lesson['masteryCorrect'],
-    );
+    final masteryCorrect = _safeLessonCount(lesson['masteryCorrect']);
 
     return Card(
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 6,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         leading: Icon(
-          isCompleted
-              ? Icons.task_alt
-              : Icons.menu_book_outlined,
+          isCompleted ? Icons.task_alt : Icons.menu_book_outlined,
           color: isCompleted ? teal : blue,
           size: 27,
         ),
         title: Text(
-          topic == null || topic.isEmpty
-              ? 'مبحث بدون نام'
-              : topic,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-          ),
+          topic == null || topic.isEmpty ? 'مبحث بدون نام' : topic,
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Text(
           '${_teachingStageText(stage)} · '
           '${faNumber(diagnosticCount)} ارزیابی آغازین · '
           '${faNumber(masteryCorrect)} پاسخ درست در سنجش پایانی',
-          style: const TextStyle(
-            height: 1.8,
-            fontSize: 12,
-          ),
+          style: const TextStyle(height: 1.8, fontSize: 12),
         ),
         isThreeLine: true,
       ),
@@ -542,9 +490,7 @@ class AnalyticsPage extends StatelessWidget {
                       const Expanded(
                         child: Text(
                           'میزان انجام کارهای موعددار',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ),
                       Text(
@@ -576,10 +522,7 @@ class AnalyticsPage extends StatelessWidget {
                     'از ${faNumber(_safeLessonCount(report.adherenceSample))} '
                     'کار با موعد گذشته، '
                     '${faNumber(percentage.round())}٪ انجام شده است.',
-                    style: const TextStyle(
-                      height: 1.8,
-                      fontSize: 13,
-                    ),
+                    style: const TextStyle(height: 1.8, fontSize: 13),
                   ),
                 ],
               ],
@@ -594,10 +537,7 @@ class AnalyticsPage extends StatelessWidget {
   // Weekly study chart
   // ---------------------------------------------------------------------------
 
-  Widget _buildWeeklySection(
-    List<WeekLoad> weeks,
-    int maxMinutes,
-  ) {
+  Widget _buildWeeklySection(List<WeekLoad> weeks, int maxMinutes) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -606,7 +546,8 @@ class AnalyticsPage extends StatelessWidget {
         if (weeks.isEmpty)
           const EmptyState(
             title: 'داده‌ای برای نمودار وجود ندارد',
-            subtitle: 'با ثبت برنامه و انجام فعالیت‌های مطالعه، '
+            subtitle:
+                'با ثبت برنامه و انجام فعالیت‌های مطالعه، '
                 'گزارش هفتگی نمایش داده می‌شود.',
             icon: Icons.bar_chart_outlined,
           )
@@ -623,11 +564,7 @@ class AnalyticsPage extends StatelessWidget {
                       children: [
                         for (var i = 0; i < weeks.length; i++)
                           Expanded(
-                            child: _weekColumn(
-                              weeks[i],
-                              i + 1,
-                              maxMinutes,
-                            ),
+                            child: _weekColumn(weeks[i], i + 1, maxMinutes),
                           ),
                       ],
                     ),
@@ -644,10 +581,7 @@ class AnalyticsPage extends StatelessWidget {
                         color: Color(0xFFBDBDBD),
                         label: 'برنامه‌ریزی‌شده',
                       ),
-                      _ChartLegend(
-                        color: teal,
-                        label: 'انجام‌شده',
-                      ),
+                      _ChartLegend(color: teal, label: 'انجام‌شده'),
                     ],
                   ),
                 ],
@@ -658,25 +592,20 @@ class AnalyticsPage extends StatelessWidget {
     );
   }
 
-  Widget _weekColumn(
-    WeekLoad week,
-    int number,
-    int maxMinutes,
-  ) {
+  Widget _weekColumn(WeekLoad week, int number, int maxMinutes) {
     final planned = _safeLessonCount(week.plannedMinutes);
     final completed = _safeLessonCount(week.completedMinutes);
 
     double barHeight(int minutes) {
       if (minutes <= 0) return 2;
 
-      return (minutes / maxMinutes * 110)
-          .clamp(2.0, 110.0)
-          .toDouble();
+      return (minutes / maxMinutes * 110).clamp(2.0, 110.0).toDouble();
     }
 
     return Semantics(
       label: 'هفته ${faNumber(number)}',
-      value: 'برنامه‌ریزی‌شده ${faNumber(planned)} دقیقه، '
+      value:
+          'برنامه‌ریزی‌شده ${faNumber(planned)} دقیقه، '
           'انجام‌شده ${faNumber(completed)} دقیقه',
       child: ExcludeSemantics(
         child: Column(
@@ -686,15 +615,9 @@ class AnalyticsPage extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                _bar(
-                  barHeight(planned),
-                  Colors.grey.shade400,
-                ),
+                _bar(barHeight(planned), Colors.grey.shade400),
                 const SizedBox(width: 4),
-                _bar(
-                  barHeight(completed),
-                  teal,
-                ),
+                _bar(barHeight(completed), teal),
               ],
             ),
 
@@ -730,10 +653,7 @@ class AnalyticsPage extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 22, 4, 10),
       child: Text(
         title,
-        style: const TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.bold,
-        ),
+        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -764,10 +684,7 @@ class AnalyticsPage extends StatelessWidget {
 
 /// Legend item for the weekly study chart.
 class _ChartLegend extends StatelessWidget {
-  const _ChartLegend({
-    required this.color,
-    required this.label,
-  });
+  const _ChartLegend({required this.color, required this.label});
 
   final Color color;
   final String label;
@@ -786,10 +703,7 @@ class _ChartLegend extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 6),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12),
-        ),
+        Text(label, style: const TextStyle(fontSize: 12)),
       ],
     );
   }

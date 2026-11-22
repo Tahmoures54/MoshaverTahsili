@@ -1,4 +1,3 @@
-
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -8,11 +7,7 @@ import 'education_store.dart';
 import 'ui.dart';
 
 class CreditShopPage extends StatefulWidget {
-  const CreditShopPage({
-    super.key,
-    required this.store,
-    this.billing,
-  });
+  const CreditShopPage({super.key, required this.store, this.billing});
 
   final EducationStore store;
   final BazaarBillingService? billing;
@@ -62,15 +57,13 @@ class _CreditShopPageState extends State<CreditShopPage> {
       if (!mounted || _disposed) return;
 
       setState(() {
-        prices = {
-          for (final item in products)
-            item.product.id: item.price,
-        };
+        prices = {for (final item in products) item.product.id: item.price};
       });
 
       if (products.isEmpty) {
         setState(() {
-          error = 'در حال حاضر بسته‌ای برای خرید دریافت نشد. '
+          error =
+              'در حال حاضر بسته‌ای برای خرید دریافت نشد. '
               'لطفاً کمی بعد دوباره تلاش کنید.';
         });
       }
@@ -97,10 +90,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
     return _run('restore', billing.restorePurchases);
   }
 
-  Future<void> _run(
-    String id,
-    Future<BillingResult> Function() action,
-  ) async {
+  Future<void> _run(String id, Future<BillingResult> Function() action) async {
     if (_isBusy || _disposed) return;
 
     setState(() {
@@ -133,9 +123,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
     return const SizedBox(
       width: 18,
       height: 18,
-      child: CircularProgressIndicator(
-        strokeWidth: 2,
-      ),
+      child: CircularProgressIndicator(strokeWidth: 2),
     );
   }
 
@@ -155,16 +143,15 @@ class _CreditShopPageState extends State<CreditShopPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('کیسه پرهای سیمرغ'),
-      ),
+      appBar: AppBar(title: const Text('کیسه پرهای سیمرغ')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
         children: [
           CreditSummary(store: widget.store),
 
           const NoticeCard(
-            text: 'برای شروع، ۵ پر هدیه سیمرغ دریافت می‌کنی. '
+            text:
+                'برای شروع، ۵ پر هدیه سیمرغ دریافت می‌کنی. '
                 'هر پرسش تازه‌ای که برای دریافت راهنمایی از سیمرغ می‌فرستی، '
                 'یک پر مصرف می‌کند؛ اگر پاسخ معتبر دریافت نشود، '
                 'پر رزروشده به کیسه‌ات برمی‌گردد. '
@@ -173,26 +160,16 @@ class _CreditShopPageState extends State<CreditShopPage> {
           ),
 
           if (!billing.isConfigured)
-            NoticeCard(
-              text: billing.configurationMessage,
-              warning: true,
-            ),
+            NoticeCard(text: billing.configurationMessage, warning: true),
 
           if (error != null)
-            NoticeCard(
-              text: error!,
-              icon: Icons.error_outline,
-              warning: true,
-            ),
+            NoticeCard(text: error!, icon: Icons.error_outline, warning: true),
 
           const SizedBox(height: 10),
 
           const Text(
             'بسته‌های پر سیمرغ',
-            style: TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
           ),
 
           const SizedBox(height: 10),
@@ -203,14 +180,10 @@ class _CreditShopPageState extends State<CreditShopPage> {
           if (billing.isConfigured && operation == 'prices')
             const Padding(
               padding: EdgeInsets.all(12),
-              child: Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: Center(child: CircularProgressIndicator()),
             ),
 
-          if (billing.isConfigured &&
-              operation == null &&
-              prices.isEmpty)
+          if (billing.isConfigured && operation == null && prices.isEmpty)
             OutlinedButton.icon(
               onPressed: loadProducts,
               icon: const Icon(Icons.refresh),
@@ -220,9 +193,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
           const SizedBox(height: 8),
 
           OutlinedButton.icon(
-            onPressed: !billing.isConfigured || _isBusy
-                ? null
-                : restore,
+            onPressed: !billing.isConfigured || _isBusy ? null : restore,
             icon: operation == 'restore'
                 ? _spinner()
                 : const Icon(Icons.restore),
@@ -235,20 +206,14 @@ class _CreditShopPageState extends State<CreditShopPage> {
             'اگر پرداخت انجام شده ولی برنامه بسته شده، '
             'ابتدا بازیابی را بزن. خریدهای مصرف‌شده قبلی ممکن است '
             'در فهرست قابل بازیابی بازار نباشند.',
-            style: TextStyle(
-              color: Colors.blueGrey,
-              height: 1.7,
-            ),
+            style: TextStyle(color: Colors.blueGrey, height: 1.7),
           ),
 
           const SizedBox(height: 24),
 
           const Text(
             'تاریخچه پرها',
-            style: TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
           ),
 
           const SizedBox(height: 10),
@@ -261,7 +226,8 @@ class _CreditShopPageState extends State<CreditShopPage> {
               if (history.isEmpty) {
                 return const EmptyState(
                   title: 'هنوز تراکنشی ثبت نشده',
-                  subtitle: 'دریافت، فراخوان و بازگشت پرهای سیمرغ '
+                  subtitle:
+                      'دریافت، فراخوان و بازگشت پرهای سیمرغ '
                       'اینجا نمایش داده می‌شوند.',
                   icon: Icons.receipt_long_outlined,
                 );
@@ -269,8 +235,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
 
               return Column(
                 children: [
-                  for (final item in history)
-                    _buildHistoryItem(item),
+                  for (final item in history) _buildHistoryItem(item),
 
                   const Padding(
                     padding: EdgeInsets.only(top: 8),
@@ -278,10 +243,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
                       'نمایش حداکثر ۲۵۰ تراکنش اخیر؛ '
                       'شناسه خریدهای ثبت‌شده برای جلوگیری از شارژ '
                       'تکراری نگهداری می‌شود.',
-                      style: TextStyle(
-                        color: Colors.blueGrey,
-                        height: 1.7,
-                      ),
+                      style: TextStyle(color: Colors.blueGrey, height: 1.7),
                     ),
                   ),
                 ],
@@ -320,9 +282,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
 
                 Text(
                   '${faNumber(product.feathers)} پر',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -335,10 +295,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
 
             Text(
               price ?? 'قیمت نهایی هنگام پرداخت در بازار نمایش داده می‌شود.',
-              style: const TextStyle(
-                color: Colors.blueGrey,
-                height: 1.6,
-              ),
+              style: const TextStyle(color: Colors.blueGrey, height: 1.6),
             ),
 
             const SizedBox(height: 12),
@@ -346,14 +303,10 @@ class _CreditShopPageState extends State<CreditShopPage> {
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: !billing.isConfigured ||
-                        _isBusy ||
-                        price == null
+                onPressed: !billing.isConfigured || _isBusy || price == null
                     ? null
                     : () => buy(product.id),
-                child: isBuying
-                    ? _spinner()
-                    : const Text('خرید از بازار'),
+                child: isBuying ? _spinner() : const Text('خرید از بازار'),
               ),
             ),
           ],
@@ -379,8 +332,8 @@ class _CreditShopPageState extends State<CreditShopPage> {
     final icon = isAddition
         ? Icons.add_circle_outline
         : isRefund
-            ? Icons.undo
-            : Icons.auto_awesome;
+        ? Icons.undo
+        : Icons.auto_awesome;
 
     final iconColor = isAi ? blue : teal;
 
@@ -390,21 +343,14 @@ class _CreditShopPageState extends State<CreditShopPage> {
 
     return Card(
       child: ListTile(
-        leading: Icon(
-          icon,
-          color: iconColor,
-        ),
+        leading: Icon(icon, color: iconColor),
         title: Text(title),
         subtitle: Text(
-          _date(item['createdAt']?.toString() ?? '') +
-              _status(status),
+          _date(item['createdAt']?.toString() ?? '') + _status(status),
         ),
         trailing: Text(
           amountText,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
         ),
       ),
     );

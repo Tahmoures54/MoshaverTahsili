@@ -1,4 +1,3 @@
-
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -29,18 +28,13 @@ String _safeText(Object? value, {String fallback = ''}) {
 // -----------------------------------------------------------------------------
 
 class AcademicInsightsPage extends StatefulWidget {
-  const AcademicInsightsPage({
-    super.key,
-    required this.store,
-    this.service,
-  });
+  const AcademicInsightsPage({super.key, required this.store, this.service});
 
   final EducationStore store;
   final AiAdvisorService? service;
 
   @override
-  State<AcademicInsightsPage> createState() =>
-      _AcademicInsightsPageState();
+  State<AcademicInsightsPage> createState() => _AcademicInsightsPageState();
 }
 
 class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
@@ -67,8 +61,7 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
       final previous = result[subject];
       final count = (previous?.count ?? 0) + 1;
 
-      final previousTotal =
-          (previous?.average ?? 0) * (count - 1);
+      final previousTotal = (previous?.average ?? 0) * (count - 1);
 
       result[subject] = (
         average: (previousTotal + percentage) / count,
@@ -83,25 +76,24 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
     if (question != null) return;
 
     final entries = subjects().entries.toList()
-      ..sort(
-        (a, b) => b.value.average.compareTo(a.value.average),
-      );
+      ..sort((a, b) => b.value.average.compareTo(a.value.average));
 
     final selected = entries.take(20).toList();
 
     final tasks = widget.store.tasks;
 
-    final done = tasks.where(
-      (task) => task['done'] == true,
-    ).length;
+    final done = tasks.where((task) => task['done'] == true).length;
 
-    final summary = selected.map((entry) {
-      return '${entry.key}: میانگین '
-          '${entry.value.average.toStringAsFixed(1)} درصد '
-          'از ${entry.value.count} آزمون';
-    }).join('؛ ');
+    final summary = selected
+        .map((entry) {
+          return '${entry.key}: میانگین '
+              '${entry.value.average.toStringAsFixed(1)} درصد '
+              'از ${entry.value.count} آزمون';
+        })
+        .join('؛ ');
 
-    final request = 'وضعیت تحصیلی ثبت‌شده من را تحلیل کن. '
+    final request =
+        'وضعیت تحصیلی ثبت‌شده من را تحلیل کن. '
         'اطلاعات درس‌ها: $summary. '
         'تعداد کارهای مطالعه: ${tasks.length}، '
         'انجام‌شده: $done. '
@@ -118,25 +110,20 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
   @override
   Widget build(BuildContext context) {
     final entries = subjects().entries.toList()
-      ..sort(
-        (a, b) => b.value.average.compareTo(a.value.average),
-      );
+      ..sort((a, b) => b.value.average.compareTo(a.value.average));
 
     final tasks = widget.store.tasks;
 
-    final done = tasks.where(
-      (task) => task['done'] == true,
-    ).length;
+    final done = tasks.where((task) => task['done'] == true).length;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('بررسی وضعیت تحصیلی'),
-      ),
+      appBar: AppBar(title: const Text('بررسی وضعیت تحصیلی')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           const NoticeCard(
-            text: 'این بخش ابتدا داده‌های خودت را روی گوشی خلاصه می‌کند. '
+            text:
+                'این بخش ابتدا داده‌های خودت را روی گوشی خلاصه می‌کند. '
                 'تحلیل سیمرغ فقط با درخواست آگاهانه تو انجام می‌شود. '
                 'پاسخ جایگزین ارزیابی معلم یا مشاور مدرسه نیست.',
           ),
@@ -147,9 +134,7 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
               Navigator.push<void>(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => CreditShopPage(
-                    store: widget.store,
-                  ),
+                  builder: (_) => CreditShopPage(store: widget.store),
                 ),
               );
             },
@@ -162,12 +147,12 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
               icon: Icons.insights_outlined,
             ),
 
-          for (final entry in entries)
-            _subjectCard(entry),
+          for (final entry in entries) _subjectCard(entry),
 
           if (tasks.isNotEmpty)
             NoticeCard(
-              text: '${faNumber(done)} کار از '
+              text:
+                  '${faNumber(done)} کار از '
                   '${faNumber(tasks.length)} کار مطالعه انجام شده است. '
                   'این نسبت، میزان یادگیری یا کیفیت مطالعه را به‌تنهایی '
                   'اندازه نمی‌گیرد.',
@@ -176,7 +161,8 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
 
           if (entries.isNotEmpty && question == null) ...[
             const NoticeCard(
-              text: 'با انتخاب دکمه زیر، خلاصه نمره‌ها و اطلاعات '
+              text:
+                  'با انتخاب دکمه زیر، خلاصه نمره‌ها و اطلاعات '
                   'مجازشده تحصیلی برای تحلیل به سرویس بیرونی ارسال می‌شود. '
                   'اطلاعات ارسالی به اندازه نیاز تحلیل محدود شده‌اند. '
                   'این درخواست پس از پاسخ موفق یک پر سیمرغ مصرف می‌کند.',
@@ -203,9 +189,7 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
     );
   }
 
-  Widget _subjectCard(
-    MapEntry<String, ({double average, int count})> entry,
-  ) {
+  Widget _subjectCard(MapEntry<String, ({double average, int count})> entry) {
     final average = _safePercentage(entry.value.average);
 
     final hasEnoughEvidence = entry.value.count >= 2;
@@ -213,33 +197,25 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
     final description = !hasEnoughEvidence
         ? 'شواهد اولیه؛ برای بررسی روند آزمون بیشتری لازم است'
         : average >= 75
-            ? 'میانگین فعلی بالاتر است'
-            : average < 60
-                ? 'نیازمند بررسی و تمرین بیشتر'
-                : 'نیازمند ادامه تمرین و بررسی روند';
+        ? 'میانگین فعلی بالاتر است'
+        : average < 60
+        ? 'نیازمند بررسی و تمرین بیشتر'
+        : 'نیازمند ادامه تمرین و بررسی روند';
 
     return Card(
       child: ListTile(
         leading: Icon(
-          average >= 75
-              ? Icons.trending_up
-              : Icons.flag_outlined,
+          average >= 75 ? Icons.trending_up : Icons.flag_outlined,
           color: average >= 75 ? teal : blue,
         ),
         title: Text(
           entry.key,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        subtitle: Text(
-          '${faNumber(entry.value.count)} آزمون · $description',
-        ),
+        subtitle: Text('${faNumber(entry.value.count)} آزمون · $description'),
         trailing: Text(
           '${faNumber(average.toStringAsFixed(0))}٪',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -251,11 +227,7 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
 // -----------------------------------------------------------------------------
 
 class CareerPage extends StatefulWidget {
-  const CareerPage({
-    super.key,
-    required this.store,
-    this.service,
-  });
+  const CareerPage({super.key, required this.store, this.service});
 
   final EducationStore store;
   final AiAdvisorService? service;
@@ -380,14 +352,13 @@ class _CareerPageState extends State<CareerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('راهنمای انتخاب رشته'),
-      ),
+      appBar: AppBar(title: const Text('راهنمای انتخاب رشته')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           const NoticeCard(
-            text: 'این پرسش‌نامه برای شناخت گزینه‌هاست، نه تشخیص قطعی استعداد. '
+            text:
+                'این پرسش‌نامه برای شناخت گزینه‌هاست، نه تشخیص قطعی استعداد. '
                 'پاسخ‌ها روی گوشی ذخیره می‌شوند و هنگام درخواست تحلیل '
                 'به سرویس پاسخ‌گویی بیرونی فرستاده می‌شوند.',
           ),
@@ -398,19 +369,13 @@ class _CareerPageState extends State<CareerPage> {
               Navigator.push<void>(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => CreditShopPage(
-                    store: widget.store,
-                  ),
+                  builder: (_) => CreditShopPage(store: widget.store),
                 ),
               );
             },
           ),
 
-          if (error != null)
-            NoticeCard(
-              text: error!,
-              warning: true,
-            ),
+          if (error != null) NoticeCard(text: error!, warning: true),
 
           Form(
             key: form,
@@ -435,7 +400,8 @@ class _CareerPageState extends State<CareerPage> {
 
                 _field(
                   controller: workStyle,
-                  label: 'کار عملی، پژوهشی، هنری یا ارتباط با مردم را ترجیح می‌دهی؟',
+                  label:
+                      'کار عملی، پژوهشی، هنری یا ارتباط با مردم را ترجیح می‌دهی؟',
                 ),
               ],
             ),
@@ -449,15 +415,11 @@ class _CareerPageState extends State<CareerPage> {
                 ? const SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                    ),
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.explore_outlined),
             label: Text(
-              saving
-                  ? 'در حال ذخیره اطلاعات…'
-                  : 'بررسی مسیرهای تحصیلی',
+              saving ? 'در حال ذخیره اطلاعات…' : 'بررسی مسیرهای تحصیلی',
             ),
           ),
 
@@ -489,13 +451,9 @@ class _CareerPageState extends State<CareerPage> {
         maxLines: 3,
         maxLength: 600,
         textInputAction: TextInputAction.newline,
-        decoration: InputDecoration(
-          labelText: label,
-          alignLabelWithHint: true,
-        ),
+        decoration: InputDecoration(labelText: label, alignLabelWithHint: true),
         validator: (value) {
-          if (required &&
-              (value == null || value.trim().isEmpty)) {
+          if (required && (value == null || value.trim().isEmpty)) {
             return 'این بخش را کوتاه هم که شده کامل کن.';
           }
 
@@ -541,16 +499,14 @@ class ConsultationRunner extends StatefulWidget {
   final bool autoStart;
 
   @override
-  State<ConsultationRunner> createState() =>
-      _ConsultationRunnerState();
+  State<ConsultationRunner> createState() => _ConsultationRunnerState();
 }
 
 class _ConsultationRunnerState extends State<ConsultationRunner> {
   late final AiAdvisorService service =
       widget.service ?? AiAdvisorService(store: widget.store);
 
-  late final String id =
-      widget.existingId ?? newId('report');
+  late final String id = widget.existingId ?? newId('report');
 
   late String? answer = widget.savedAnswer;
 
@@ -588,17 +544,10 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
   // Persistent report storage
   // ---------------------------------------------------------------------------
 
-  Future<void> save(
-    String status, {
-    String? answer,
-  }) async {
-    final reports = List<Map<String, dynamic>>.from(
-      widget.store.reports,
-    );
+  Future<void> save(String status, {String? answer}) async {
+    final reports = List<Map<String, dynamic>>.from(widget.store.reports);
 
-    final index = reports.indexWhere(
-      (report) => report['id'] == id,
-    );
+    final index = reports.indexWhere((report) => report['id'] == id);
 
     final previous = index >= 0 ? reports[index] : null;
 
@@ -625,10 +574,7 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
       reports.insert(0, report);
     }
 
-    await widget.store.writeList(
-      'edu.reports',
-      reports.take(50).toList(),
-    );
+    await widget.store.writeList('edu.reports', reports.take(50).toList());
   }
 
   // ---------------------------------------------------------------------------
@@ -659,10 +605,7 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
       );
 
       // Persist the actual response even if the user has navigated away.
-      await save(
-        'completed',
-        answer: result,
-      );
+      await save('completed', answer: result);
 
       if (!mounted) return;
 
@@ -691,8 +634,7 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
         });
       }
 
-      if (_disposeServiceWhenFinished &&
-          widget.service == null) {
+      if (_disposeServiceWhenFinished && widget.service == null) {
         service.dispose();
         _disposeServiceWhenFinished = false;
       }
@@ -713,10 +655,7 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
           children: [
             Text(
               widget.title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
 
             const SizedBox(height: 10),
@@ -734,45 +673,30 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
               ),
 
             if (error != null) ...[
-              NoticeCard(
-                text: error!,
-                warning: true,
-              ),
+              NoticeCard(text: error!, warning: true),
 
               OutlinedButton.icon(
                 onPressed: busy || answer != null ? null : run,
                 icon: const Icon(Icons.refresh),
-                label: const Text(
-                  'تلاش دوباره همین درخواست',
-                ),
+                label: const Text('تلاش دوباره همین درخواست'),
               ),
             ],
 
             if (answer != null) ...[
-              SelectableText(
-                answer!,
-                style: const TextStyle(
-                  height: 1.9,
-                ),
-              ),
+              SelectableText(answer!, style: const TextStyle(height: 1.9)),
 
               const SizedBox(height: 12),
 
               const Text(
                 'پاسخ سیمرغ · در تاریخچه مشاوره‌ها ذخیره شد',
-                style: TextStyle(
-                  color: teal,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: teal, fontSize: 12),
               ),
             ],
 
             if (!busy && answer == null && error == null)
               FilledButton(
                 onPressed: run,
-                child: const Text(
-                  'ادامه درخواست ذخیره‌شده',
-                ),
+                child: const Text('ادامه درخواست ذخیره‌شده'),
               ),
           ],
         ),
@@ -786,19 +710,14 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
 // -----------------------------------------------------------------------------
 
 class ReportsPage extends StatelessWidget {
-  const ReportsPage({
-    super.key,
-    required this.store,
-  });
+  const ReportsPage({super.key, required this.store});
 
   final EducationStore store;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('تاریخچه مشاوره‌ها'),
-      ),
+      appBar: AppBar(title: const Text('تاریخچه مشاوره‌ها')),
       body: ListenableBuilder(
         listenable: store,
         builder: (context, _) {
@@ -808,23 +727,21 @@ class ReportsPage extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             children: [
               const NoticeCard(
-                text: 'پاسخ‌های واقعی دریافت‌شده روی گوشی نگهداری می‌شوند. '
+                text:
+                    'پاسخ‌های واقعی دریافت‌شده روی گوشی نگهداری می‌شوند. '
                     'درخواست ناموفق پاسخ ساختگی ندارد و از همین‌جا قابل ادامه است.',
               ),
 
               if (reports.isEmpty)
                 const EmptyState(
                   title: 'هنوز گزارشی نداری',
-                  subtitle: 'تحلیل وضعیت تحصیلی یا راهنمای انتخاب رشته '
+                  subtitle:
+                      'تحلیل وضعیت تحصیلی یا راهنمای انتخاب رشته '
                       'را از خانه شروع کن.',
                   icon: Icons.history_edu_outlined,
                 ),
 
-              for (final report in reports)
-                _reportCard(
-                  context,
-                  report,
-                ),
+              for (final report in reports) _reportCard(context, report),
             ],
           );
         },
@@ -832,14 +749,8 @@ class ReportsPage extends StatelessWidget {
     );
   }
 
-  Widget _reportCard(
-    BuildContext context,
-    Map<String, dynamic> report,
-  ) {
-    final title = _safeText(
-      report['title'],
-      fallback: 'مشاوره بدون عنوان',
-    );
+  Widget _reportCard(BuildContext context, Map<String, dynamic> report) {
+    final title = _safeText(report['title'], fallback: 'مشاوره بدون عنوان');
 
     final id = _safeText(report['id']);
 
@@ -860,16 +771,14 @@ class ReportsPage extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               title: Text(
                 title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Text(
                 completed
                     ? 'پاسخ دریافت و ذخیره شده'
                     : status == 'pending'
-                        ? 'درخواست در انتظار تکمیل است'
-                        : 'درخواست کامل نشده',
+                    ? 'درخواست در انتظار تکمیل است'
+                    : 'درخواست کامل نشده',
               ),
               trailing: IconButton(
                 tooltip: 'حذف گزارش',
@@ -879,10 +788,7 @@ class ReportsPage extends StatelessWidget {
                     await store.deleteReport(id);
                   } on Object catch (error) {
                     if (context.mounted) {
-                      showMessage(
-                        context,
-                        friendlyError(error),
-                      );
+                      showMessage(context, friendlyError(error));
                     }
                   }
                 },
@@ -898,9 +804,7 @@ class ReportsPage extends StatelessWidget {
                     padding: const EdgeInsets.all(12),
                     child: SelectableText(
                       answer,
-                      style: const TextStyle(
-                        height: 1.8,
-                      ),
+                      style: const TextStyle(height: 1.8),
                     ),
                   ),
                 ],
@@ -915,9 +819,7 @@ class ReportsPage extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (_) => Scaffold(
-                        appBar: AppBar(
-                          title: Text(title),
-                        ),
+                        appBar: AppBar(title: Text(title)),
                         body: ListView(
                           padding: const EdgeInsets.all(16),
                           children: [
