@@ -133,7 +133,7 @@
 # ─────────────────────────────────────────────
 -allowaccessmodification
 -repackageclasses
--mergeinterfaceaggressively
+# R8 does not support the legacy ProGuard -mergeinterfaceaggressively option.
 
 # ─────────────────────────────────────────────
 #  12. عمومی
