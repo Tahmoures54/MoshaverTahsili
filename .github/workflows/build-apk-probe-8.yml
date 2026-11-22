@@ -1,0 +1,44 @@
+name: Build workflow probe 8
+
+on:
+  push:
+    branches:
+      - fix/stabilize-ci-security-review
+    paths:
+      - .github/workflows/build-apk-probe-8.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-build:
+    runs-on: ubuntu-latest
+    outputs:
+      production_ready: ${{ steps.config.outputs.production_ready }}
+      version: ${{ steps.config.outputs.version }}
+    steps:
+      - id: config
+        run: |
+          echo "production_ready=false" >> "$GITHUB_OUTPUT"
+          echo "version=1.1.2" >> "$GITHUB_OUTPUT"
+
+  android-smoke:
+    needs: validate-and-build
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "smoke"
+
+  publish:
+    needs: [validate-and-build, android-smoke]
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.publish_candidate == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.validate-and-build.outputs.version }}
+      READY: ${{ needs.validate-and-build.outputs.production_ready }}
+    steps:
+      - name: Probe interpolated output
+        run: |
+          echo "version=$VERSION"
+          echo "ready=$READY"
