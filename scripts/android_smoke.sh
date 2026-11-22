@@ -394,22 +394,41 @@ fi
 adb -s "$DEVICE_ID" shell am force-stop "$PACKAGE_NAME" \
   >/dev/null 2>&1 || true
 
-adb -s "$DEVICE_ID" shell am start -W \
+# Avoid ActivityManager's short -W startup timeout on a busy emulator.
+# Start asynchronously, then verify both the process and resumed Activity.
+adb -s "$DEVICE_ID" shell am start \
   -n "$PACKAGE_NAME/$ACTIVITY_NAME" \
   > "$REPORT_DIR/final-launch.txt" 2>&1
 
-grep -q "Status: ok" "$REPORT_DIR/final-launch.txt" \
-  || fail "Application could not be relaunched after integration tests."
+grep -q "Starting: Intent" "$REPORT_DIR/final-launch.txt" \
+  || fail "Android did not accept the final application launch request."
 
-sleep 3
+FINAL_PID=""
+ACTIVITY_RESUMED=""
 
-FINAL_PID="$(
-  adb -s "$DEVICE_ID" shell pidof "$PACKAGE_NAME" \
-    2>/dev/null | tr -d '\r' || true
-)"
+for attempt in $(seq 1 30); do
+  FINAL_PID="$(
+    adb -s "$DEVICE_ID" shell pidof "$PACKAGE_NAME" \
+      2>/dev/null | tr -d '\r' || true
+  )"
+
+  if [[ -n "$FINAL_PID" ]]; then
+    adb -s "$DEVICE_ID" shell dumpsys activity activities \
+      > "$REPORT_DIR/final-activities.txt" 2>&1 || true
+    if grep -Eq "Resumed: ActivityRecord.*\${PACKAGE_NAME}" \
+      "$REPORT_DIR/final-activities.txt"; then
+      ACTIVITY_RESUMED="yes"
+      break
+    fi
+  fi
+  sleep 1
+done
 
 [[ -n "$FINAL_PID" ]] \
   || fail "Application process is not alive after integration tests."
+
+[[ "$ACTIVITY_RESUMED" == "yes" ]] \
+  || fail "MainActivity did not reach the resumed state after integration tests."
 
 adb -s "$DEVICE_ID" logcat -d -b crash \
   > "$CRASH_LOG" 2>&1
