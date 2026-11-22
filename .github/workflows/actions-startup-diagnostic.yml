@@ -1,0 +1,22 @@
+name: Actions startup diagnostic
+
+on:
+  push:
+    branches:
+      - fix/stabilize-ci-security-review
+    paths:
+      - .github/workflows/actions-startup-diagnostic.yml
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  startup-smoke:
+    name: Minimal runner startup check
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Confirm runner started
+        run: |
+          echo "GitHub Actions runner started successfully."
+          echo "This diagnostic intentionally uses no checkout, secrets, or third-party actions."
