@@ -107,7 +107,7 @@ jobs:
           python3 scripts/build_config.py --summary >> "$GITHUB_STEP_SUMMARY"
 
       - name: Require production inputs for a stable tag
-        if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') }}
         env:
           PRODUCTION_READY: ${{ steps.config.outputs.production_ready }}
         run: |
@@ -304,15 +304,16 @@ jobs:
   publish:
     needs: [validate-and-build, android-smoke]
     # استفاده از github.event.inputs برای سازگاری با workflow_dispatch
-    if: >-
+    if: ${{
       startsWith(github.ref, 'refs/tags/v') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.publish_candidate == 'true')
+    }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v7
         with:
           name: android-${{ needs.validate-and-build.outputs.version }}-${{ github.sha }}
           path: release-files
