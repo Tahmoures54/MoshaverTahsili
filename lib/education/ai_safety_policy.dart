@@ -84,7 +84,7 @@ class AiSafetyPolicy {
     r'دلم\s*می\s*خواهد|'
     r'کاش'
     r')'
-    r'.{0,80}'
+    '.{0,$_maxIntentDistance}'
     r'(?:'
     r'خودکشی|'
     r'خودم\s*را\s*بکشم|'
