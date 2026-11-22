@@ -135,7 +135,10 @@ Future<void> _settleSafely(
   WidgetTester tester, {
   Duration timeout = const Duration(seconds: 5),
 }) async {
-  await tester.pumpAndSettle(timeout);
+  await tester.pumpAndSettle(
+    const Duration(milliseconds: 100),
+    timeout: timeout,
+  );
 }
 
 /// انتظار برای یافتن ویجت با محدودیت زمانی مشخص
