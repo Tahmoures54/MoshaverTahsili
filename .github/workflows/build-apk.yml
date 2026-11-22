@@ -49,9 +49,6 @@ jobs:
       # wrapper را اعتبارسنجی می‌کند و توزیع Gradle را خودکار کش می‌کند.
       - name: Setup Gradle (wrapper validation + distribution cache)
         uses: gradle/actions/setup-gradle@v6
-        with:
-          # در صورت نیاز به Basic Caching (۱۰۰٪ Open Source):
-          # cache-provider: basic
 
       - uses: subosito/flutter-action@v2.23.0
         with:
