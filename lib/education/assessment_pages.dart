@@ -13,20 +13,6 @@ import 'ui.dart';
 // Safe data helpers
 // -----------------------------------------------------------------------------
 
-int _safeCount(Object? value) {
-  if (value is int && value >= 0) return value;
-
-  if (value is num && value.isFinite && value >= 0) {
-    return value.toInt();
-  }
-
-  final parsed = int.tryParse(
-    digitsToEnglish(value?.toString() ?? ''),
-  );
-
-  return parsed != null && parsed >= 0 ? parsed : 0;
-}
-
 double _safePercentage(Object? value) {
   if (value is! num || !value.isFinite) return 0;
 
