@@ -66,6 +66,29 @@ void main() {
     expect(store.profile?['year'], 'هفتم');
   });
 
+  testWidgets('home groups tools and keeps full privacy details accessible', (tester) async {
+    final store = await EducationStore.open();
+    await store.saveProfile({
+      'fullName': 'سارا احمدی',
+      'nickname': 'سارا',
+      'grade': 'متوسطه اول',
+      'year': 'هفتم',
+      'field': 'عمومی',
+    });
+    await tester.pumpWidget(EducationApp(store: store));
+    await tester.pumpAndSettle();
+    expect(find.text('درود، سارا!'), findsOneWidget);
+    expect(find.text('پیشنهاد امروز سیمرغ'), findsOneWidget);
+    expect(find.text('برنامه‌ریزی و یادگیری'), findsOneWidget);
+    expect(find.text('سنجش و تحلیل پیشرفت'), findsOneWidget);
+    expect(find.text('مشاوره و آینده تحصیلی'), findsOneWidget);
+    expect(find.text('همراهی خانواده و امکانات بیشتر'), findsOneWidget);
+    expect(find.text('کیف اعتبار'), findsOneWidget);
+    expect(find.text('گفت‌وگو با مشاور هوشمند'), findsOneWidget);
+    expect(find.text('راهنمای انتخاب رشته'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('dashboard tolerates malformed imported task durations', (tester) async {
     final store = await EducationStore.open();
     await store.addTask({
@@ -159,7 +182,7 @@ void main() {
       'completedAt': now.subtract(const Duration(days: 12)).toIso8601String(),
     });
     await tester.pumpWidget(frame(HomePage(store: store, go: (_) {})));
-    expect(find.textContaining('هفت روز اخیر: ۱ کار تکمیل شده؛ ۳۵ دقیقه'), findsOneWidget);
+    expect(find.textContaining('در هفت روز اخیر، ۱ کار تکمیل شده است؛ برای این کارها ۳۵ دقیقه زمان برنامه‌ریزی شده بود.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
