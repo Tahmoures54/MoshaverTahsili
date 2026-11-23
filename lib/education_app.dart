@@ -373,12 +373,29 @@ class _EntryScreenState extends State<EntryScreen> {
         Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('سخنی با اولیا و دانش‌آموزان گرامی', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
-          const Text('برنامه مطالعه، نمرات، فلش‌کارت‌ها و سابقه مشاوره روی همین گوشی ذخیره می‌شوند. '
-              'برای پاسخ‌گویی سیمرغ، متن پرسش و بخش‌هایی از گفت‌وگوهای اخیر به یک سرویس بیرونی ارسال می‌شوند. زمینه پروفایل تحصیلی فقط در صورت فعال‌کردن رضایت جداگانه در ویرایش پروفایل ارسال می‌شود. '
-              'در تحلیل وضعیت تحصیلی، خلاصه نمره‌ها فقط پس از زدن دکمه تحلیل ارسال می‌شود. '
-              'نشانی، شماره تماس و اطلاعات حساس را در پیام‌ها وارد نکن. نام و نام خانوادگی پروفایل روی همین گوشی می‌ماند و به‌صورت خودکار ارسال نمی‌شود؛ اما هر اطلاعاتی که خودت داخل متن پرسش یا گفت‌وگو بنویسی، ممکن است به سرویس بیرونی فرستاده شود. '
-              'پاسخ‌های سیمرغ ممکن است اشتباه باشند و جایگزین معلم، مشاور مدرسه یا منابع رسمی نیستند. '
-              'با حذف برنامه، اطلاعات و اعتبار محلی از دست می‌روند.', style: TextStyle(height: 1.9)),
+          const Text(
+            'اطلاعات تحصیلی و برنامه‌ها روی همین گوشی نگهداری می‌شوند. برای پاسخ‌گویی، متن پرسش و بخشی از گفت‌وگو به سرویس هوش مصنوعی فرستاده می‌شود. نام پروفایل به‌صورت خودکار ارسال نمی‌شود.',
+            style: TextStyle(height: 1.85),
+          ),
+          const SizedBox(height: 8),
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(bottom: 8),
+              title: const Text('جزئیات حریم خصوصی و نکات مهم',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              children: const [
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    'زمینه تحصیلی فقط با رضایت جداگانه در پروفایل ارسال می‌شود. خلاصه نمره‌ها نیز فقط پس از انتخاب تحلیل وضعیت تحصیلی ارسال خواهد شد. هر اطلاعات هویتی که خودت در متن پیام بنویسی ممکن است به سرویس بیرونی برسد. پاسخ‌های سیمرغ ممکن است اشتباه باشند و جایگزین معلم، مشاور مدرسه یا منابع رسمی نیستند. با حذف برنامه، اطلاعات و اعتبار محلی از دست می‌روند.',
+                    style: TextStyle(height: 1.85),
+                  ),
+                ),
+              ],
+            ),
+          ),
           CheckboxListTile(value: accepted, contentPadding: EdgeInsets.zero, controlAffinity: ListTileControlAffinity.leading,
               onChanged: (value) => setState(() => accepted = value ?? false), title: const Text('توضیحات و نکات حریم خصوصی را خواندم.')),
         ]))),
@@ -549,69 +566,166 @@ class HomePage extends StatelessWidget {
     final suggestions = dailySuggestions(report: report, tasks: tasks, deadlines: store.deadlines, now: now, dailyMinutes: dailyMinutes);
     final fullName = profile['fullName']?.toString().trim() ?? '';
     final nickname = fullName.isNotEmpty ? fullName.split(RegExp(r'\s+')).first : (profile['nickname']?.toString() ?? '');
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
-      SimorghHomeHero(
-        nickname: nickname,
-        gradeLine: [
-          profile['grade']?.toString() ?? '',
-          profile['year'] == null ? '' : 'پایه ${profile['year']}',
-          profile['field']?.toString() ?? '',
-        ].where((part) => part.trim().isNotEmpty).join(' · '),
-        onChat: () => go(4),
-      ),
-      const SizedBox(height: 14),
-      CreditSummary(store: store, onShop: () => push(context, CreditShopPage(store: store))),
-      const SimorghSectionTitle(
-        title: 'رد پای تلاش تو',
-        subtitle: 'پیشرفت را با قدم‌های خودت بسنج، نه با دیگران.',
-      ),
-      Row(children: [
-        Expanded(child: StatCard(title: 'کارهای انجام‌شده', value: '${faNumber(tasks.where((task) => task['done'] == true).length)}/${faNumber(tasks.length)}', icon: Icons.task_alt)),
-        const SizedBox(width: 8),
-        Expanded(child: StatCard(title: 'آزمون‌ها', value: faNumber(store.exams.length), icon: Icons.assessment_outlined)),
-        const SizedBox(width: 8),
-        Expanded(child: StatCard(title: 'فلش‌کارت‌ها', value: faNumber(store.cards.length), icon: Icons.style_outlined)),
-      ]),
-      const SizedBox(height: 4),
-      NoticeCard(
-        text: 'هفت روز اخیر: ${faNumber(completed.length)} کار تکمیل شده؛ '
-            '${faNumber(minutes)} دقیقه زمان برای این کارها برنامه‌ریزی شده است.',
-        icon: Icons.insights_outlined,
-      ),
-      const SimorghSectionTitle(
-        title: 'پیشنهاد امروز سیمرغ',
-        subtitle: 'یک پیشنهاد کوچک و متناسب با مسیر فعلی تو.',
-      ),
-      SimorghCompanion(
-        tasks: tasks,
-        cards: store.cards,
-        grade: profile['grade']?.toString() ?? '',
-        active: active,
-        onAction: (action) => go(switch (action) {
-          SimorghAction.planner => 1,
-          SimorghAction.review => 3,
-          SimorghAction.advisor => 4,
-        }),
-        onChat: () => go(4),
-      ),
-      for (final tip in suggestions) NoticeCard(text: tip, icon: Icons.lightbulb_outline),
-      const SimorghSectionTitle(
-        title: 'ابزارهای مسیر یادگیری',
-        subtitle: 'هر بار یک مسیر را انتخاب کن؛ لازم نیست همه کارها را هم‌زمان انجام بدهی.',
-      ),
-      QuickTile(icon: Icons.auto_awesome, title: 'گفت‌وگو با مشاور هوشمند', subtitle: 'پرسش، برنامه مطالعه و روش بهبود', onTap: () => go(4)),
-      QuickTile(icon: Icons.share_outlined, title: 'معرفی سیمرغ به دوستان', subtitle: 'ارسال لینک نصب برنامه برای هم‌کلاسی‌ها و دوستان', onTap: () => push(context, const ReferralPage())),
-      QuickTile(icon: Icons.insights_outlined, title: 'بررسی وضعیت تحصیلی', subtitle: 'نقاط قوت و ضعف بر اساس نمره‌های تو', onTap: () => push(context, AcademicInsightsPage(store: store))),
-      QuickTile(icon: Icons.auto_awesome, title: 'مربی یادگیری شخصی', subtitle: 'پیشنهاد قدم بعدی بر اساس برنامه، نمره‌ها و مرورها', onTap: () => push(context, LearningCoachPage(store: store))),
-      QuickTile(icon: Icons.people_outline, title: 'گزارش برای خانواده', subtitle: 'پیش‌نمایش و کپی خلاصه پیشرفت با انتخاب خودت', onTap: () => push(context, FamilyProgressReportPage(store: store))),
-      QuickTile(icon: Icons.query_stats_outlined, title: 'تحلیل عملکرد و پایبندی', subtitle: 'روند درس‌ها و ساعت مطالعه، فقط از داده‌های خودت', onTap: () => push(context, AnalyticsPage(store: store))),
-      QuickTile(icon: Icons.calendar_month, title: 'برنامه مطالعه', subtitle: 'ثبت و پیگیری کارهای درسی', onTap: () => go(1)),
-      QuickTile(icon: Icons.assessment_outlined, title: 'آزمون و کارنامه', subtitle: 'ثبت نمرات و مشاهده میانگین', onTap: () => go(2)),
-      QuickTile(icon: Icons.style_outlined, title: 'مرور و فلش‌کارت', subtitle: 'یادگیری ماندگار با مرور فاصله‌دار', onTap: () => go(3)),
-      QuickTile(icon: Icons.explore_outlined, title: 'راهنمای انتخاب رشته', subtitle: 'شناخت علاقه‌ها و مسیرهای ممکن', onTap: () => push(context, CareerPage(store: store))),
-      QuickTile(icon: Icons.history_edu_outlined, title: 'تاریخچه مشاوره‌ها', subtitle: 'پاسخ‌های قبلی و درخواست‌های ناتمام', onTap: () => push(context, ReportsPage(store: store))),
-      QuickTile(icon: Icons.menu_book_outlined, title: 'روش‌های مؤثر مطالعه', subtitle: 'راهنمای آفلاین تمرکز و یادگیری', onTap: () => push(context, const StudyTipsPage())),
-    ]);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+      children: [
+        SimorghHomeHero(
+          nickname: nickname,
+          gradeLine: [
+            profile['grade']?.toString() ?? '',
+            profile['year'] == null ? '' : 'پایه ${profile['year']}',
+            profile['field']?.toString() ?? '',
+          ].where((part) => part.trim().isNotEmpty).join(' · '),
+          onChat: () => go(4),
+        ),
+        const SizedBox(height: 14),
+        const SimorghSectionTitle(
+          title: 'پیشنهاد امروز سیمرغ',
+          subtitle: 'یک قدم کوچک و متناسب با وضعیت فعلی تو.',
+        ),
+        SimorghCompanion(
+          tasks: tasks,
+          cards: store.cards,
+          grade: profile['grade']?.toString() ?? '',
+          active: active,
+          onAction: (action) => go(switch (action) {
+            SimorghAction.planner => 1,
+            SimorghAction.review => 3,
+            SimorghAction.advisor => 4,
+          }),
+          onChat: () => go(4),
+        ),
+        const SimorghSectionTitle(
+          title: 'رد پای تلاش تو',
+          subtitle: 'پیشرفت را با قدم‌های خودت بسنج، نه با دیگران.',
+        ),
+        Row(
+          children: [
+            Expanded(child: StatCard(
+              title: 'کارهای انجام‌شده',
+              value: '${faNumber(tasks.where((task) => task['done'] == true).length)}/${faNumber(tasks.length)}',
+              icon: Icons.task_alt,
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: StatCard(
+              title: 'آزمون‌ها',
+              value: faNumber(store.exams.length),
+              icon: Icons.assessment_outlined,
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: StatCard(
+              title: 'فلش‌کارت‌ها',
+              value: faNumber(store.cards.length),
+              icon: Icons.style_outlined,
+            )),
+          ],
+        ),
+        const SizedBox(height: 4),
+        NoticeCard(
+          text: 'در هفت روز اخیر، ${faNumber(completed.length)} کار تکمیل شده است؛ '
+              'برای این کارها ${faNumber(minutes)} دقیقه زمان برنامه‌ریزی شده بود.',
+          icon: Icons.insights_outlined,
+        ),
+        for (final tip in suggestions)
+          NoticeCard(text: tip, icon: Icons.lightbulb_outline),
+        const SimorghSectionTitle(
+          title: 'برنامه‌ریزی و یادگیری',
+          subtitle: 'برای ساختن عادت مطالعه و یادگیری ماندگار.',
+        ),
+        QuickTile(
+          icon: Icons.calendar_month,
+          title: 'برنامه مطالعه',
+          subtitle: 'ثبت و پیگیری کارهای درسی',
+          onTap: () => go(1),
+        ),
+        QuickTile(
+          icon: Icons.style_outlined,
+          title: 'مرور و فلش‌کارت',
+          subtitle: 'یادگیری ماندگار با مرور فاصله‌دار',
+          onTap: () => go(3),
+        ),
+        QuickTile(
+          icon: Icons.auto_awesome,
+          title: 'مربی یادگیری شخصی',
+          subtitle: 'پیشنهاد قدم بعدی بر اساس برنامه، نمره‌ها و مرورها',
+          onTap: () => push(context, LearningCoachPage(store: store)),
+        ),
+        QuickTile(
+          icon: Icons.menu_book_outlined,
+          title: 'روش‌های مؤثر مطالعه',
+          subtitle: 'راهنمای آفلاین تمرکز و یادگیری',
+          onTap: () => push(context, const StudyTipsPage()),
+        ),
+        const SimorghSectionTitle(
+          title: 'سنجش و تحلیل پیشرفت',
+          subtitle: 'عملکردت را ببین و برای بهترشدن تصمیم بگیر.',
+        ),
+        QuickTile(
+          icon: Icons.assessment_outlined,
+          title: 'آزمون و کارنامه',
+          subtitle: 'ثبت نمرات و مشاهده میانگین',
+          onTap: () => go(2),
+        ),
+        QuickTile(
+          icon: Icons.insights_outlined,
+          title: 'بررسی وضعیت تحصیلی',
+          subtitle: 'نقاط قوت و ضعف بر اساس نمره‌های تو',
+          onTap: () => push(context, AcademicInsightsPage(store: store)),
+        ),
+        QuickTile(
+          icon: Icons.query_stats_outlined,
+          title: 'تحلیل عملکرد و پایبندی',
+          subtitle: 'روند درس‌ها و ساعت مطالعه، فقط از داده‌های خودت',
+          onTap: () => push(context, AnalyticsPage(store: store)),
+        ),
+        const SimorghSectionTitle(
+          title: 'مشاوره و آینده تحصیلی',
+          subtitle: 'برای پرسش‌ها و انتخاب قدم بعدی.',
+        ),
+        QuickTile(
+          icon: Icons.auto_awesome,
+          title: 'گفت‌وگو با مشاور هوشمند',
+          subtitle: 'پرسش، برنامه مطالعه و روش بهبود',
+          onTap: () => go(4),
+        ),
+        QuickTile(
+          icon: Icons.explore_outlined,
+          title: 'راهنمای انتخاب رشته',
+          subtitle: 'شناخت علاقه‌ها و مسیرهای ممکن',
+          onTap: () => push(context, CareerPage(store: store)),
+        ),
+        const SimorghSectionTitle(
+          title: 'همراهی خانواده و امکانات بیشتر',
+          subtitle: 'گزارش، سوابق و معرفی سیمرغ.',
+        ),
+        QuickTile(
+          icon: Icons.people_outline,
+          title: 'گزارش برای خانواده',
+          subtitle: 'پیش‌نمایش و کپی خلاصه پیشرفت با انتخاب خودت',
+          onTap: () => push(context, FamilyProgressReportPage(store: store)),
+        ),
+        QuickTile(
+          icon: Icons.history_edu_outlined,
+          title: 'تاریخچه مشاوره‌ها',
+          subtitle: 'پاسخ‌های قبلی و درخواست‌های ناتمام',
+          onTap: () => push(context, ReportsPage(store: store)),
+        ),
+        QuickTile(
+          icon: Icons.share_outlined,
+          title: 'معرفی سیمرغ به دوستان',
+          subtitle: 'ارسال لینک نصب برنامه برای هم‌کلاسی‌ها و دوستان',
+          onTap: () => push(context, const ReferralPage()),
+        ),
+        const SimorghSectionTitle(
+          title: 'کیف اعتبار',
+          subtitle: 'اعتبار و پرسش‌های رایگان در یک نگاه.',
+        ),
+        CreditSummary(
+          store: store,
+          onShop: () => push(context, CreditShopPage(store: store)),
+        ),
+      ],
+    );
   }
 }
 

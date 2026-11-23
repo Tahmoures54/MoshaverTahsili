@@ -38,6 +38,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('مشاور هوشمند تحصیلی'), findsOneWidget);
     expect(find.text('سخنی با اولیا و دانش‌آموزان گرامی'), findsOneWidget);
+    expect(find.text('جزئیات حریم خصوصی و نکات مهم'), findsOneWidget);
+    await tester.tap(find.text('جزئیات حریم خصوصی و نکات مهم'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('زمینه تحصیلی فقط با رضایت جداگانه'), findsOneWidget);
     expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'بزن بریم')).onPressed, isNull);
     await tester.ensureVisible(find.byType(Checkbox));
     await tester.pumpAndSettle();
@@ -64,6 +68,49 @@ void main() {
     expect(store.profile?['nickname'], 'سارا');
     expect(store.profile?['grade'], 'متوسطه اول');
     expect(store.profile?['year'], 'هفتم');
+  });
+
+  testWidgets('home groups tools and keeps full privacy details accessible', (tester) async {
+    final store = await EducationStore.open();
+    await store.saveProfile({
+      'fullName': 'سارا احمدی',
+      'nickname': 'سارا',
+      'grade': 'متوسطه اول',
+      'year': 'هفتم',
+      'field': 'عمومی',
+    });
+    await tester.pumpWidget(EducationApp(store: store));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.text('درود، سارا!'), findsOneWidget);
+    expect(find.text('پیشنهاد امروز سیمرغ'), findsOneWidget);
+    for (final section in [
+      'برنامه‌ریزی و یادگیری',
+      'سنجش و تحلیل پیشرفت',
+      'مشاوره و آینده تحصیلی',
+      'همراهی خانواده و امکانات بیشتر',
+      'کیف اعتبار',
+    ]) {
+      await tester.scrollUntilVisible(
+        find.text(section),
+        260,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text(section), findsOneWidget);
+    }
+    await tester.scrollUntilVisible(
+      find.text('گفت‌وگو با مشاور هوشمند'),
+      260,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('گفت‌وگو با مشاور هوشمند'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('راهنمای انتخاب رشته'),
+      260,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('راهنمای انتخاب رشته'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('dashboard tolerates malformed imported task durations', (tester) async {
@@ -159,7 +206,7 @@ void main() {
       'completedAt': now.subtract(const Duration(days: 12)).toIso8601String(),
     });
     await tester.pumpWidget(frame(HomePage(store: store, go: (_) {})));
-    expect(find.textContaining('هفت روز اخیر: ۱ کار تکمیل شده؛ ۳۵ دقیقه'), findsOneWidget);
+    expect(find.textContaining('در هفت روز اخیر، ۱ کار تکمیل شده است؛ برای این کارها ۳۵ دقیقه زمان برنامه‌ریزی شده بود.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
