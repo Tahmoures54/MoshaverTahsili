@@ -76,7 +76,8 @@ void main() {
       'field': 'عمومی',
     });
     await tester.pumpWidget(EducationApp(store: store));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
     expect(find.text('درود، سارا!'), findsOneWidget);
     expect(find.text('پیشنهاد امروز سیمرغ'), findsOneWidget);
     expect(find.text('برنامه‌ریزی و یادگیری'), findsOneWidget);
