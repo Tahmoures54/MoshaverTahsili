@@ -2,13 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+
 import 'ai_advisor_service.dart';
 import 'ai_safety_policy.dart';
 import 'credit_shop_page.dart';
 import 'education_store.dart';
-import 'study_pages.dart' show newId;
 import 'simorgh_companion.dart';
 import 'simorgh_teaching_engine.dart';
+import 'study_pages.dart' show newId;
 import 'ui.dart';
 
 class _TeachingTurn {
@@ -18,181 +19,330 @@ class _TeachingTurn {
     required this.error,
     required this.nextQuestion,
   });
+
   final String feedback;
   final SimorghAnswerOutcome outcome;
   final SimorghErrorKind error;
   final String nextQuestion;
 }
 
+List<Map<String, dynamic>> _copyRecords(
+  List<Map<String, dynamic>> records,
+) {
+  return records
+      .map((record) => Map<String, dynamic>.from(record))
+      .toList();
+}
+
 class AdvisorPage extends StatefulWidget {
-  const AdvisorPage({super.key, required this.store, this.service});
+  const AdvisorPage({
+    super.key,
+    required this.store,
+    this.service,
+  });
+
   final EducationStore store;
   final AiAdvisorService? service;
+
   @override
   State<AdvisorPage> createState() => _AdvisorPageState();
 }
 
 class _AdvisorPageState extends State<AdvisorPage> {
-  final input = TextEditingController();
-  final FocusNode _inputFocus = FocusNode();
-  final ScrollController _scrollController = ScrollController();
-  late final bool _ownsService = widget.service == null;
-  late final AiAdvisorService service =
-      widget.service ?? AiAdvisorService(store: widget.store);
-  late List<Map<String, dynamic>> messages;
-  bool busy = false;
-  bool _recovering = false;
-  String? error;
-  SimorghTeachingSession? teachingSession;
-  String? teachingSessionId;
+  final _input = TextEditingController();
+  final _inputFocus = FocusNode();
+  final _scrollController = ScrollController();
 
-  bool get _locked => busy || _recovering;
+  late AiAdvisorService _service;
+  late bool _ownsService;
+
+  final Set<AiAdvisorService> _runningServices = {};
+  final Set<AiAdvisorService> _retiredServices = {};
+
+  late List<Map<String, dynamic>> _messages;
+
+  SimorghTeachingSession? _teachingSession;
+  String? _teachingSessionId;
+
+  bool _busy = false;
+  bool _recovering = false;
+  bool _managingSession = false;
+  bool _clearing = false;
+  bool _openingShop = false;
+
+  String? _error;
+
+  // A prepared question is not an answer to be evaluated.
+  String? _preparedPrompt;
+
+  // Invalidate UI updates when the supplied store/service changes.
+  int _generation = 0;
+  bool _disposed = false;
+  bool _scrollScheduled = false;
+
+  bool get _locked =>
+      _busy ||
+      _recovering ||
+      _managingSession ||
+      _clearing ||
+      _openingShop;
+
+  bool get _storeHasActiveRequest => widget.store.hasActiveAiRequests;
+
+  bool get _canOperate => !_locked && !_storeHasActiveRequest;
 
   @override
   void initState() {
     super.initState();
-    messages = widget.store.messages;
-    teachingSession = _restoreTeachingSession(widget.store.teachingSessions);
+
+    _configureService();
+    _loadLocalState();
+
+    _input.addListener(_handleInputChanged);
+    widget.store.addListener(_handleStoreChanged);
+
     unawaited(_recoverPendingMessages());
+    _scrollToBottom();
+  }
+
+  void _configureService() {
+    _ownsService = widget.service == null;
+    _service = widget.service ?? AiAdvisorService(store: widget.store);
+  }
+
+  void _retireService(AiAdvisorService service, bool owned) {
+    if (!owned) return;
+
+    if (_runningServices.contains(service)) {
+      _retiredServices.add(service);
+    } else {
+      service.dispose();
+    }
+  }
+
+  void _loadLocalState() {
+    _messages = _copyRecords(widget.store.messages);
+
+    _teachingSession = null;
+    _teachingSessionId = null;
+
+    // Try the newest valid active session, without modifying damaged records.
+    for (final record in widget.store.teachingSessions.reversed) {
+      if (record['active'] != true) continue;
+
+      final id = record['id'];
+      final session = _decodeSession(record);
+
+      if (id is String && id.trim().isNotEmpty && session != null) {
+        _teachingSession = session;
+        _teachingSessionId = id;
+        break;
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant AdvisorPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final storeChanged = !identical(oldWidget.store, widget.store);
+    final serviceChanged = !identical(oldWidget.service, widget.service);
+
+    if (!storeChanged && !serviceChanged) return;
+
+    _generation++;
+
+    if (storeChanged) {
+      oldWidget.store.removeListener(_handleStoreChanged);
+      widget.store.addListener(_handleStoreChanged);
+    }
+
+    _retireService(_service, _ownsService);
+    _configureService();
+
+    _busy = false;
+    _recovering = false;
+    _managingSession = false;
+    _clearing = false;
+    _openingShop = false;
+
+    _error = null;
+    _preparedPrompt = null;
+    _input.clear();
+
+    _loadLocalState();
+
+    unawaited(_recoverPendingMessages());
+    _scrollToBottom();
+  }
+
+  bool _isCurrent(int generation, EducationStore store) {
+    return mounted &&
+        !_disposed &&
+        generation == _generation &&
+        identical(store, widget.store);
+  }
+
+  void _handleInputChanged() {
+    if (_preparedPrompt != null &&
+        _input.text.trim() != _preparedPrompt) {
+      _preparedPrompt = null;
+    }
+
+    if (mounted) setState(() {});
+  }
+
+  void _handleStoreChanged() {
+    if (!mounted) return;
+
+    // Do not replace the working transcript during our own operation.
+    if (!_busy && !_recovering && !_clearing && !_managingSession) {
+      _loadLocalState();
+    }
+
+    setState(() {});
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _disposed = true;
+    _generation++;
+
+    widget.store.removeListener(_handleStoreChanged);
+    _input.removeListener(_handleInputChanged);
+
+    _input.dispose();
     _inputFocus.dispose();
-    input.dispose();
-    if (_ownsService) service.dispose();
+    _scrollController.dispose();
+
+    // Do not dispose a service while an owned request is still saving.
+    _retireService(_service, _ownsService);
+
     super.dispose();
   }
 
   void _scrollToBottom() {
+    if (_scrollScheduled || !mounted) return;
+
+    _scrollScheduled = true;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollScheduled = false;
+
       if (!mounted || !_scrollController.hasClients) return;
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
+
+      unawaited(
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+        ),
       );
     });
   }
 
-  /// Reconciles the chat transcript with the durable AI request ledger.
-  /// This repairs the narrow crash window after the wallet saved an answer but
-  /// before the conversation transcript could be written.
-  Future<void> _recoverPendingMessages() async {
-    if (widget.store.hasActiveAiRequests) return;
-    final recovered =
-        messages.map((item) => Map<String, dynamic>.from(item)).toList();
-    var changed = false;
-    for (final message in recovered.toList()) {
-      if (message['role'] != 'user' || message['status'] != 'pending') continue;
-      final id = message['id'];
-      if (id is! String || id.isEmpty) continue;
-      final answer = widget.store.savedAiAnswer(id);
-      message['status'] = answer == null ? 'failed' : 'completed';
-      if (answer != null &&
-          !recovered.any((item) => item['id'] == '$id-answer')) {
-        recovered.add({
-          'id': '$id-answer',
-          'role': 'assistant',
-          'content': answer,
-          'status': 'completed',
-          'createdAt':
-              message['createdAt'] ?? DateTime.now().toIso8601String(),
-        });
-      }
-      changed = true;
-    }
-    if (!changed) return;
-    _recovering = true;
-    if (mounted) setState(() {});
+  SimorghTeachingSession? _decodeSession(
+    Map<String, dynamic> data,
+  ) {
     try {
-      await widget.store.saveMessages(recovered);
-      if (mounted) {
-        setState(() => messages = recovered);
-        _scrollToBottom();
-      }
-    } on Object {
-      // The wallet remains the authoritative local recovery source. Do not
-      // replace a pending transcript with an unpersisted in-memory guess.
-    } finally {
-      _recovering = false;
-      if (mounted) setState(() {});
-    }
-  }
-
-  SimorghTeachingSession? _restoreTeachingSession(
-      List<Map<String, dynamic>> saved) {
-    final active = saved.where((item) => item['active'] == true).toList();
-    if (active.isEmpty) return null;
-    final data = active.last;
-    try {
-      final id = data['id'];
       final topic = data['topic'];
       final grade = data['grade'];
-      if (id is! String ||
-          id.trim().isEmpty ||
-          topic is! String ||
+
+      if (topic is! String ||
           topic.trim().isEmpty ||
           topic.length > SimorghTeachingEngine.maxTopicLength ||
           grade is! String ||
           grade.length > SimorghTeachingEngine.maxGradeLength) {
-        throw const FormatException('Invalid saved lesson identity.');
+        throw const FormatException('Invalid lesson identity.');
       }
 
       int counter(String key, {required int maximum}) {
         final value = data[key] ?? 0;
+
         if (value is! int || value < 0 || value > maximum) {
-          throw FormatException('Invalid saved lesson counter: $key');
+          throw FormatException('Invalid lesson counter: $key');
         }
+
         return value;
       }
 
       final stageName = data['stage'];
-      if (stageName is! String) throw const FormatException();
-      final stage = SimorghTeachingStage.values
+
+      if (stageName is! String) {
+        throw const FormatException('Missing lesson stage.');
+      }
+
+      final stages = SimorghTeachingStage.values
           .where((value) => value.name == stageName)
           .toList();
-      if (stage.length != 1) throw const FormatException();
+
+      if (stages.length != 1) {
+        throw const FormatException('Unknown lesson stage.');
+      }
+
       final diagnosticCount = counter(
         'diagnosticCount',
         maximum: SimorghTeachingEngine.diagnosticQuestionLimit,
       );
+
       final diagnosticCorrect = counter(
         'diagnosticCorrect',
         maximum: SimorghTeachingEngine.diagnosticQuestionLimit,
       );
-      final practiceAttempts = counter('practiceAttempts', maximum: 1000);
+
+      final practiceAttempts = counter(
+        'practiceAttempts',
+        maximum: 1000,
+      );
+
       final masteryCount = counter(
         'masteryCount',
         maximum: SimorghTeachingEngine.masteryQuestionLimit,
       );
+
       final masteryCorrect = counter(
         'masteryCorrect',
         maximum: SimorghTeachingEngine.masteryQuestionLimit,
       );
-      final reteachCount = counter('reteachCount', maximum: 1000);
-      final explanationVariant = counter('explanationVariant', maximum: 1000);
+
+      final reteachCount = counter(
+        'reteachCount',
+        maximum: 1000,
+      );
+
+      final explanationVariant = counter(
+        'explanationVariant',
+        maximum: 1000,
+      );
+
       if (diagnosticCorrect > diagnosticCount ||
           masteryCorrect > masteryCount) {
-        throw const FormatException(
-            'Saved lesson scores exceed their attempt counts.');
-      }
-      final rawError = data['lastError'];
-      SimorghErrorKind? lastError;
-      if (rawError != null) {
-        if (rawError is! String) throw const FormatException();
-        final matches = SimorghErrorKind.values
-            .where((value) => value.name == rawError)
-            .toList();
-        if (matches.length != 1) throw const FormatException();
-        lastError = matches.single;
+        throw const FormatException('Invalid lesson scores.');
       }
 
-      final session = SimorghTeachingSession(
+      SimorghErrorKind? lastError;
+      final rawError = data['lastError'];
+
+      if (rawError != null) {
+        if (rawError is! String) {
+          throw const FormatException('Invalid error type.');
+        }
+
+        final errors = SimorghErrorKind.values
+            .where((value) => value.name == rawError)
+            .toList();
+
+        if (errors.length != 1) {
+          throw const FormatException('Unknown error type.');
+        }
+
+        lastError = errors.single;
+      }
+
+      return SimorghTeachingSession(
         topic: topic.trim(),
         grade: grade.trim(),
-        stage: stage.single,
+        stage: stages.single,
         diagnosticCount: diagnosticCount,
         diagnosticCorrect: diagnosticCorrect,
         practiceAttempts: practiceAttempts,
@@ -202,11 +352,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
         explanationVariant: explanationVariant,
         lastError: lastError,
       );
-      teachingSessionId = id;
-      return session;
     } on Object {
-      // A damaged or obsolete record must never create an impossible lesson.
-      // Leave the saved record untouched so the learner can still recover data.
       return null;
     }
   }
@@ -215,685 +361,1620 @@ class _AdvisorPageState extends State<AdvisorPage> {
     SimorghTeachingSession session, {
     required String id,
     bool active = true,
-  }) =>
-      {
-        'id': id,
-        'active': active,
-        'topic': session.topic,
-        'grade': session.grade,
-        'stage': session.stage.name,
-        'diagnosticCount': session.diagnosticCount,
-        'diagnosticCorrect': session.diagnosticCorrect,
-        'practiceAttempts': session.practiceAttempts,
-        'masteryCount': session.masteryCount,
-        'masteryCorrect': session.masteryCorrect,
-        'reteachCount': session.reteachCount,
-        'explanationVariant': session.explanationVariant,
-        'lastError': session.lastError?.name,
-        'updatedAt': DateTime.now().toIso8601String(),
-      };
-
-  Future<void> _persistTeachingSession(SimorghTeachingSession session,
-      {bool active = true}) async {
-    final id = teachingSessionId ?? newId('simorgh-lesson');
-    teachingSessionId = id;
-    final records =
-        widget.store.teachingSessions.where((record) => record['id'] != id).toList();
-    records.add(_sessionRecord(session, id: id, active: active));
-    await widget.store.saveTeachingSessions(records);
+  }) {
+    return {
+      'id': id,
+      'active': active,
+      'topic': session.topic,
+      'grade': session.grade,
+      'stage': session.stage.name,
+      'diagnosticCount': session.diagnosticCount,
+      'diagnosticCorrect': session.diagnosticCorrect,
+      'practiceAttempts': session.practiceAttempts,
+      'masteryCount': session.masteryCount,
+      'masteryCorrect': session.masteryCorrect,
+      'reteachCount': session.reteachCount,
+      'explanationVariant': session.explanationVariant,
+      'lastError': session.lastError?.name,
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
   }
 
-  Future<void> startTeaching() async {
-    var topicValue = '';
-    final selected = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('شروع تدریس با سیمرغ'),
-        content: TextField(
-          autofocus: true,
-          maxLength: 120,
-          onChanged: (value) => topicValue = value,
-          decoration: const InputDecoration(
-            labelText: 'امروز چه مبحثی را یاد بگیریم؟',
-            hintText: 'مثلاً کسرها، تابع یا فتوسنتز',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('انصراف'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, topicValue.trim()),
-            child: const Text('شروع ارزیابی'),
-          ),
-        ],
-      ),
-    );
-    if (selected == null || selected.trim().isEmpty || !mounted) return;
-    final profile = widget.store.profile ?? const <String, dynamic>{};
-    final grade = [profile['grade'], profile['year']]
-        .whereType<String>()
-        .where((value) => value.trim().isNotEmpty)
-        .join(' · ');
-    final session = SimorghTeachingEngine.start(topic: selected, grade: grade);
-    teachingSessionId = newId('simorgh-lesson');
+  Map<String, dynamic>? _findSessionRecord(
+    EducationStore store,
+    String id,
+  ) {
+    for (final record in store.teachingSessions.reversed) {
+      if (record['id'] == id) {
+        return Map<String, dynamic>.from(record);
+      }
+    }
+
+    return null;
+  }
+
+  bool _sameSessionState(
+    SimorghTeachingSession first,
+    SimorghTeachingSession second,
+  ) {
+    return first.topic == second.topic &&
+        first.grade == second.grade &&
+        first.stage == second.stage &&
+        first.diagnosticCount == second.diagnosticCount &&
+        first.diagnosticCorrect == second.diagnosticCorrect &&
+        first.practiceAttempts == second.practiceAttempts &&
+        first.masteryCount == second.masteryCount &&
+        first.masteryCorrect == second.masteryCorrect &&
+        first.reteachCount == second.reteachCount &&
+        first.explanationVariant == second.explanationVariant &&
+        first.lastError == second.lastError;
+  }
+
+  Future<void> _saveSession(
+    EducationStore store,
+    SimorghTeachingSession session, {
+    required String id,
+    required bool active,
+    String? appliedRequestId,
+    bool replaceActive = false,
+  }) async {
+    final previous = _findSessionRecord(store, id);
+    final records = _copyRecords(store.teachingSessions);
+
+    records.removeWhere((record) => record['id'] == id);
+
+    if (replaceActive) {
+      for (final record in records) {
+        if (record['active'] == true) {
+          record['active'] = false;
+          record['updatedAt'] = DateTime.now().toIso8601String();
+        }
+      }
+    }
+
+    // Preserve request IDs so transcript retries cannot evaluate twice.
+    final appliedIds = <String>{
+      if (previous?['appliedRequestIds'] is List)
+        ...(previous!['appliedRequestIds'] as List).whereType<String>(),
+    };
+
+    if (appliedRequestId != null) {
+      appliedIds.add(appliedRequestId);
+    }
+
+    records.add({
+      ...?previous,
+      ..._sessionRecord(session, id: id, active: active),
+      'appliedRequestIds': appliedIds.toList(),
+    });
+
+    await store.saveTeachingSessions(records);
+  }
+
+  Future<void> _recoverPendingMessages() async {
+    final store = widget.store;
+    final generation = _generation;
+
+    if (_locked || store.hasActiveAiRequests) return;
+
+    final recovered = _copyRecords(store.messages);
+
+    if (!recovered.any(
+      (message) =>
+          message['role'] == 'user' &&
+          message['status'] == 'pending',
+    )) {
+      return;
+    }
+
+    setState(() {
+      _recovering = true;
+      _error = null;
+    });
+
+    var changed = false;
+
     try {
-      await _persistTeachingSession(session);
-      if (!mounted) return;
-      setState(() {
-        teachingSession = session;
-        input.text =
-            'می‌خواهم مبحث $selected را یاد بگیرم. لطفاً با یک سؤال کوتاه سطح من را بسنج.';
-      });
-      _inputFocus.requestFocus();
-      showMessage(
-        context,
-        'جلسه آموزشی روی گوشی ذخیره شد. پرسش ارزیابی را می‌توانی ارسال کنی.',
-      );
-    } on Object catch (value) {
-      if (mounted) showMessage(context, friendlyError(value));
+      for (final message in recovered.toList()) {
+        if (message['role'] != 'user' ||
+            message['status'] != 'pending') {
+          continue;
+        }
+
+        final id = message['id'];
+
+        if (id is! String || id.isEmpty) continue;
+
+        final answer = store.savedAiAnswer(id);
+
+        if (answer == null) {
+          message['status'] = 'failed';
+          changed = true;
+          continue;
+        }
+
+        var display = answer;
+
+        if (message['teachingSnapshot'] is Map) {
+          try {
+            final turn = _decodeTeachingTurn(answer);
+            display = _joinTeachingText(
+              turn.feedback,
+              turn.nextQuestion,
+            );
+
+            final sessionId = message['teachingSessionId'];
+            final record = sessionId is String
+                ? _findSessionRecord(store, sessionId)
+                : null;
+
+            final applied = record?['appliedRequestIds'];
+
+            final alreadyApplied = applied is List &&
+                applied.contains(id);
+
+            if (message['teachingPreparation'] != true &&
+                !alreadyApplied) {
+              // Recovery must not infer an unrecorded teaching transition.
+              display =
+                  '$display\n\n'
+                  'پاسخ قبلی بازیابی شد، اما ثبت پیشرفت این گام '
+                  'تأیید نشده است؛ مرحله جلسه خودکار تغییر نکرد.';
+            }
+          } on AiException {
+            // This may be an intentional local safety response.
+            // Do not expose malformed JSON or refund again during recovery.
+            final source = answer.trim();
+
+            if (source.startsWith('{') ||
+                source.startsWith('```')) {
+              display =
+                  'پاسخ قبلی بازیابی شد، اما قالب آموزشی آن '
+                  'قابل نمایش نیست. وضعیت جلسه تغییر نکرده است. '
+                  'برای بررسی نتیجه درخواست، تاریخچه مشاوره '
+                  'و کیف اعتبار را ببین.';
+            }
+          }
+        }
+
+        message['status'] = 'completed';
+
+        if (!recovered.any(
+          (item) => item['id'] == '$id-answer',
+        )) {
+          final position = recovered.indexOf(message);
+
+          recovered.insert(position + 1, {
+            'id': '$id-answer',
+            'role': 'assistant',
+            'content': display,
+            'status': 'completed',
+            'createdAt':
+                message['createdAt'] ??
+                DateTime.now().toIso8601String(),
+            'recovered': true,
+          });
+        }
+
+        changed = true;
+      }
+
+      if (changed) {
+        await store.saveMessages(recovered);
+      }
+
+      if (_isCurrent(generation, store)) {
+        setState(() {
+          _messages = recovered;
+        });
+
+        _scrollToBottom();
+      }
+    } on Object catch (error) {
+      if (_isCurrent(generation, store)) {
+        setState(() {
+          _error =
+              'بازیابی گفت‌وگو کامل نشد. '
+              '${friendlyError(error)}';
+        });
+      }
+    } finally {
+      if (_isCurrent(generation, store)) {
+        setState(() => _recovering = false);
+      }
     }
   }
 
-  Future<void> endTeaching() async {
-    final session = teachingSession;
-    if (session == null) return;
+  Future<void> _startTeaching() async {
+    if (!_canOperate) return;
+
+    final store = widget.store;
+    final generation = _generation;
+
+    setState(() => _managingSession = true);
+
+    final controller = TextEditingController();
+    final form = GlobalKey<FormState>();
+
     try {
-      await _persistTeachingSession(session, active: false);
-      if (mounted) {
-        setState(() {
-          teachingSession = null;
-          teachingSessionId = null;
-        });
+      final selected = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('شروع تدریس با سیمرغ'),
+            content: SingleChildScrollView(
+              child: Form(
+                key: form,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_teachingSession != null) ...[
+                      const Text(
+                        'با شروع جلسه جدید، جلسه قبلی '
+                        'پایان می‌یابد و سابقه آن روی گوشی باقی می‌ماند.',
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    TextFormField(
+                      controller: controller,
+                      autofocus: true,
+                      maxLength: SimorghTeachingEngine.maxTopicLength,
+                      textInputAction: TextInputAction.done,
+                      decoration: const InputDecoration(
+                        labelText: 'امروز چه مبحثی را یاد بگیریم؟',
+                        hintText: 'مثلاً کسرها، تابع یا فتوسنتز',
+                      ),
+                      validator: (value) {
+                        final topic = value?.trim() ?? '';
+
+                        if (topic.isEmpty) {
+                          return 'نام مبحث را وارد کن.';
+                        }
+
+                        if (topic.length >
+                            SimorghTeachingEngine.maxTopicLength) {
+                          return 'نام مبحث بیش از حد طولانی است.';
+                        }
+
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('انصراف'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (form.currentState?.validate() != true) return;
+
+                  Navigator.of(dialogContext).pop(
+                    controller.text.trim(),
+                  );
+                },
+                child: const Text('شروع ارزیابی'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (!_isCurrent(generation, store) || selected == null) {
+        return;
       }
-    } on Object catch (value) {
-      if (mounted) showMessage(context, friendlyError(value));
+
+      if (store.hasActiveAiRequests) {
+        throw StateError(
+          'یک درخواست مشاور در حال اجراست؛ پس از پایان آن تلاش کن.',
+        );
+      }
+
+      final profile = store.profile ?? <String, dynamic>{};
+
+      var grade = [
+        profile['grade'],
+        profile['year'],
+      ]
+          .whereType<String>()
+          .map((value) => value.trim())
+          .where((value) => value.isNotEmpty)
+          .join(' · ');
+
+      if (grade.length > SimorghTeachingEngine.maxGradeLength) {
+        grade = '';
+      }
+
+      final session = SimorghTeachingEngine.start(
+        topic: selected,
+        grade: grade,
+      );
+
+      final id = newId('simorgh-lesson');
+
+      await _saveSession(
+        store,
+        session,
+        id: id,
+        active: true,
+        replaceActive: true,
+      );
+
+      if (!_isCurrent(generation, store)) return;
+
+      setState(() {
+        _teachingSession = session;
+        _teachingSessionId = id;
+        _error = null;
+      });
+
+      _fillPrompt(_preparePrompt(session), preparation: true);
+
+      showMessage(
+        context,
+        'جلسه ذخیره شد. برای دریافت سؤال آغازین، پیام آماده را ارسال کن.',
+      );
+    } on Object catch (error) {
+      if (_isCurrent(generation, store)) {
+        setState(() => _error = friendlyError(error));
+      }
+    } finally {
+      // Allow the dialog route to finish before disposing its controller.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.dispose();
+      });
+
+      if (_isCurrent(generation, store)) {
+        setState(() => _managingSession = false);
+      }
+    }
+  }
+
+  Future<void> _endTeaching() async {
+    if (!_canOperate) return;
+
+    final session = _teachingSession;
+    final id = _teachingSessionId;
+
+    if (session == null || id == null) return;
+
+    final store = widget.store;
+    final generation = _generation;
+
+    setState(() => _managingSession = true);
+
+    try {
+      await _saveSession(
+        store,
+        session,
+        id: id,
+        active: false,
+      );
+
+      if (!_isCurrent(generation, store)) return;
+
+      setState(() {
+        _teachingSession = null;
+        _teachingSessionId = null;
+        _preparedPrompt = null;
+        _error = null;
+      });
+    } on Object catch (error) {
+      if (_isCurrent(generation, store)) {
+        setState(() => _error = friendlyError(error));
+      }
+    } finally {
+      if (_isCurrent(generation, store)) {
+        setState(() => _managingSession = false);
+      }
     }
   }
 
   String _teachingStageLabel(SimorghTeachingStage stage) {
-    switch (stage) {
-      case SimorghTeachingStage.diagnostic:
-        return 'ارزیابی آغازین';
-      case SimorghTeachingStage.explanation:
-        return 'توضیح درس';
-      case SimorghTeachingStage.guidedPractice:
-        return 'تمرین هدایت‌شده';
-      case SimorghTeachingStage.reteach:
-        return 'بازآموزی';
-      case SimorghTeachingStage.masteryCheck:
-        return 'سنجش یادگیری';
-      case SimorghTeachingStage.completed:
-        return 'جلسه تکمیل‌شده';
-    }
+    return switch (stage) {
+      SimorghTeachingStage.diagnostic => 'ارزیابی آغازین',
+      SimorghTeachingStage.explanation => 'توضیح درس',
+      SimorghTeachingStage.guidedPractice => 'تمرین هدایت‌شده',
+      SimorghTeachingStage.reteach => 'بازآموزی',
+      SimorghTeachingStage.masteryCheck => 'سنجش یادگیری',
+      SimorghTeachingStage.completed => 'جلسه تکمیل‌شده',
+    };
   }
 
-  /// متن راهنمای آماده‌سازی گام بعدی بر اساس مرحلهٔ فعلی جلسه.
   String _preparePrompt(SimorghTeachingSession session) {
-    switch (session.stage) {
-      case SimorghTeachingStage.diagnostic:
-        return 'برای سنجش سطح من در ${session.topic}، یک سؤال کوتاه بپرس.';
-      case SimorghTeachingStage.explanation:
-        return 'توضیح ${session.topic} را با یک مثال ساده ادامه بده.';
-      case SimorghTeachingStage.guidedPractice:
-        return 'یک تمرین هدایت‌شده برای ${session.topic} بده تا با هم حل کنیم.';
-      case SimorghTeachingStage.reteach:
-        return 'لطفاً ${session.topic} را با روش دیگری دوباره توضیح بده.';
-      case SimorghTeachingStage.masteryCheck:
-        return 'برای سنجش یادگیری ${session.topic} یک سؤال تازه بپرس.';
-      case SimorghTeachingStage.completed:
-        return '';
-    }
+    return switch (session.stage) {
+      SimorghTeachingStage.diagnostic =>
+        'برای سنجش سطح من در ${session.topic}، یک سؤال کوتاه بپرس.',
+      SimorghTeachingStage.explanation =>
+        'توضیح ${session.topic} را با یک مثال ساده ادامه بده.',
+      SimorghTeachingStage.guidedPractice =>
+        'یک تمرین هدایت‌شده برای ${session.topic} بده تا با هم حل کنیم.',
+      SimorghTeachingStage.reteach =>
+        'لطفاً ${session.topic} را با روش دیگری دوباره توضیح بده.',
+      SimorghTeachingStage.masteryCheck =>
+        'برای سنجش یادگیری ${session.topic} یک سؤال تازه بپرس.',
+      SimorghTeachingStage.completed => '',
+    };
   }
 
-  String _teachingResponseContract(SimorghTeachingSession session) {
-    // Keep grade on-device unless profile-context sharing was explicitly enabled.
-    final shareProfile = widget.store.profile?['aiProfileContextConsent'] == true;
-    final promptSession = session.copyWith(grade: shareProfile ? session.grade : '');
+  void _fillPrompt(
+    String text, {
+    bool preparation = false,
+  }) {
+    _preparedPrompt = null;
+    _input.text = text;
+
+    _input.selection = TextSelection.collapsed(
+      offset: text.length,
+    );
+
+    _preparedPrompt = preparation ? text.trim() : null;
+
+    _inputFocus.requestFocus();
+
+    if (mounted) setState(() {});
+  }
+
+  String _teachingResponseContract(
+    SimorghTeachingSession session, {
+    required bool shareProfile,
+    required bool preparation,
+  }) {
+    final promptSession = session.copyWith(
+      grade: shareProfile ? session.grade : '',
+    );
+
+    final modeInstruction = preparation
+        ? 'پیام فعلی فقط درخواست آماده‌سازی درس یا پرسش است، '
+            'نه پاسخ دانش‌آموز. هیچ ارزیابی یا ادعای موفقیت نکن. '
+            'outcome را unclear و error را unknown قرار بده. '
+            'در feedback توضیح لازم را بنویس و در nextQuestion '
+            'حداکثر یک سؤال متناسب با مرحله فعلی بده.'
+        : 'فقط پاسخ فعلی دانش‌آموز را با توجه به سؤال قبلی ارزیابی کن. '
+            'اگر سؤال قبلی مشخص نیست یا پیام صرفاً درخواست راهنمایی است، '
+            'outcome را unclear قرار بده.';
+
     return '${SimorghTeachingEngine.instructionFor(promptSession)}\n'
-        'پاسخ را فقط به صورت JSON معتبر و بدون Markdown برگردان. ساختار دقیق: '
-        '{"feedback":"بازخورد کوتاه و آموزشی فارسی","outcome":"correct|partial|incorrect|unclear",'
+        '$modeInstruction\n'
+        'پاسخ را فقط به صورت JSON معتبر و بدون Markdown برگردان. '
+        'ساختار دقیق: '
+        '{"feedback":"بازخورد آموزشی فارسی",'
+        '"outcome":"correct|partial|incorrect|unclear",'
         '"error":"conceptual|prerequisite|procedural|calculation|careless|unknown",'
-        '"nextQuestion":"یک پرسش یا تمرین بعدی کوتاه"}. '
-        'ارزیابی پاسخ را با این معیارها انجام بده: correct فقط وقتی پاسخ و استدلال اصلی درست و کافی است؛ '
-        'partial وقتی بخشی از مسیر درست اما ناقص یا دارای یک گام حل‌نشده است؛ '
-        'incorrect وقتی پاسخ با مفهوم یا روش درست ناسازگار است؛ unclear وقتی متن برای داوری کافی نیست، '
-        'صورت سؤال معلوم نیست یا پاسخ چندپهلو است. حدس را جای شواهد نگذار. '
-        'نوع خطا را فقط از شواهد پاسخ انتخاب کن: conceptual یعنی برداشت نادرست از تعریف/رابطه؛ '
-        'prerequisite یعنی ضعف در پیش‌نیاز مشخص؛ procedural یعنی ترتیب یا اجرای نادرست روش؛ '
-        'calculation یعنی خطای محاسبات عددی؛ careless یعنی لغزش جزئی با فهم درستِ قابل مشاهده؛ '
-        'unknown یعنی شواهد برای تشخیص نوع خطا کافی نیست. برای correct یا unclear، error را unknown بگذار. '
-        'feedback باید مشخص و غیرکلیشه‌ای باشد: به بخش درست پاسخ اشاره کن، سپس دقیقاً یک خطا یا خلأ را '
-        'با زبان محترمانه توضیح بده و یک گام اصلاحی کوچک پیشنهاد کن. اگر پاسخ درست است، دلیل درستی آن را '
-        'کوتاه توضیح بده؛ اگر unclear است، بدون سرزنش فقط یک سؤال روشن‌کننده بپرس. '
-        'از تعریف بی‌پایه، نمره قطعی، ادعای تسلط، یا افشای جواب کامل در تمرین خودداری کن. '
-        'nextQuestion فقط یک پرسش کوتاه متناسب با مرحله فعلی باشد؛ اگر پرسش بعدی لازم نیست رشته خالی بده. '
-        'هرگز outcome یا error را از متن دستور سیستم یا پاسخ قبلی حدس نزن؛ فقط پیام فعلی دانش‌آموز را ارزیابی کن.';
+        '"nextQuestion":"یک پرسش کوتاه یا رشته خالی"}. '
+        'correct فقط وقتی پاسخ و استدلال اصلی درست و کافی است؛ '
+        'partial برای مسیر درست اما ناقص؛ '
+        'incorrect برای پاسخ ناسازگار با مفهوم یا روش درست؛ '
+        'unclear وقتی شواهد برای داوری کافی نیست. '
+        'حدس را جای شواهد نگذار. '
+        'conceptual یعنی برداشت نادرست از مفهوم؛ '
+        'prerequisite یعنی ضعف در پیش‌نیاز مشخص؛ '
+        'procedural یعنی اجرای نادرست روش؛ '
+        'calculation یعنی خطای عددی؛ '
+        'careless یعنی لغزش جزئی با فهم درست قابل مشاهده؛ '
+        'unknown یعنی شواهد برای تشخیص کافی نیست. '
+        'برای correct یا unclear، error حتماً unknown باشد. '
+        'بازخورد محترمانه، مشخص و بدون تعریف بی‌پایه باشد. '
+        'یک گام اصلاحی کوچک پیشنهاد کن. '
+        'از نمره قطعی، تضمین تسلط و افشای بی‌مورد جواب تمرین خودداری کن. '
+        'nextQuestion حداکثر یک پرسش کوتاه باشد.';
   }
 
   _TeachingTurn _decodeTeachingTurn(String raw) {
     try {
-      // Do not salvage JSON from prose or Markdown: accepting a partial object
-      // can silently turn a malformed model response into a state transition.
       final source = raw.trim();
+
       if (source.isEmpty ||
           source.length > 12000 ||
           !source.startsWith('{') ||
           !source.endsWith('}')) {
         throw const FormatException();
       }
+
       final decoded = jsonDecode(source);
-      if (decoded is! Map<String, dynamic>) throw const FormatException();
-      const requiredKeys = {'feedback', 'outcome', 'error', 'nextQuestion'};
+
+      if (decoded is! Map<String, dynamic>) {
+        throw const FormatException();
+      }
+
+      const requiredKeys = {
+        'feedback',
+        'outcome',
+        'error',
+        'nextQuestion',
+      };
+
       if (decoded.length != requiredKeys.length ||
           !decoded.keys.toSet().containsAll(requiredKeys)) {
         throw const FormatException();
       }
 
+      final rawFeedback = decoded['feedback'];
       final rawOutcome = decoded['outcome'];
       final rawError = decoded['error'];
-      final rawFeedback = decoded['feedback'];
-      final rawNextQuestion = decoded['nextQuestion'];
-      if (rawOutcome is! String ||
+      final rawNext = decoded['nextQuestion'];
+
+      if (rawFeedback is! String ||
+          rawOutcome is! String ||
           rawError is! String ||
-          rawFeedback is! String ||
-          rawNextQuestion is! String) {
+          rawNext is! String) {
         throw const FormatException();
       }
 
-      final matchingOutcomes = SimorghAnswerOutcome.values
-          .where((item) => item.name == rawOutcome)
+      final outcomes = SimorghAnswerOutcome.values
+          .where((value) => value.name == rawOutcome)
           .toList();
-      final matchingErrors = SimorghErrorKind.values
-          .where((item) => item.name == rawError)
+
+      final errors = SimorghErrorKind.values
+          .where((value) => value.name == rawError)
           .toList();
+
       final feedback = rawFeedback.trim();
-      final next = rawNextQuestion.trim();
-      if (matchingOutcomes.length != 1 ||
-          matchingErrors.length != 1 ||
+      final next = rawNext.trim();
+
+      if (outcomes.length != 1 ||
+          errors.length != 1 ||
           feedback.isEmpty ||
           feedback.length > 5000 ||
           next.length > 2000) {
         throw const FormatException();
       }
-      final outcome = matchingOutcomes.single;
-      final error = matchingErrors.single;
+
+      final outcome = outcomes.single;
+      final errorKind = errors.single;
+
+      if ((outcome == SimorghAnswerOutcome.correct ||
+              outcome == SimorghAnswerOutcome.unclear) &&
+          errorKind != SimorghErrorKind.unknown) {
+        throw const FormatException();
+      }
+
       return _TeachingTurn(
         feedback: feedback,
         outcome: outcome,
-        error: error,
+        error: errorKind,
         nextQuestion: next,
       );
     } on Object {
-      throw const AiException(AiErrorKind.response,
-          'پاسخ آموزشی ساختار معتبری نداشت. دوباره تلاش کن؛ وضعیت جلسه تغییر نکرده است.');
+      throw const AiException(
+        AiErrorKind.response,
+        'پاسخ آموزشی قالب معتبری نداشت. '
+        'وضعیت جلسه تغییر نکرده است.',
+      );
     }
   }
 
   SimorghTeachingSession _applyTeachingEvaluation(
-      SimorghTeachingSession session, _TeachingTurn turn) {
-    switch (session.stage) {
-      case SimorghTeachingStage.diagnostic:
-        return SimorghTeachingEngine.recordDiagnostic(session, turn.outcome);
-      case SimorghTeachingStage.explanation:
-        return SimorghTeachingEngine.recordExplanationCheck(session, turn.outcome);
-      case SimorghTeachingStage.guidedPractice:
-        return SimorghTeachingEngine.recordPractice(
-            session: session, outcome: turn.outcome, error: turn.error);
-      case SimorghTeachingStage.reteach:
-        return SimorghTeachingEngine.recordReteachCheck(
-            session: session, outcome: turn.outcome, error: turn.error);
-      case SimorghTeachingStage.masteryCheck:
-        return SimorghTeachingEngine.recordMasteryCheck(
-            session: session, outcome: turn.outcome, error: turn.error);
-      case SimorghTeachingStage.completed:
-        return session;
+    SimorghTeachingSession session,
+    _TeachingTurn turn,
+  ) {
+    // Insufficient evidence must not consume an assessment attempt.
+    if (turn.outcome == SimorghAnswerOutcome.unclear) {
+      return session;
     }
+
+    return switch (session.stage) {
+      SimorghTeachingStage.diagnostic =>
+        SimorghTeachingEngine.recordDiagnostic(
+          session,
+          turn.outcome,
+        ),
+      SimorghTeachingStage.explanation =>
+        SimorghTeachingEngine.recordExplanationCheck(
+          session,
+          turn.outcome,
+        ),
+      SimorghTeachingStage.guidedPractice =>
+        SimorghTeachingEngine.recordPractice(
+          session: session,
+          outcome: turn.outcome,
+          error: turn.error,
+        ),
+      SimorghTeachingStage.reteach =>
+        SimorghTeachingEngine.recordReteachCheck(
+          session: session,
+          outcome: turn.outcome,
+          error: turn.error,
+        ),
+      SimorghTeachingStage.masteryCheck =>
+        SimorghTeachingEngine.recordMasteryCheck(
+          session: session,
+          outcome: turn.outcome,
+          error: turn.error,
+        ),
+      SimorghTeachingStage.completed => session,
+    };
   }
 
-  Future<void> openShop() async {
-    await Navigator.push<void>(
-      context,
-      MaterialPageRoute(builder: (_) => CreditShopPage(store: widget.store)),
+  String _joinTeachingText(String feedback, String question) {
+    return question.isEmpty
+        ? feedback
+        : '$feedback\n\n$question';
+  }
+
+  List<Map<String, dynamic>> _historyBefore(
+    List<Map<String, dynamic>> messages,
+    String id,
+  ) {
+    final position = messages.indexWhere(
+      (message) => message['id'] == id,
     );
-    if (mounted) setState(() {});
+
+    final previous = position < 0
+        ? <Map<String, dynamic>>[]
+        : messages.take(position);
+
+    // Do not send storage metadata, teaching snapshots or failed turns.
+    return previous
+        .where(
+          (message) =>
+              (message['role'] == 'user' ||
+                  message['role'] == 'assistant') &&
+              message['status'] != 'failed' &&
+              message['status'] != 'pending',
+        )
+        .map(
+          (message) => <String, dynamic>{
+            'role': message['role'],
+            'content': message['content']?.toString() ?? '',
+          },
+        )
+        .toList();
   }
 
-  Future<void> send() async {
-    final text = input.text.trim();
-    if (_locked || text.isEmpty) return;
+  Future<void> _send() async {
+    if (!_canOperate) return;
+
+    final text = _input.text.trim();
+
+    if (text.isEmpty) return;
+
     if (text.length > EducationStore.maxQuestionLength) {
-      setState(() => error = 'پرسش می‌تواند حداکثر ۴۰۰۰ نویسه داشته باشد.');
+      setState(() {
+        _error =
+            'پرسش می‌تواند حداکثر '
+            '${faNumber(EducationStore.maxQuestionLength)} نویسه داشته باشد.';
+      });
       return;
     }
+
+    final store = widget.store;
+    final generation = _generation;
+
+    final session = _teachingSession;
+    final lessonActive = session != null && !session.isComplete;
+
+    final preparation = lessonActive && _preparedPrompt == text;
+
     final id = newId('ai');
-    final message = {
+
+    final message = <String, dynamic>{
       'id': id,
       'role': 'user',
       'content': text,
       'status': 'pending',
       'createdAt': DateTime.now().toIso8601String(),
+      if (lessonActive) ...{
+        'teachingSessionId': _teachingSessionId,
+        'teachingSnapshot': _sessionRecord(
+          session,
+          id: _teachingSessionId!,
+        ),
+        'teachingPreparation': preparation,
+      },
     };
+
+    final candidate = _copyRecords(store.messages)..add(message);
+
     setState(() {
-      busy = true;
-      error = null;
-      messages.add(message);
+      _busy = true;
+      _error = null;
     });
-    _scrollToBottom();
+
     try {
-      await widget.store.saveMessages(messages);
-    } on Object catch (value) {
-      if (mounted) {
-        setState(() {
-          busy = false;
-          messages.removeLast();
-          error = friendlyError(value);
-        });
+      // Persist before changing the visible transcript or clearing the draft.
+      await store.saveMessages(candidate);
+
+      if (!_isCurrent(generation, store)) return;
+
+      setState(() => _messages = candidate);
+
+      _preparedPrompt = null;
+      _input.clear();
+
+      _scrollToBottom();
+
+      await _request(
+        id,
+        alreadyBusy: true,
+      );
+    } on Object catch (error) {
+      if (_isCurrent(generation, store)) {
+        setState(() => _error = friendlyError(error));
       }
-      return;
+    } finally {
+      if (_isCurrent(generation, store)) {
+        setState(() => _busy = false);
+      }
     }
-    input.clear();
-    await request(id, text, alreadyBusy: true);
   }
 
-  Future<void> request(String id, String text, {bool alreadyBusy = false}) async {
-    if ((busy && !alreadyBusy) || _recovering) return;
-    setState(() {
-      busy = true;
-      error = null;
-      // Reset retry status to pending so the UI reflects the active retry.
-      for (final m in messages) {
-        if (m['id'] == id && m['status'] == 'failed') {
-          m['status'] = 'pending';
-        }
-      }
-    });
-    final history = messages.where((m) => m['id'] != id).toList();
+  Future<String> _processTeachingAnswer({
+    required EducationStore store,
+    required Map<String, dynamic> message,
+    required String answer,
+    required String id,
+    required List<Map<String, dynamic>> history,
+  }) async {
+    final snapshot = message['teachingSnapshot'];
+
+    if (snapshot is! Map) return answer;
+
+    final text = message['content']?.toString() ?? '';
+
+    if (AiSafetyPolicy.assessTurn(text, history).shouldBlockRemoteAi) {
+      // A safety response is not a teaching assessment.
+      return answer;
+    }
+
+    final session = _decodeSession(
+      Map<String, dynamic>.from(snapshot),
+    );
+
+    if (session == null) {
+      return 'پاسخ دریافت شد، اما زمینه آموزشی این درخواست '
+          'قابل بازیابی نیست. وضعیت جلسه تغییر نکرده است.';
+    }
+
+    final _TeachingTurn turn;
+
     try {
-      final sessionAtRequest = teachingSession;
-      final teachingMode = sessionAtRequest != null;
+      turn = _decodeTeachingTurn(answer);
+    } on AiException catch (error) {
+      // Report a successful refund only after it has been persisted.
+      await store.refundInvalidAiResponse(id);
+
+      return '${error.message}\n\n'
+          'بازپرداخت این پاسخ نامعتبر ثبت شد.';
+    }
+
+    if (message['teachingPreparation'] == true) {
+      return _joinTeachingText(
+        turn.feedback,
+        turn.nextQuestion,
+      );
+    }
+
+    final sessionId = message['teachingSessionId'];
+
+    if (sessionId is! String || sessionId.isEmpty) {
+      return '${turn.feedback}\n\n'
+          'شناسه جلسه موجود نیست؛ پیشرفت آموزشی تغییر نکرد.';
+    }
+
+    final record = _findSessionRecord(store, sessionId);
+    final current = record == null ? null : _decodeSession(record);
+
+    final appliedIds = record?['appliedRequestIds'];
+
+    if (appliedIds is List && appliedIds.contains(id)) {
+      return '${turn.feedback}\n\n'
+          'نتیجه این درخواست قبلاً در جلسه ثبت شده است.';
+    }
+
+    if (current == null ||
+        record?['active'] != true ||
+        !_sameSessionState(current, session)) {
+      return '${turn.feedback}\n\n'
+          'این پاسخ مربوط به وضعیت قبلی جلسه است؛ '
+          'پیشرفت جلسه فعلی تغییر نکرد.';
+    }
+
+    final updated = _applyTeachingEvaluation(session, turn);
+
+    await _saveSession(
+      store,
+      updated,
+      id: sessionId,
+      active: !updated.isComplete,
+      appliedRequestId: id,
+    );
+
+    if (updated.isComplete) {
+      return '${turn.feedback}\n\n'
+          'جلسه به پایان رسید. در سنجش پایانی، '
+          '${faNumber(updated.masteryCorrect)} پاسخ از '
+          '${faNumber(updated.masteryCount)} پاسخ درست بود. '
+          'این نتیجه مربوط به شواهد همین جلسه است، '
+          'نه تضمین تسلط کامل. '
+          'برای تثبیت یادگیری، فردا یک تمرین تازه حل کن.';
+    }
+
+    if (updated.stage != session.stage) {
+      return '${turn.feedback}\n\n'
+          'مرحله بعدی آموزش آماده است. '
+          'برای دریافت پرسش متناسب با آن، '
+          '«آماده‌سازی گام آموزشی» را بزن.';
+    }
+
+    return _joinTeachingText(
+      turn.feedback,
+      turn.nextQuestion,
+    );
+  }
+
+  Future<void> _request(
+    String id, {
+    bool alreadyBusy = false,
+  }) async {
+    if (!mounted) return;
+
+    if (alreadyBusy) {
+      if (_recovering || _clearing || _managingSession) return;
+    } else {
+      if (!_canOperate) return;
+    }
+
+    final store = widget.store;
+    final generation = _generation;
+    final service = _service;
+
+    final working = _copyRecords(store.messages);
+
+    final position = working.indexWhere(
+      (message) =>
+          message['id'] == id &&
+          message['role'] == 'user',
+    );
+
+    if (position < 0) {
+      setState(() => _error = 'درخواست موردنظر پیدا نشد.');
+      return;
+    }
+
+    final message = working[position];
+    final text = message['content']?.toString().trim() ?? '';
+
+    if (text.isEmpty ||
+        text.length > EducationStore.maxQuestionLength) {
+      setState(() => _error = 'متن درخواست معتبر نیست.');
+      return;
+    }
+
+    // Refuse repeat evaluation of a completed transcript.
+    if (message['status'] == 'completed') return;
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+
+    _runningServices.add(service);
+
+    try {
+      message['status'] = 'pending';
+
+      // Retry status is durable too.
+      await store.saveMessages(working);
+
+      if (_isCurrent(generation, store)) {
+        setState(() => _messages = _copyRecords(working));
+        _scrollToBottom();
+      }
+
+      final history = _historyBefore(working, id);
+
+      final rawSnapshot = message['teachingSnapshot'];
+
+      final session = rawSnapshot is Map
+          ? _decodeSession(
+              Map<String, dynamic>.from(rawSnapshot),
+            )
+          : null;
+
+      if (rawSnapshot != null && session == null) {
+        throw StateError(
+          'زمینه آموزشی این درخواست معتبر نیست. '
+          'یک جلسه جدید شروع کن.',
+        );
+      }
+
+      final profile = store.profile == null
+          ? null
+          : Map<String, dynamic>.from(store.profile!);
+
       final answer = await service.ask(
-        profile: widget.store.profile,
+        profile: profile,
         history: history,
         question: text,
         requestId: id,
-        systemInstruction:
-            teachingMode ? _teachingResponseContract(sessionAtRequest) : null,
+        systemInstruction: session == null
+            ? null
+            : _teachingResponseContract(
+                session,
+                // Consent is checked again at retry time.
+                shareProfile:
+                    profile?['aiProfileContextConsent'] == true,
+                preparation:
+                    message['teachingPreparation'] == true,
+              ),
       );
-      var displayedAnswer = answer;
-      if (teachingMode) {
-        final localSafetyResponse =
-            AiSafetyPolicy.assessTurn(text, history).shouldBlockRemoteAi;
-        if (!localSafetyResponse) {
-          try {
-            final turn = _decodeTeachingTurn(answer);
-            final updated = _applyTeachingEvaluation(sessionAtRequest, turn);
-            await _persistTeachingSession(updated, active: !updated.isComplete);
-            teachingSession = updated;
-            displayedAnswer = turn.feedback;
-            if (updated.isComplete) {
-              displayedAnswer =
-                  '$displayedAnswer\n\nجلسه به پایان رسید. در سنجش پایانی، ${updated.masteryCorrect} پاسخ از ${updated.masteryCount} پاسخ درست بود. این نتیجه شواهد همین جلسه است، نه تضمین تسلط کامل. برای تثبیت یادگیری، فردا یک تمرین تازه از همین مبحث حل کن.';
-            } else if (updated.stage == sessionAtRequest.stage &&
-                turn.nextQuestion.isNotEmpty) {
-              // The model generated this question under the current stage's
-              // instruction. Never show it after the deterministic engine has
-              // moved to a different stage (for example, diagnostic -> reteach).
-              displayedAnswer = '$displayedAnswer\n\n${turn.nextQuestion}';
-            } else if (updated.stage != sessionAtRequest.stage) {
-              displayedAnswer =
-                  '$displayedAnswer\n\nمرحله بعدی آموزش آماده است. برای دریافت پرسش متناسب با این مرحله، «آماده‌سازی گام آموزشی» را بزن.';
-            }
-          } on AiException catch (value) {
-            if (value.kind != AiErrorKind.response) rethrow;
-            // The model returned unusable structured feedback. Do not charge
-            // the student for a response that cannot safely advance the lesson.
-            await widget.store.refundInvalidAiResponse(id);
-            displayedAnswer = '${value.message}\n\nپر سیمرغت برگشت داده شد.';
-          }
-        }
-        // If localSafetyResponse is true, keep displayedAnswer = answer.
-        // Local crisis support is not a structured lesson evaluation and must
-        // never advance the teaching state.
+
+      final display = await _processTeachingAnswer(
+        store: store,
+        message: message,
+        answer: answer,
+        id: id,
+        history: history,
+      );
+
+      final updated = _copyRecords(store.messages);
+
+      final userPosition = updated.indexWhere(
+        (item) => item['id'] == id && item['role'] == 'user',
+      );
+
+      if (userPosition < 0) {
+        // Another owner removed the conversation. Do not resurrect it.
+        throw StateError(
+          'گفت‌وگو هنگام اجرای درخواست تغییر کرده است. '
+          'نتیجه را از تاریخچه مشاوره بررسی کن.',
+        );
       }
-      final updatedMessages =
-          messages.map((message) => Map<String, dynamic>.from(message)).toList();
-      for (final message in updatedMessages) {
-        if (message['id'] == id) message['status'] = 'completed';
-      }
-      updatedMessages.removeWhere((message) => message['id'] == '$id-answer');
-      updatedMessages.add({
+
+      updated[userPosition]['status'] = 'completed';
+
+      updated.removeWhere(
+        (item) => item['id'] == '$id-answer',
+      );
+
+      final insertionPosition = updated.indexWhere(
+        (item) => item['id'] == id,
+      );
+
+      updated.insert(insertionPosition + 1, {
         'id': '$id-answer',
         'role': 'assistant',
-        'content': displayedAnswer,
+        'content': display,
         'status': 'completed',
         'createdAt': DateTime.now().toIso8601String(),
       });
-      // Persist even if the page was popped while the network request ran.
-      await widget.store.saveMessages(updatedMessages);
-      if (mounted) {
-        setState(() => messages = updatedMessages);
+
+      // Finish persistence even if the page is no longer mounted.
+      await store.saveMessages(updated);
+
+      if (_isCurrent(generation, store)) {
+        setState(() {
+          _messages = updated;
+        });
+
         _scrollToBottom();
       }
-    } on Object catch (value) {
-      final failedMessages =
-          messages.map((message) => Map<String, dynamic>.from(message)).toList();
-      for (final message in failedMessages) {
-        if (message['id'] == id) message['status'] = 'failed';
+    } on Object catch (error) {
+      final failed = _copyRecords(store.messages);
+
+      for (final item in failed) {
+        if (item['id'] == id && item['status'] != 'completed') {
+          item['status'] = 'failed';
+        }
       }
+
+      var persistenceFailed = false;
+
       try {
-        await widget.store.saveMessages(failedMessages);
+        await store.saveMessages(failed);
       } on Object {
-        // The wallet remains the recovery source if transcript persistence fails.
+        persistenceFailed = true;
       }
-      if (mounted) {
+
+      if (_isCurrent(generation, store)) {
         setState(() {
-          messages = failedMessages;
-          error = friendlyError(value);
+          _messages = persistenceFailed
+              ? _copyRecords(store.messages)
+              : failed;
+
+          _error = friendlyError(error);
+
+          if (persistenceFailed) {
+            _error =
+                '$_error\n'
+                'ثبت وضعیت گفت‌وگو هم انجام نشد؛ '
+                'نتیجه درخواست ممکن است در تاریخچه مشاوره موجود باشد.';
+          }
         });
       }
     } finally {
-      if (mounted) setState(() => busy = false);
+      _runningServices.remove(service);
+
+      if (_retiredServices.remove(service)) {
+        service.dispose();
+      }
+
+      if (_isCurrent(generation, store)) {
+        setState(() {
+          _busy = false;
+          _loadLocalState();
+        });
+
+        _scrollToBottom();
+      }
     }
   }
 
-  Future<void> clearChat() async {
-    if (_locked) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('گفت‌وگو پاک شود؟'),
-        content: const Text(
-            'تاریخچه گفت‌وگو پاک می‌شود؛ پرهای سیمرغ و سابقه خرید تغییر نمی‌کند.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('انصراف'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('پاک کردن'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
+  Future<void> _openShop() async {
+    if (!_canOperate) return;
+
+    final store = widget.store;
+    final generation = _generation;
+
+    setState(() => _openingShop = true);
+
     try {
-      await widget.store.saveMessages([]);
-      if (mounted) {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => CreditShopPage(store: store),
+        ),
+      );
+    } on Object catch (error) {
+      if (_isCurrent(generation, store)) {
+        setState(() => _error = friendlyError(error));
+      }
+    } finally {
+      if (_isCurrent(generation, store)) {
+        setState(() => _openingShop = false);
+      }
+    }
+  }
+
+  Future<void> _clearChat() async {
+    if (!_canOperate || _messages.isEmpty) return;
+
+    final store = widget.store;
+    final generation = _generation;
+
+    setState(() => _clearing = true);
+
+    try {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('گفت‌وگو پاک شود؟'),
+            content: const SingleChildScrollView(
+              child: Text(
+                'پیام‌های این گفت‌وگو پاک می‌شوند. '
+                'اعتبار، سابقه خرید و سوابق مستقل مشاوره '
+                'تغییر نمی‌کنند.\n\n'
+                'جلسه آموزشی فعال، در صورت وجود، پایان می‌یابد. '
+                'این کار اطلاعات قبلاً ارسال‌شده '
+                'به سرویس بیرونی را حذف نمی‌کند.',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(false);
+                },
+                child: const Text('انصراف'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(true);
+                },
+                child: const Text('پاک کردن'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (!_isCurrent(generation, store) || confirmed != true) {
+        return;
+      }
+
+      if (store.hasActiveAiRequests) {
+        throw StateError(
+          'یک درخواست مشاور در حال اجراست؛ '
+          'پس از پایان آن گفت‌وگو را پاک کن.',
+        );
+      }
+
+      final sessions = _copyRecords(store.teachingSessions);
+      var changed = false;
+
+      for (final record in sessions) {
+        if (record['active'] == true) {
+          record['active'] = false;
+          record['updatedAt'] = DateTime.now().toIso8601String();
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        await store.saveTeachingSessions(sessions);
+      }
+
+      await store.saveMessages(<Map<String, dynamic>>[]);
+
+      if (!_isCurrent(generation, store)) return;
+
+      setState(() {
+        _messages = [];
+        _teachingSession = null;
+        _teachingSessionId = null;
+        _preparedPrompt = null;
+        _error = null;
+      });
+    } on Object catch (error) {
+      if (_isCurrent(generation, store)) {
         setState(() {
-          messages = [];
-          error = null;
+          _loadLocalState();
+          _error = friendlyError(error);
         });
       }
-    } on Object catch (value) {
-      if (mounted) showMessage(context, friendlyError(value));
+    } finally {
+      if (_isCurrent(generation, store)) {
+        setState(() => _clearing = false);
+      }
     }
   }
 
-  @override
-  Widget build(BuildContext context) => Column(children: [
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 220),
-          child: ListView(
-            shrinkWrap: true,
-            padding: EdgeInsets.zero,
+  Widget _buildHeader(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final session = _teachingSession;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height < 600 ? 140 : 230,
+      ),
+      child: ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        children: [
+          Card(
+            margin: EdgeInsets.zero,
+            color: colors.surfaceContainerLow,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              child: SimorghChatAvatar(
+                state: resolveSimorghChatState(
+                  busy: _busy,
+                  messages: _messages,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: Card(
-                  margin: EdgeInsets.zero,
-                  color: const Color(0xFFF1F8F6),
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: SimorghChatAvatar(
-                      state:
-                          resolveSimorghChatState(busy: busy, messages: messages),
-                    ),
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const ValueKey('simorgh-start-teaching'),
+                  onPressed: _canOperate ? _startTeaching : null,
+                  icon: const Icon(Icons.school_outlined),
+                  label: Text(
+                    session == null
+                        ? 'شروع تدریس با سیمرغ'
+                        : 'جلسه: ${session.topic}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: Row(children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      key: const ValueKey('simorgh-start-teaching'),
-                      onPressed: _locked ? null : startTeaching,
-                      icon: const Icon(Icons.school_outlined),
-                      label: Text(teachingSession == null
-                          ? 'شروع تدریس با سیمرغ'
-                          : 'جلسه: ${teachingSession!.topic}'),
-                    ),
-                  ),
-                  if (teachingSession != null)
-                    IconButton(
-                      tooltip: 'پایان جلسه آموزشی',
-                      onPressed: _locked ? null : endTeaching,
-                      icon: const Icon(Icons.close),
-                    ),
-                ]),
-              ),
-              if (teachingSession != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'روش تدریس سیمرغ · ${_teachingStageLabel(teachingSession!.stage)}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'وضعیت جلسه روی همین گوشی نگهداری می‌شود. پاسخ پرسش سیمرغ را در گفت‌وگو بنویس تا مرحله بعدی تنظیم شود.',
-                          ),
-                          if (teachingSession!.stage !=
-                              SimorghTeachingStage.completed)
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: TextButton.icon(
-                                onPressed: _locked
-                                    ? null
-                                    : () {
-                                        setState(() => input.text =
-                                            _preparePrompt(teachingSession!));
-                                        _inputFocus.requestFocus();
-                                      },
-                                icon: const Icon(Icons.play_arrow),
-                                label: const Text('آماده‌سازی گام آموزشی'),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: CreditSummary(
-                  store: widget.store,
-                  onShop: _locked ? null : openShop,
-                ),
-              ),
-              if (!service.isConfigured)
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: NoticeCard(
-                    text:
-                        'گفت‌وگو با سیمرغ در حال حاضر آماده نیست. برنامه مطالعه، نمرات، مرور و راهنمای روش مطالعه همچنان بدون اینترنت کار می‌کنند.',
-                    warning: true,
-                  ),
-                ),
-              if (error != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: NoticeCard(
-                    text: error!,
-                    icon: Icons.error_outline,
-                    warning: true,
-                  ),
+              if (session != null)
+                IconButton(
+                  tooltip: 'پایان جلسه آموزشی',
+                  onPressed: _canOperate ? _endTeaching : null,
+                  icon: const Icon(Icons.close),
                 ),
             ],
           ),
-        ),
-        Expanded(
-          child: messages.isEmpty
-              ? ListView(
-                  padding: const EdgeInsets.all(20),
+          if (session != null) ...[
+            const SizedBox(height: 6),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 18),
-                    const Icon(Icons.auto_awesome, color: blue, size: 46),
-                    const SizedBox(height: 14),
-                    const Text(
-                      'سلام! من سیمرغم؛ بیا با هم مسیر یادگیری‌ات را پیدا کنیم.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 20),
+                    Text(
+                      'روش تدریس سیمرغ · '
+                      '${_teachingStageLabel(session.stage)}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     const Text(
-                      'من سیمرغم؛ همراه تو در فهم درس‌ها، برنامه‌ریزی و شناخت مسیرهای پیش رو. با هم فکر می‌کنیم، سؤال می‌پرسیم و قدم بعدی را پیدا می‌کنیم. ممکن است گاهی پاسخ من کامل یا درست نباشد؛ تصمیم‌های مهم را با معلم، مشاور مدرسه یا بزرگسال مورد اعتماد هم بررسی کن.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.blueGrey, height: 1.8),
+                      'پاسخ سؤال قبلی را در گفت‌وگو بنویس. '
+                      'اگر هنوز سؤالی دریافت نکرده‌ای، '
+                      'از آماده‌سازی گام آموزشی استفاده کن.',
                     ),
-                    const SizedBox(height: 20),
-                    for (final prompt in [
-                      'برای این هفته یک برنامه مطالعه واقع‌بینانه پیشنهاد بده.',
-                      'چطور نقاط قوت و ضعف درسی‌ام را بشناسم؟',
-                      'برای بهتر شدن تمرکزم چه تمرین‌هایی انجام دهم؟',
-                    ])
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: OutlinedButton(
-                          onPressed: _locked
-                              ? null
-                              : () {
-                                  setState(() => input.text = prompt);
-                                  _inputFocus.requestFocus();
-                                },
-                          child: Text(prompt, textAlign: TextAlign.right),
+                    if (!session.isComplete)
+                      Align(
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: TextButton.icon(
+                          onPressed: _canOperate
+                              ? () => _fillPrompt(
+                                    _preparePrompt(session),
+                                    preparation: true,
+                                  )
+                              : null,
+                          icon: const Icon(Icons.play_arrow),
+                          label: const Text(
+                            'آماده‌سازی گام آموزشی',
+                          ),
                         ),
                       ),
                   ],
-                )
-              : ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-                  itemCount: messages.length + (busy ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == messages.length) {
-                      return const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Row(children: [
-                          SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2)),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                                'سیمرغ دارد پاسخ را آماده می‌کند… درخواست ناموفق هزینه نهایی ندارد.'),
-                          ),
-                        ]),
-                      );
-                    }
-                    final message = messages[index];
-                    final user = message['role'] == 'user';
-                    final failed = message['status'] == 'failed' ||
-                        message['status'] == 'pending';
-                    return Align(
-                      alignment:
-                          user ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        constraints: BoxConstraints(
-                            maxWidth: MediaQuery.sizeOf(context).width * .86),
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: user ? blue : Colors.white,
-                          borderRadius: BorderRadius.circular(18),
-                          border: user
-                              ? null
-                              : Border.all(color: const Color(0xFFE3EAF2)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              user ? 'پرسش تو' : 'سیمرغ',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: user ? Colors.white70 : teal,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            SelectableText(
-                              message['content'].toString(),
-                              style: TextStyle(
-                                  color: user ? Colors.white : navy,
-                                  height: 1.8),
-                            ),
-                            if (user && failed)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Text(
-                                  message['status'] == 'pending'
-                                      ? 'پاسخ این درخواست هنوز ثبت نشده است.'
-                                      : 'این درخواست کامل نشد.',
-                                  style: const TextStyle(
-                                      color: Colors.white70, fontSize: 12),
-                                ),
-                              ),
-                            if (user && failed)
-                              TextButton.icon(
-                                key: ValueKey(
-                                    'advisor-retry-${message['id']}'),
-                                onPressed: _locked
-                                    ? null
-                                    : () => request(
-                                          message['id'].toString(),
-                                          message['content'].toString(),
-                                        ),
-                                icon: const Icon(Icons.refresh,
-                                    color: Colors.white),
-                                label: const Text(
-                                  'تلاش دوباره همین درخواست',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                              ),
-                          ],
+                ),
+              ),
+            ),
+          ],
+          CreditSummary(
+            store: widget.store,
+            onShop: _canOperate ? _openShop : null,
+          ),
+          if (widget.store.walletError != null)
+            NoticeCard(
+              text: widget.store.walletError!,
+              warning: true,
+            ),
+          if (!_service.isConfigured)
+            const NoticeCard(
+              text:
+                  'گفت‌وگوی آنلاین در حال حاضر پیکربندی نشده است. '
+                  'برنامه مطالعه، نمرات، مرور و راهنمای مطالعه '
+                  'همچنان به‌صورت آفلاین قابل استفاده‌اند.',
+              warning: true,
+            ),
+          if (_recovering)
+            const NoticeCard(
+              text: 'در حال بررسی و بازیابی درخواست‌های قبلی…',
+              icon: Icons.restore,
+            ),
+          if (!_busy && _storeHasActiveRequest)
+            const NoticeCard(
+              text:
+                  'یک درخواست مشاور در بخش دیگری از برنامه '
+                  'در حال اجراست. پس از پایان آن دوباره تلاش کن.',
+              icon: Icons.hourglass_top,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildError(BuildContext context) {
+    if (_error == null) return const SizedBox.shrink();
+
+    final colors = Theme.of(context).colorScheme;
+
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(maxHeight: 110),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: colors.errorContainer,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.error_outline,
+              color: colors.onErrorContainer,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Text(
+                  _error!,
+                  style: TextStyle(
+                    color: colors.onErrorContainer,
+                    height: 1.6,
+                  ),
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'بستن پیام خطا',
+              visualDensity: VisualDensity.compact,
+              onPressed: () {
+                setState(() => _error = null);
+              },
+              icon: Icon(
+                Icons.close,
+                color: colors.onErrorContainer,
+                size: 18,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    const prompts = [
+      'برای این هفته یک برنامه مطالعه واقع‌بینانه پیشنهاد بده.',
+      'چطور نقاط قوت و ضعف درسی‌ام را بشناسم؟',
+      'برای بهتر شدن تمرکزم چه تمرین‌هایی انجام دهم؟',
+    ];
+
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        const SizedBox(height: 12),
+        const Icon(
+          Icons.auto_awesome,
+          color: blue,
+          size: 46,
+        ),
+        const SizedBox(height: 14),
+        const Text(
+          'سلام! من سیمرغم؛ '
+          'بیا با هم مسیر یادگیری‌ات را پیدا کنیم.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'در فهم درس‌ها، برنامه‌ریزی و شناخت مسیرهای پیش رو '
+          'همراهت هستم. پاسخ من ممکن است کامل یا درست نباشد؛ '
+          'تصمیم‌های مهم را با معلم، مشاور مدرسه یا '
+          'بزرگسال مورد اعتماد هم بررسی کن.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: colors.onSurfaceVariant,
+            height: 1.8,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'متن پیام‌ها برای پاسخ‌گویی به سرویس بیرونی '
+          'ارسال می‌شود؛ اطلاعات شخصی یا حساس ننویس.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: colors.onSurfaceVariant,
+            height: 1.7,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 20),
+        for (final prompt in prompts)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: OutlinedButton(
+              onPressed: _canOperate
+                  ? () => _fillPrompt(prompt)
+                  : null,
+              child: Text(
+                prompt,
+                textAlign: TextAlign.start,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMessage(
+    BuildContext context,
+    Map<String, dynamic> message,
+    double availableWidth,
+  ) {
+    final colors = Theme.of(context).colorScheme;
+
+    final user = message['role'] == 'user';
+    final status = message['status']?.toString();
+    final id = message['id'];
+
+    final incomplete = status == 'failed' || status == 'pending';
+
+    final background = user
+        ? colors.primary
+        : colors.surfaceContainerLow;
+
+    final foreground = user
+        ? colors.onPrimary
+        : colors.onSurface;
+
+    final secondary = user
+        ? colors.onPrimary.withValues(alpha: .8)
+        : colors.onSurfaceVariant;
+
+    return Align(
+      alignment: user
+          ? AlignmentDirectional.centerEnd
+          : AlignmentDirectional.centerStart,
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: availableWidth * .88,
+        ),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(18),
+          border: user
+              ? null
+              : Border.all(color: colors.outlineVariant),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              user ? 'پرسش تو' : 'سیمرغ',
+              style: TextStyle(
+                fontSize: 11,
+                color: secondary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 6),
+            SelectableText(
+              message['content']?.toString() ?? '',
+              style: TextStyle(
+                color: foreground,
+                height: 1.8,
+              ),
+            ),
+            if (user && incomplete) ...[
+              const SizedBox(height: 8),
+              Text(
+                status == 'pending'
+                    ? 'پاسخ این درخواست هنوز در گفت‌وگو ثبت نشده است.'
+                    : 'این درخواست کامل ثبت نشد.',
+                style: TextStyle(
+                  color: secondary,
+                  fontSize: 12,
+                ),
+              ),
+              if (id is String && id.isNotEmpty)
+                TextButton.icon(
+                  key: ValueKey('advisor-retry-$id'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: foreground,
+                    disabledForegroundColor:
+                        foreground.withValues(alpha: .4),
+                    padding: EdgeInsets.zero,
+                  ),
+                  onPressed: _canOperate
+                      ? () => unawaited(_request(id))
+                      : null,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text(
+                    'تلاش دوباره همین درخواست',
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConversation(BuildContext context) {
+    if (_messages.isEmpty && !_busy) {
+      return _buildEmptyState(context);
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth =
+            (constraints.maxWidth - 32).clamp(0.0, double.infinity);
+
+        return ListView.builder(
+          controller: _scrollController,
+          keyboardDismissBehavior:
+              ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+          itemCount: _messages.length + (_busy ? 1 : 0),
+          itemBuilder: (context, index) {
+            if (index == _messages.length) {
+              return const Semantics(
+                liveRegion: true,
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
                         ),
                       ),
-                    );
-                  },
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'سیمرغ دارد پاسخ را آماده و ثبت می‌کند…',
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+              );
+            }
+
+            final message = _messages[index];
+
+            return KeyedSubtree(
+              key: ValueKey(message['id'] ?? 'message-$index'),
+              child: _buildMessage(
+                context,
+                message,
+                availableWidth.toDouble(),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildComposer(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border(
+          top: BorderSide(color: colors.outlineVariant),
         ),
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-          child: SafeArea(
-            top: false,
-            child: Row(
+      ),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_preparedPrompt != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+                child: Text(
+                  'این پیام برای دریافت گام آموزشی است '
+                  'و پاسخ ارزیابی‌شونده محسوب نمی‌شود.',
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 IconButton(
                   tooltip: 'پاک کردن گفت‌وگو',
-                  onPressed: _locked || messages.isEmpty ? null : clearChat,
+                  onPressed: _canOperate && _messages.isNotEmpty
+                      ? _clearChat
+                      : null,
                   icon: const Icon(Icons.delete_sweep_outlined),
                 ),
                 Expanded(
                   child: TextField(
-                    controller: input,
+                    controller: _input,
                     focusNode: _inputFocus,
-                    enabled: !_locked,
+                    // Drafting is allowed while the request is running.
+                    enabled: !_clearing && !_managingSession,
                     minLines: 1,
                     maxLines: 4,
                     maxLength: EducationStore.maxQuestionLength,
@@ -905,15 +1986,43 @@ class _AdvisorPageState extends State<AdvisorPage> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 IconButton.filled(
-                  tooltip: 'فراخواندن سیمرغ · مصرف یک پر',
-                  onPressed: _locked ? null : send,
+                  tooltip: 'ارسال پیام به سیمرغ',
+                  onPressed: _canOperate &&
+                          _input.text.trim().isNotEmpty
+                      ? _send
+                      : null,
                   icon: const Icon(Icons.send_rounded),
                 ),
               ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 960),
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
+            children: [
+              _buildHeader(context),
+              _buildError(context),
+              Expanded(
+                child: _buildConversation(context),
+              ),
+              _buildComposer(context),
+            ],
           ),
         ),
-      ]);
+      ),
+    );
+  }
 }
