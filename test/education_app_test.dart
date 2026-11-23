@@ -38,6 +38,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('مشاور هوشمند تحصیلی'), findsOneWidget);
     expect(find.text('سخنی با اولیا و دانش‌آموزان گرامی'), findsOneWidget);
+    expect(find.text('جزئیات حریم خصوصی و نکات مهم'), findsOneWidget);
+    await tester.tap(find.text('جزئیات حریم خصوصی و نکات مهم'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('زمینه تحصیلی فقط با رضایت جداگانه'), findsOneWidget);
     expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'بزن بریم')).onPressed, isNull);
     await tester.ensureVisible(find.byType(Checkbox));
     await tester.pumpAndSettle();
