@@ -1,4 +1,3 @@
-
 name: moshaver_tahsili
 description: همراه فارسی و آفلاین‌محور یادگیری و مشاوره تحصیلی
 publish_to: 'none'
@@ -19,7 +18,8 @@ dependencies:
 
   shared_preferences: ^2.3.2
 
-  # Pinned to a specific commit for reproducible builds.
+  # Keep this commit pinned.
+  # Commit pubspec.lock as well for reproducible app builds.
   cafebazaar_billing:
     git:
       url: https://github.com/mavan-innovative-studio/cafebazaar-billing-package.git
