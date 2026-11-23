@@ -80,12 +80,31 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     expect(find.text('درود، سارا!'), findsOneWidget);
     expect(find.text('پیشنهاد امروز سیمرغ'), findsOneWidget);
-    expect(find.text('برنامه‌ریزی و یادگیری'), findsOneWidget);
-    expect(find.text('سنجش و تحلیل پیشرفت'), findsOneWidget);
-    expect(find.text('مشاوره و آینده تحصیلی'), findsOneWidget);
-    expect(find.text('همراهی خانواده و امکانات بیشتر'), findsOneWidget);
-    expect(find.text('کیف اعتبار'), findsOneWidget);
+    for (final section in [
+      'برنامه‌ریزی و یادگیری',
+      'سنجش و تحلیل پیشرفت',
+      'مشاوره و آینده تحصیلی',
+      'همراهی خانواده و امکانات بیشتر',
+      'کیف اعتبار',
+    ]) {
+      await tester.scrollUntilVisible(
+        find.text(section),
+        260,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text(section), findsOneWidget);
+    }
+    await tester.scrollUntilVisible(
+      find.text('گفت‌وگو با مشاور هوشمند'),
+      260,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('گفت‌وگو با مشاور هوشمند'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('راهنمای انتخاب رشته'),
+      260,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('راهنمای انتخاب رشته'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
