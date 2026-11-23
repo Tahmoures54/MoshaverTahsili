@@ -724,7 +724,8 @@ class HomePage extends StatelessWidget {
           store: store,
           onShop: () => push(context, CreditShopPage(store: store)),
         ),
-      ],;
+      ],
+    );
   }
 }
 
