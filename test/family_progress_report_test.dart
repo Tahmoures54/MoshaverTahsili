@@ -45,7 +45,7 @@ void main() {
       );
       expect(report, contains('ریاضی'));
       expect(report, contains('تکمیل‌شده: ۱'));
-      expect(report, contains('فلش‌کارت‌های سررسیدشده: 1'));
+      expect(report, contains('فلش‌کارت‌های سررسیدشده: ۱'));
       expect(report, contains('فیزیک'));
       expect(report, contains('گفت‌وگوهای خصوصی'));
       expect(report, isNot(contains('کیف اعتبار:')));
@@ -68,7 +68,7 @@ void main() {
         report,
         contains('هنوز نمره معتبر و قابل محاسبه‌ای ثبت نشده است.'),
       );
-      expect(report, contains('معادل میزان یادگیری نیست'));
+      expect(report, contains('نه تشخیص قطعی تسلط نیست'));
     },
   );
 }
