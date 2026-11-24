@@ -5,7 +5,7 @@ Requires Python 3.10+.
 
 Expected layout:
     tool/prepare_android_signing.py
-    android/upload-keystore.jks
+    android/app/upload-keystore.jks
     android/key.properties
 
 Required environment variables:
@@ -53,7 +53,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 ANDROID_DIRECTORY = REPOSITORY_ROOT / "android"
 
 KEYSTORE_FILENAME = "upload-keystore.jks"
-KEYSTORE_PATH = ANDROID_DIRECTORY / KEYSTORE_FILENAME
+KEYSTORE_PATH = ANDROID_DIRECTORY / "app" / KEYSTORE_FILENAME
 OUTPUT_PATH = ANDROID_DIRECTORY / "key.properties"
 
 GIT_TIMEOUT_SECONDS = 30
