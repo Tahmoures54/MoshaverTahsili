@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    تنظیمات امنیت شبکه سیمرغ
+
+    - هرگونه ارتباط HTTP (بدون رمزنگاری) ممنوع است.
+    - فقط گواهی‌های سیستمی معتبر پذیرفته می‌شوند.
+    - گواهی‌های نصب‌شده توسط کاربر پذیرفته نمی‌شوند.
+
+    توجه: اسکریپت scripts/security_check.py بررسی می‌کند که
+    دقیقاً یک base-config با cleartextTrafficPermitted="false"
+    وجود داشته باشد و هیچ‌جا cleartext فعال نشده باشد.
+-->
+<network-security-config>
+
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+</network-security-config>
