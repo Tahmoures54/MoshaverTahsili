@@ -15,21 +15,43 @@ concurrency:
   group: android-signing-backup
   cancel-in-progress: false
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   encrypted-backup:
     if: github.ref == 'refs/heads/main' && inputs.confirm == 'BACKUP_EXISTING_KEY'
+
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
+
+    # Configure required reviewers and main-only deployment rules
+    # for this environment in GitHub repository settings.
+    environment:
+      name: android-signing-backup
 
     steps:
-      # ۱. اطمینان از وجود keytool (Java) — در صورت نصب نبودن، نصب میشود
-      - name: Set up Java (provides keytool)
-        uses: actions/setup-java@v4
+      - name: Set up Java
+        # actions/setup-java v4.7.1, pinned to an immutable commit.
+        uses: actions/setup-java@c5195efecf7bdfc987ee2b5e5f17d5a6b3a8b5c3
         with:
           distribution: temurin
           java-version: '17'
 
-      # ۲. اعتبارسنجی اولیهی همهی secretها (بدون نوشتن هیچ فایل حساسی)
+      - name: Check required tools
+        run: |
+          set -euo pipefail
+
+          for tool in keytool gpg python3 tar base64 sha256sum; do
+            if ! command -v "$tool" >/dev/null 2>&1; then
+              echo "::error::Required tool is unavailable: ${tool}"
+              exit 1
+            fi
+          done
+
+          echo "Required backup tools are available."
+
       - name: Validate existing signing secrets
         env:
           KEYSTORE: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
@@ -37,118 +59,298 @@ jobs:
           KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
           BACKUP_PASSPHRASE: ${{ secrets.SIGNING_BACKUP_PASSPHRASE }}
-        shell: bash
         run: |
           set -euo pipefail
-          for name in KEYSTORE STORE_PASSWORD KEY_ALIAS KEY_PASSWORD BACKUP_PASSPHRASE; do
+
+          for name in \
+            KEYSTORE \
+            STORE_PASSWORD \
+            KEY_ALIAS \
+            KEY_PASSWORD \
+            BACKUP_PASSPHRASE
+          do
             if [[ -z "${!name}" ]]; then
               echo "::error::Missing required secret: ${name}"
               exit 1
             fi
           done
+
           if [[ "${#BACKUP_PASSPHRASE}" -lt 24 ]]; then
             echo "::error::SIGNING_BACKUP_PASSPHRASE must contain at least 24 characters."
             exit 1
           fi
+
+          # GPG reads the passphrase as one line through a file descriptor.
+          if [[ "$BACKUP_PASSPHRASE" == *$'\n'* ||
+                "$BACKUP_PASSPHRASE" == *$'\r'* ]]; then
+            echo "::error::SIGNING_BACKUP_PASSPHRASE must be a single line."
+            exit 1
+          fi
+
           echo "All required secret inputs are present."
 
-      # ۳. ساخت بکاپ رمزنگاریشده — trap قبل از هرگونه نوشتن داده حساس ثبت میشود
-      - name: Create encrypted backup (no plaintext artifact)
+      - name: Create and verify encrypted backup
         env:
           KEYSTORE: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
           BACKUP_PASSPHRASE: ${{ secrets.SIGNING_BACKUP_PASSPHRASE }}
-        shell: bash
         run: |
           set -euo pipefail
           umask 077
 
           work="$RUNNER_TEMP/signing-backup"
-          mkdir -p "$work/plain" "$work/output"
+          plain="$work/plain"
+          output="$work/output"
+          gnupg="$work/gnupg"
 
-          # ← trap قبل از نوشتن هر دادهی حساس ثبت میشود تا در هر شرایطی پاکسازی شود
-          trap 'rm -rf "$work/plain"; rm -f "$work/output/android-signing-backup.tar.gz"' EXIT
+          archive="$work/android-signing-backup.tar.gz"
+          encrypted="$output/android-signing-backup.tar.gz.gpg"
 
-          # ۳.۱. رمزگشایی keystore و اعتبارسنجی آن
-          printf '%s' "$KEYSTORE" | base64 --decode > "$work/plain/upload-keystore.jks"
-          test -s "$work/plain/upload-keystore.jks"
+          # Register cleanup before writing sensitive data.
+          # Cleanup cannot be guaranteed after SIGKILL or runner failure.
+          cleanup() {
+            local status=$?
+            trap - EXIT
 
-          # اعتبارسنجی store password و alias
-          keytool -list -keystore "$work/plain/upload-keystore.jks" \
-            -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>&1
+            if [[ -d "$gnupg" ]] &&
+               command -v gpgconf >/dev/null 2>&1; then
+              gpgconf --homedir "$gnupg" --kill all \
+                >/dev/null 2>&1 || true
+            fi
 
-          # اعتبارسنجی key password (با تولید یک CSR آزمایشی و دور ریختن خروجی)
-          keytool -certreq -alias "$KEY_ALIAS" \
-            -keystore "$work/plain/upload-keystore.jks" \
-            -storepass "$STORE_PASSWORD" -keypass "$KEY_PASSWORD" \
-            -file /dev/null >/dev/null 2>&1 || {
-              echo "::error::KEY_PASSWORD does not match the private key for alias '${KEY_ALIAS}'."
-              exit 1
-            }
+            rm -rf -- "$plain" "$gnupg"
+            rm -f -- "$archive"
 
-          # ۳.۲. نوشتن رمزها و راهنمای بازیابی با Python
-          # نکته: heredoc با <<'PY' و بدون تودرتویی اضافی، از خطای YAML جلوگیری میکند.
+            # Never leave a partial or unverified encrypted backup.
+            if [[ "$status" -ne 0 ]]; then
+              rm -rf -- "$output"
+            fi
+
+            exit "$status"
+          }
+
+          trap cleanup EXIT
+
+          mkdir -p "$plain" "$output" "$gnupg"
+          chmod 700 "$work" "$plain" "$output" "$gnupg"
+
+          # Decode the existing keystore. No signing key is generated.
+          if ! printf '%s' "$KEYSTORE" |
+            base64 --decode > "$plain/upload-keystore.jks"; then
+            echo "::error::RELEASE_KEYSTORE_BASE64 is not valid base64."
+            exit 1
+          fi
+
+          if [[ ! -s "$plain/upload-keystore.jks" ]]; then
+            echo "::error::The decoded keystore is empty."
+            exit 1
+          fi
+
+          # Read passwords from environment variables, not command arguments.
+          if ! keytool -list \
+            -keystore "$plain/upload-keystore.jks" \
+            -storepass:env STORE_PASSWORD \
+            -alias "$KEY_ALIAS" \
+            >/dev/null 2>&1; then
+            echo "::error::Keystore could not be opened or the alias was not found."
+            exit 1
+          fi
+
+          # Confirm that the existing private key can be used.
+          # A CSR is generated and discarded; the keystore is not modified.
+          # Some PKCS12 implementations do not support an independent
+          # key password, so this is not always a separate password check.
+          if ! keytool -certreq \
+            -keystore "$plain/upload-keystore.jks" \
+            -storepass:env STORE_PASSWORD \
+            -alias "$KEY_ALIAS" \
+            -keypass:env KEY_PASSWORD \
+            -file /dev/null \
+            >/dev/null 2>&1; then
+            echo "::error::Could not use the private key. Check the keystore type, passwords, and alias."
+            exit 1
+          fi
+
           python3 - <<'PY'
           import os
           from pathlib import Path
 
           root = Path(os.environ["RUNNER_TEMP"]) / "signing-backup" / "plain"
+
           values = {
               "store-password.txt": os.environ["STORE_PASSWORD"],
               "key-password.txt": os.environ["KEY_PASSWORD"],
               "key-alias.txt": os.environ["KEY_ALIAS"],
           }
+
           for name, value in values.items():
               (root / name).write_text(value, encoding="utf-8")
 
           (root / "RESTORE.txt").write_text(
-              "Keep this archive offline and private.\n"
-              "Decrypt the .enc file with the SIGNING_BACKUP_PASSPHRASE value.\n"
-              "Restore upload-keystore.jks and enter the three accompanying values "
-              "as RELEASE_KEYSTORE_BASE64 (base64-encode the JKS), "
-              "RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_PASSWORD and RELEASE_KEY_ALIAS.\n",
+              "ANDROID SIGNING BACKUP\n"
+              "======================\n\n"
+              "This archive contains the existing keystore and signing values.\n"
+              "No new signing key was generated.\n\n"
+              "Restore the following GitHub secrets:\n"
+              "- RELEASE_KEYSTORE_BASE64: base64-encode upload-keystore.jks\n"
+              "- RELEASE_KEYSTORE_PASSWORD: exact contents of store-password.txt\n"
+              "- RELEASE_KEY_PASSWORD: exact contents of key-password.txt\n"
+              "- RELEASE_KEY_ALIAS: exact contents of key-alias.txt\n\n"
+              "The .jks filename does not prove the internal keystore format.\n"
+              "Preserve the original keystore bytes and all password values.\n\n"
+              "If Google Play App Signing is enabled and this is an upload key,\n"
+              "this backup is NOT a backup of Google's app signing private key.\n\n"
+              "Keep the encrypted backup offline and private.\n"
+              "Keep SIGNING_BACKUP_PASSPHRASE separately in a password manager.\n"
+              "Protect and remove plaintext recovery files after use.\n",
               encoding="utf-8",
           )
           PY
 
-          # ۳.۳. ساخت آرشیو و رمزنگاری آن با AES-256
-          tar -czf "$work/output/android-signing-backup.tar.gz" -C "$work/plain" .
-          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 600000 -md sha256 \
-            -in "$work/output/android-signing-backup.tar.gz" \
-            -out "$work/output/android-signing-backup.tar.gz.enc" \
-            -pass env:BACKUP_PASSPHRASE
+          tar -czf "$archive" -C "$plain" \
+            upload-keystore.jks \
+            store-password.txt \
+            key-password.txt \
+            key-alias.txt \
+            RESTORE.txt
 
-          # ۳.۴. حذف فوری نسخهی plaintext و آرشیو رمزنگارینشده
-          rm -rf "$work/plain" "$work/output/android-signing-backup.tar.gz"
-          test -s "$work/output/android-signing-backup.tar.gz.enc"
-          echo "Encrypted signing backup created. No plaintext key or password is uploaded."
+          expected_hash="$(sha256sum "$archive" | cut -d ' ' -f 1)"
 
-      # ۴. آپلود فقط فایل رمزنگاریشده
-      - name: Upload encrypted backup only
-        uses: actions/upload-artifact@v7
+          # GPG uses an integrity-protected encrypted format by default
+          # with AES256. The passphrase is supplied through FD 3.
+          gpg \
+            --no-options \
+            --homedir "$gnupg" \
+            --batch \
+            --yes \
+            --pinentry-mode loopback \
+            --no-symkey-cache \
+            --passphrase-fd 3 \
+            --symmetric \
+            --cipher-algo AES256 \
+            --s2k-mode 3 \
+            --s2k-digest-algo SHA256 \
+            --s2k-count 65011712 \
+            --compress-algo none \
+            --output "$encrypted" \
+            "$archive" \
+            3< <(printf '%s\n' "$BACKUP_PASSPHRASE")
+
+          test -s "$encrypted"
+
+          # Remove plaintext before testing recovery.
+          rm -rf -- "$plain"
+          rm -f -- "$archive"
+
+          # Decrypt into a hash pipeline, not another plaintext file.
+          # pipefail also catches GPG integrity-check/decryption failures.
+          restored_hash="$(
+            gpg \
+              --no-options \
+              --homedir "$gnupg" \
+              --batch \
+              --yes \
+              --pinentry-mode loopback \
+              --no-symkey-cache \
+              --passphrase-fd 3 \
+              --decrypt "$encrypted" \
+              3< <(printf '%s\n' "$BACKUP_PASSPHRASE") |
+              sha256sum |
+              cut -d ' ' -f 1
+          )"
+
+          if [[ "$expected_hash" != "$restored_hash" ]]; then
+            echo "::error::Encrypted backup failed the recovery verification."
+            exit 1
+          fi
+
+          # These files contain no passwords or private key material.
+          (
+            cd "$output"
+            sha256sum android-signing-backup.tar.gz.gpg > SHA256SUMS
+          )
+
+          cat > "$output/DECRYPT.txt" <<'TXT'
+          ANDROID SIGNING BACKUP — RECOVERY
+          =================================
+
+          Required tool: GnuPG (gpg).
+
+          1. Verify the downloaded encrypted file:
+             sha256sum -c SHA256SUMS
+
+             This checksum detects accidental corruption.
+             It is not an independent proof of authenticity.
+
+          2. On a trusted computer, decrypt:
+             umask 077
+             gpg --output android-signing-backup.tar.gz \
+                 --decrypt android-signing-backup.tar.gz.gpg
+
+             Enter SIGNING_BACKUP_PASSPHRASE when prompted.
+             Do not place the passphrase directly in the command line.
+
+          3. Extract into a private directory:
+             mkdir -m 700 restored-signing
+             tar -xzf android-signing-backup.tar.gz -C restored-signing
+
+          4. Follow restored-signing/RESTORE.txt.
+
+          5. Protect all restored files and remove plaintext copies
+             when they are no longer needed.
+
+          Keep at least two offline copies of the encrypted backup.
+          Keep the passphrase separately in a password manager.
+
+          GitHub artifact retention is only seven days.
+          Downloading and testing recovery locally is still recommended.
+          TXT
+
+          echo "Encrypted backup created and recovery verification passed."
+          echo "No plaintext keystore or signing password will be uploaded."
+
+      - name: Upload encrypted backup and public recovery instructions
+        # actions/upload-artifact v4.6.2, pinned to an immutable commit.
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: android-signing-backup-${{ github.run_id }}
-          path: ${{ runner.temp }}/signing-backup/output/android-signing-backup.tar.gz.enc
+          name: android-signing-backup-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/signing-backup/output/android-signing-backup.tar.gz.gpg
+            ${{ runner.temp }}/signing-backup/output/SHA256SUMS
+            ${{ runner.temp }}/signing-backup/output/DECRYPT.txt
           if-no-files-found: error
           retention-days: 7
+          compression-level: 0
 
-      # ۵. پاکسازی نهایی (حتی در صورت خطا در مراحل قبل)
       - name: Clean temporary signing backup files
         if: always()
-        shell: bash
-        run: rm -rf "$RUNNER_TEMP/signing-backup"
+        run: |
+          set -euo pipefail
 
-      # ۶. انتشار خلاصهی امن در GitHub Step Summary
+          work="$RUNNER_TEMP/signing-backup"
+
+          if [[ -d "$work/gnupg" ]] &&
+             command -v gpgconf >/dev/null 2>&1; then
+            gpgconf --homedir "$work/gnupg" --kill all \
+              >/dev/null 2>&1 || true
+          fi
+
+          rm -rf -- "$work"
+
       - name: Publish safe instructions
         run: |
           {
             echo "## Encrypted Android signing backup"
             echo
-            echo "- Only an AES-256-CBC encrypted archive was uploaded."
+            echo "- The existing signing keystore was backed up; no new key was generated."
+            echo "- GPG AES-256 encryption with integrity protection was used."
+            echo "- Decryption and archive hash verification passed before upload."
+            echo "- Only the encrypted archive, checksum, and public recovery instructions were uploaded."
             echo "- Download the artifact now and keep at least two offline copies."
-            echo "- The archive requires your separately stored SIGNING_BACKUP_PASSPHRASE."
-            echo "- Artifact retention is seven days; it is not a permanent backup."
-            echo "- Never share the archive or passphrase."
+            echo "- Store SIGNING_BACKUP_PASSPHRASE separately in a password manager."
+            echo "- Artifact retention is seven days; GitHub is not a permanent backup."
+            echo "- Test recovery on a trusted computer."
+            echo "- If this is a Play upload key, it is not Google's app signing private key."
           } >> "$GITHUB_STEP_SUMMARY"
