@@ -79,6 +79,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.drag(find.byType(ListView).first, const Offset(0, -700));
     await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).first, const Offset(0, -700));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('انتخاب و بررسی فایل پشتیبان'));
     await tester.pumpAndSettle();
 
