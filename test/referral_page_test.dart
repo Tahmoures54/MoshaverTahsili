@@ -12,17 +12,11 @@ void main() {
       expect(find.text('معرفی سیمرغ به دوستان'), findsOneWidget);
       expect(find.text(simorghBazaarUrl), findsOneWidget);
       expect(find.textContaining('سیمرغ؛ مشاور هوشمند تحصیلی'), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.text('معرفی به دوستان'),
-        250,
-        scrollable: find.byType(Scrollable).first,
-      );
+      await tester.ensureVisible(find.text('معرفی به دوستان'));
+      await tester.pumpAndSettle();
       expect(find.text('معرفی به دوستان'), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.text('کپی متن و لینک'),
-        250,
-        scrollable: find.byType(Scrollable).first,
-      );
+      await tester.ensureVisible(find.text('کپی متن معرفی و لینک'));
+      await tester.pumpAndSettle();
       expect(find.text('کپی متن و لینک'), findsOneWidget);
     },
   );
@@ -41,11 +35,8 @@ void main() {
           });
 
       await tester.pumpWidget(const MaterialApp(home: ReferralPage()));
-      await tester.scrollUntilVisible(
-        find.text('کپی متن و لینک'),
-        250,
-        scrollable: find.byType(Scrollable).first,
-      );
+      await tester.ensureVisible(find.text('کپی متن و لینک'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('کپی متن و لینک'));
       await tester.pump();
 
