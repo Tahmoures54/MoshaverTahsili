@@ -3,8 +3,9 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
-import 'education_store.dart';
+
 import 'ai_safety_policy.dart';
+import 'education_store.dart';
 import 'simorgh_persona.dart';
 
 enum AiErrorKind {
@@ -18,25 +19,35 @@ enum AiErrorKind {
   server,
   response,
   storage,
-  /// User-initiated cancellation; the reserved feather is refunded.
   cancelled,
 }
 
-/// Only fixed, non-sensitive messages reach the UI or local chat history.
-/// Never include response bodies, headers, credentials or purchase tokens.
+/// Only fixed, non-sensitive messages are exposed.
+///
+/// Never include provider response bodies, headers, credentials,
+/// purchase tokens or raw transport exceptions.
 class AiException implements Exception {
   const AiException(this.kind, this.message);
+
   final AiErrorKind kind;
   final String message;
+
   @override
   String toString() => message;
 }
 
-/// Small, typed handle for an in-flight request.
 class _InFlightRequest {
-  const _InFlightRequest(this.question, this.future);
-  final String question;
+  const _InFlightRequest({
+    required this.signature,
+    required this.future,
+    required this.abort,
+  });
+
+  // Kept only in memory for the lifetime of the request.
+  // Includes the effective request context, not just the question.
+  final String signature;
   final Future<String> future;
+  final Completer<void> abort;
 }
 
 class AiAdvisorService {
@@ -49,76 +60,144 @@ class AiAdvisorService {
     this.timeout = const Duration(seconds: 45),
     this.temperature = 0.55,
     this.maxTokens = 1200,
+    this.maxConcurrentRequests = 1,
+    this.disableDeepSeekThinking = false,
   })  : _ownsClient = client == null,
         client = client ?? http.Client(),
-        apiKey = (apiKey ?? const String.fromEnvironment('AI_API_KEY')).trim(),
-        endpoint = endpoint ??
-            const String.fromEnvironment('AI_API_ENDPOINT',
-                defaultValue: 'https://api.avalai.ir/v1'),
-        model = model ??
-            const String.fromEnvironment('AI_MODEL',
-                defaultValue: 'deepseek-chat');
+        apiKey = (
+          apiKey ?? const String.fromEnvironment('AI_API_KEY')
+        ).trim(),
+        endpoint = (
+          endpoint ??
+          const String.fromEnvironment(
+            'AI_API_ENDPOINT',
+            defaultValue: 'https://api.avalai.ir/v1',
+          )
+        ).trim(),
+        model = (
+          model ??
+          const String.fromEnvironment(
+            'AI_MODEL',
+            defaultValue: 'deepseek-chat',
+          )
+        ).trim();
 
   final EducationStore? store;
+
   final bool _ownsClient;
   final http.Client client;
-  final String apiKey, endpoint, model;
+
+  final String apiKey;
+  final String endpoint;
+  final String model;
+
   final Duration timeout;
   final double temperature;
   final int maxTokens;
 
+  /// Applies within this service instance.
+  ///
+  /// Cross-instance concurrency and ledger locking must be enforced
+  /// by EducationStore.
+  final int maxConcurrentRequests;
+
+  /// Enable only when the selected provider explicitly supports it.
+  final bool disableDeepSeekThinking;
+
   static const maxRequestBytes = 96 * 1024;
   static const maxResponseBytes = 512 * 1024;
+
   static const _maxHistoryChars = 18000;
   static const _maxHistoryMessages = 24;
+  static const _maxSystemInstructionChars = 12000;
+  static const _maxRequestIdChars = 200;
+
+  static int _requestSequence = 0;
 
   final Map<String, _InFlightRequest> _inFlight = {};
-  final Map<String, Completer<void>> _aborts = {};
+
   Uri? _cachedEndpoint;
   bool? _cachedConfigured;
+
   bool _disposed = false;
 
   bool get isRunning => _inFlight.isNotEmpty;
+
   int get activeRequestCount => _inFlight.length;
 
-  /// Returns true only when the API key is present **and** the configured
-  /// endpoint passes validation, so the UI never shows “ready” for a
-  /// configuration that will fail on the first network call.
   bool get isConfigured {
+    if (_disposed) return false;
+
     final cached = _cachedConfigured;
     if (cached != null) return cached;
-    if (apiKey.isEmpty) return _cachedConfigured = false;
+
     try {
-      _endpoint();
+      _validateConfiguration();
       return _cachedConfigured = true;
     } on Object {
       return _cachedConfigured = false;
     }
   }
 
+  void _validateConfiguration() {
+    if (apiKey.isEmpty ||
+        apiKey.contains('\r') ||
+        apiKey.contains('\n') ||
+        model.isEmpty ||
+        model.length > 200 ||
+        timeout <= Duration.zero ||
+        !temperature.isFinite ||
+        temperature < 0 ||
+        temperature > 2 ||
+        maxTokens <= 0 ||
+        maxConcurrentRequests <= 0) {
+      throw const AiException(
+        AiErrorKind.configuration,
+        'تنظیمات سرویس مشاور در این نسخه معتبر نیست.',
+      );
+    }
+
+    _endpoint();
+  }
+
   Uri _endpoint() {
     final cached = _cachedEndpoint;
     if (cached != null) return cached;
-    final uri = Uri.tryParse(endpoint.trim());
+
+    final uri = Uri.tryParse(endpoint);
+
     if (uri == null ||
         uri.scheme != 'https' ||
         uri.host.isEmpty ||
         uri.userInfo.isNotEmpty ||
         uri.hasQuery ||
         uri.hasFragment) {
-      throw const AiException(AiErrorKind.configuration,
-          'نشانی سرویس پاسخ‌گویی در این نسخه معتبر نیست.');
+      throw const AiException(
+        AiErrorKind.configuration,
+        'نشانی سرویس پاسخ‌گویی در این نسخه معتبر نیست.',
+      );
     }
+
     final path = uri.path.replaceFirst(RegExp(r'/+$'), '');
+
     return _cachedEndpoint = uri.replace(
-      path: path.endsWith('/chat/completions') ? path : '$path/chat/completions',
+      path: path.endsWith('/chat/completions')
+          ? path
+          : '$path/chat/completions',
     );
   }
 
-  /// Sends one request. Idempotent under the same [requestId]: concurrent
-  /// callers with the same id share one network call. Pass [jsonMode] to
-  /// request a strict `{ "response_format": { "type": "json_object" } }`
-  /// response from providers that support it.
+  static String _newRequestId() {
+    _requestSequence++;
+
+    return 'ai-${DateTime.now().microsecondsSinceEpoch}'
+        '-$_requestSequence';
+  }
+
+  /// Same-ID concurrent callers share a Future only when their effective
+  /// request context is identical.
+  ///
+  /// Durable idempotency after completion is owned by EducationStore.
   Future<String> ask({
     required Map<String, dynamic>? profile,
     required List<Map<String, dynamic>> history,
@@ -127,130 +206,354 @@ class AiAdvisorService {
     String? systemInstruction,
     bool jsonMode = false,
   }) {
-    if (_disposed) {
-      throw const AiException(
-          AiErrorKind.configuration, 'سرویس مشاور بسته شده است.');
-    }
-    final id = requestId ??
-        'ai-${DateTime.now().microsecondsSinceEpoch}-${identityHashCode(question)}';
-    final normalizedQuestion = question.trim();
-    final active = _inFlight[id];
-    if (active != null) {
-      if (active.question != normalizedQuestion) {
-        return Future<String>.error(const AiException(AiErrorKind.input,
-            'شناسه این درخواست هم‌زمان برای پرسش دیگری استفاده شده است.'));
+    try {
+      if (_disposed) {
+        throw const AiException(
+          AiErrorKind.configuration,
+          'سرویس مشاور بسته شده است.',
+        );
       }
-      return active.future;
+
+      final normalizedQuestion = question.trim();
+      final id = requestId ?? _newRequestId();
+
+      if (id.trim().isEmpty ||
+          id.length > _maxRequestIdChars ||
+          RegExp(r'[\u0000-\u001F\u007F]').hasMatch(id)) {
+        throw const AiException(
+          AiErrorKind.input,
+          'شناسه درخواست معتبر نیست.',
+        );
+      }
+
+      if (normalizedQuestion.isEmpty ||
+          normalizedQuestion.length >
+              EducationStore.maxQuestionLength) {
+        throw AiException(
+          AiErrorKind.input,
+          'پرسش باید بین ۱ تا '
+          '${EducationStore.maxQuestionLength} نویسه باشد.',
+        );
+      }
+
+      if (systemInstruction != null &&
+          systemInstruction.length >
+              _maxSystemInstructionChars) {
+        throw const AiException(
+          AiErrorKind.input,
+          'دستور آموزشی بیش از حد طولانی است.',
+        );
+      }
+
+      // Snapshot caller-owned data before the first asynchronous step.
+      final profileSnapshot = profile == null
+          ? null
+          : Map<String, dynamic>.from(profile);
+
+      final historySnapshot = history
+          .map((message) => Map<String, dynamic>.from(message))
+          .toList();
+
+      // Local safety handling precedes key validation, wallet reservation
+      // and any network transmission.
+      final safety = AiSafetyPolicy.assessTurn(
+        normalizedQuestion,
+        historySnapshot,
+      );
+
+      final localResponse = safety.shouldBlockRemoteAi
+          ? safety.localResponse
+          : null;
+
+      if (safety.shouldBlockRemoteAi &&
+          (localResponse == null || localResponse.trim().isEmpty)) {
+        throw const AiException(
+          AiErrorKind.response,
+          'پاسخ حمایتی محلی آماده نشد. '
+          'از یک بزرگسال مورد اعتماد کمک بگیر.',
+        );
+      }
+
+      final messages = localResponse == null
+          ? _messages(
+              profileSnapshot,
+              historySnapshot,
+              normalizedQuestion,
+              systemInstruction: systemInstruction,
+            )
+          : <Map<String, String>>[];
+
+      final signature = jsonEncode({
+        'question': normalizedQuestion,
+        'messages': messages,
+        'jsonMode': jsonMode,
+        'localResponse': localResponse,
+      });
+
+      final active = _inFlight[id];
+
+      if (active != null) {
+        if (active.signature != signature) {
+          throw const AiException(
+            AiErrorKind.input,
+            'این شناسه هم‌زمان با متن یا زمینه متفاوت '
+            'در حال استفاده است.',
+          );
+        }
+
+        return active.future;
+      }
+
+      // A local safety response is free and never enters the remote queue.
+      if (localResponse != null) {
+        return Future<String>.value(localResponse);
+      }
+
+      if (maxConcurrentRequests <= 0) {
+        throw const AiException(
+          AiErrorKind.configuration,
+          'تنظیمات تعداد درخواست‌های مشاور معتبر نیست.',
+        );
+      }
+
+      if (_inFlight.length >= maxConcurrentRequests) {
+        throw const AiException(
+          AiErrorKind.busy,
+          'یک درخواست مشاور در حال اجراست. '
+          'پس از پایان آن دوباره تلاش کن.',
+        );
+      }
+
+      final abort = Completer<void>();
+
+      // Schedule execution after registering the request.
+      // This avoids re-entrant callers missing the in-flight entry.
+      final work = Future<String>.microtask(
+        () => _execute(
+          messages: messages,
+          question: normalizedQuestion,
+          id: id,
+          abort: abort,
+          jsonMode: jsonMode,
+        ),
+      );
+
+      final tracked = work.whenComplete(() {
+        final current = _inFlight[id];
+
+        if (identical(current?.abort, abort)) {
+          _inFlight.remove(id);
+        }
+      });
+
+      _inFlight[id] = _InFlightRequest(
+        signature: signature,
+        future: tracked,
+        abort: abort,
+      );
+
+      return tracked;
+    } on AiException catch (error) {
+      return Future<String>.error(error);
+    } on LocalDataException catch (error) {
+      return Future<String>.error(error);
+    } on Object {
+      return Future<String>.error(
+        const AiException(
+          AiErrorKind.input,
+          'اطلاعات درخواست قابل پردازش نیست.',
+        ),
+      );
     }
-    final abort = Completer<void>();
-    _aborts[id] = abort;
-    final future = _execute(
-      profile,
-      history,
-      normalizedQuestion,
-      id,
-      abort: abort,
-      systemInstruction: systemInstruction,
-      jsonMode: jsonMode,
-    );
-    final tracked = future.whenComplete(() {
-      _inFlight.remove(id);
-      _aborts.remove(id);
-    });
-    _inFlight[id] = _InFlightRequest(normalizedQuestion, tracked);
-    return tracked;
   }
 
-  /// Cancels an in-flight request. The original [ask] future completes with
-  /// an [AiErrorKind.cancelled] exception and the reserved feather is refunded.
+  /// Requests cancellation.
+  ///
+  /// Returns false when no cancellable operation is registered.
+  /// A cancellation arriving after durable completion does not undo it.
   bool cancel(String requestId) {
-    final abort = _aborts.remove(requestId);
-    if (abort == null || abort.isCompleted) return false;
-    abort.complete();
+    final request = _inFlight[requestId];
+
+    if (request == null || request.abort.isCompleted) {
+      return false;
+    }
+
+    request.abort.complete();
     return true;
   }
 
-  Future<String> _execute(
-    Map<String, dynamic>? profile,
-    List<Map<String, dynamic>> history,
-    String question,
-    String id, {
-    required Completer<void> abort,
-    String? systemInstruction,
-    bool jsonMode = false,
-  }) async {
-    if (question.isEmpty || question.length > EducationStore.maxQuestionLength) {
+  void _checkCancelled(Completer<void> abort) {
+    if (abort.isCompleted || _disposed) {
       throw const AiException(
-          AiErrorKind.input, 'پرسش باید بین ۱ تا ۴۰۰۰ نویسه باشد.');
+        AiErrorKind.cancelled,
+        'درخواست لغو شد.',
+      );
     }
-    // Explicit crisis-intent phrases are handled locally before checking the
-    // provider key, wallet, or constructing any network request.
-    final safety = AiSafetyPolicy.assessTurn(question, history);
-    if (safety.shouldBlockRemoteAi) return safety.localResponse!;
-    if (!isConfigured) {
-      throw const AiException(AiErrorKind.configuration,
-          'گفت‌وگوی سیمرغ هنوز آماده استفاده نیست. امکانات محلی برنامه همچنان در دسترس‌اند.');
-    }
-    final uri = _endpoint();
-    if (store?.walletError != null) {
-      throw LocalDataException(store!.walletError!);
-    }
-    if (store != null &&
-        !store!.canUseAi &&
-        store!.savedAiAnswer(id) == null) {
-      throw const AiException(AiErrorKind.credits,
-          'پر سیمرغ کافی نداری. برای ادامه، یک بسته پر تهیه کن.');
-    }
-    final messages = _messages(profile, history, question,
-        systemInstruction: systemInstruction);
+  }
 
-    final isDeepSeek = model.toLowerCase().contains('deepseek');
-    final payload = <String, Object?>{
-      'model': model,
-      'messages': messages,
-      'temperature': temperature,
-      'max_tokens': maxTokens,
-      // Only DeepSeek honours this flag; unknown providers would reject it.
-      if (isDeepSeek) 'thinking': const {'type': 'disabled'},
-      if (jsonMode) 'response_format': const {'type': 'json_object'},
-    };
-    final body = utf8.encode(jsonEncode(payload));
-    if (body.length > maxRequestBytes) {
-      throw const AiException(AiErrorKind.input,
-          'حجم درخواست زیاد است. پرسش یا اطلاعات گفت‌وگو را کوتاه‌تر کن.');
-    }
+  Future<String> _execute({
+    required List<Map<String, String>> messages,
+    required String question,
+    required String id,
+    required Completer<void> abort,
+    required bool jsonMode,
+  }) async {
+    final ledger = store;
 
     var reserved = false;
     var requestStarted = false;
     var answerReceived = false;
+
     try {
-      if (store != null) {
-        final reservation =
-            await store!.prepareAiRequest(id: id, question: question);
-        if (reservation.isCompleted) return reservation.cachedAnswer!;
+      _checkCancelled(abort);
+
+      if (ledger?.walletError != null) {
+        throw LocalDataException(ledger!.walletError!);
+      }
+
+      // Recover a durable answer without requiring network configuration
+      // or new credits.
+      //
+      // prepareAiRequest must verify that the same ID belongs to the
+      // same question. Do not return savedAiAnswer directly.
+      if (ledger != null && ledger.savedAiAnswer(id) != null) {
+        final reservation = await ledger.prepareAiRequest(
+          id: id,
+          question: question,
+        );
+
+        if (reservation.isCompleted) {
+          final cached = reservation.cachedAnswer;
+
+          if (cached == null ||
+              cached.trim().isEmpty ||
+              cached.length > EducationStore.maxAnswerLength) {
+            throw const AiException(
+              AiErrorKind.storage,
+              'پاسخ ذخیره‌شده معتبر نیست. '
+              'تاریخچه مشاوره را بررسی کن.',
+            );
+          }
+
+          return cached;
+        }
+
+        // The ledger state changed during recovery.
         reserved = true;
       }
+
+      _checkCancelled(abort);
+      _validateConfiguration();
+
+      if (ledger != null && !reserved && !ledger.canUseAi) {
+        throw const AiException(
+          AiErrorKind.credits,
+          'پر سیمرغ کافی نداری. '
+          'برای ادامه، یک بسته پر تهیه کن.',
+        );
+      }
+
+      final payload = <String, Object?>{
+        'model': model,
+        'messages': messages,
+        'temperature': temperature,
+        'max_tokens': maxTokens,
+        if (disableDeepSeekThinking)
+          'thinking': const {'type': 'disabled'},
+        if (jsonMode)
+          'response_format': const {'type': 'json_object'},
+      };
+
+      final body = utf8.encode(jsonEncode(payload));
+
+      if (body.length > maxRequestBytes) {
+        throw const AiException(
+          AiErrorKind.input,
+          'حجم درخواست زیاد است. '
+          'پرسش یا اطلاعات گفت‌وگو را کوتاه‌تر کن.',
+        );
+      }
+
+      _checkCancelled(abort);
+
+      if (ledger != null && !reserved) {
+        final reservation = await ledger.prepareAiRequest(
+          id: id,
+          question: question,
+        );
+
+        if (reservation.isCompleted) {
+          final cached = reservation.cachedAnswer;
+
+          if (cached == null ||
+              cached.trim().isEmpty ||
+              cached.length > EducationStore.maxAnswerLength) {
+            throw const AiException(
+              AiErrorKind.storage,
+              'پاسخ ذخیره‌شده معتبر نیست.',
+            );
+          }
+
+          return cached;
+        }
+
+        reserved = true;
+      }
+
+      _checkCancelled(abort);
+
       requestStarted = true;
-      final answer = await _post(uri, body, abort);
+
+      final answer = await _post(
+        _endpoint(),
+        body,
+        abort,
+      );
+
       answerReceived = true;
-      if (store != null) await store!.completeAiRequest(id, answer);
+
+      // Cancellation is honored before entering durable completion.
+      // Once completion starts, do not race it against cancellation.
+      _checkCancelled(abort);
+
+      if (ledger != null) {
+        await ledger.completeAiRequest(id, answer);
+      }
+
       return answer;
     } on Object catch (error) {
-      if (reserved) {
+      if (reserved && ledger != null) {
         try {
-          await store!.refundAiRequest(id);
+          // The store must make this operation idempotent and avoid
+          // refunding a request already durably completed.
+          await ledger.refundAiRequest(id);
         } on Object {
-          // The pending reservation survives a storage failure and is refunded
-          // on the next startup. Never silently replace a damaged wallet.
+          throw const AiException(
+            AiErrorKind.storage,
+            'درخواست کامل نشد و ثبت بازپرداخت نیز تأیید نشد. '
+            'کیف اعتبار و تاریخچه مشاوره را بررسی کن؛ '
+            'از پاک‌کردن داده‌های برنامه خودداری کن.',
+          );
         }
       }
-      if (error is AiException || error is LocalDataException) rethrow;
-      if (!requestStarted || answerReceived) {
-        throw const AiException(AiErrorKind.storage,
-            'ذخیره نتیجه درخواست انجام نشد. کمی بعد دوباره تلاش کن.');
+
+      if (error is AiException || error is LocalDataException) {
+        rethrow;
       }
-      throw const AiException(AiErrorKind.network,
-          'ارتباط با مشاور برقرار نشد. اتصال اینترنت را بررسی کن.');
+
+      if (!requestStarted || answerReceived) {
+        throw const AiException(
+          AiErrorKind.storage,
+          'ثبت اطلاعات یا نتیجه درخواست انجام نشد. '
+          'تاریخچه مشاوره را بررسی کن و دوباره تلاش کن.',
+        );
+      }
+
+      throw const AiException(
+        AiErrorKind.network,
+        'ارتباط با مشاور برقرار نشد. '
+        'اتصال اینترنت را بررسی کن.',
+      );
     }
   }
 
@@ -260,59 +563,88 @@ class AiAdvisorService {
     String question, {
     String? systemInstruction,
   }) {
-    // Profile context is opt-in. Legacy profiles and backups without this flag
-    // remain private by default; nickname is never included in the AI context.
     final approvedProfile =
-        profile?['aiProfileContextConsent'] == true ? profile : null;
+        profile?['aiProfileContextConsent'] == true
+            ? profile
+            : null;
+
     String field(String key, int limit) {
-      final value = approvedProfile?[key]?.toString().trim() ?? '';
-      return value.length <= limit ? value : _safeTruncate(value, limit);
+      final raw = approvedProfile?[key];
+
+      // Do not stringify arbitrary objects from damaged profile records.
+      if (raw is! String) return '';
+
+      final value = raw
+          .replaceAll(RegExp(r'[\u0000-\u001F\u007F]'), ' ')
+          .trim();
+
+      return _safeTruncate(value, limit);
     }
 
-    final context = approvedProfile == null
-        ? '{"consent":false}'
-        : jsonEncode({
-            'consent': true,
-            'grade': field('grade', 80),
-            'year': field('year', 80),
-            'field': field('field', 120),
-            'goal': field('goal', 300),
-          })
-            .replaceAll('<', r'\u003c')
-            .replaceAll('>', r'\u003e')
-            .replaceAll('&', r'\u0026');
+    // Explicit allowlist: name, nickname, contact information,
+    // wallet data and arbitrary profile keys are not included.
+    final context = jsonEncode(
+      approvedProfile == null
+          ? <String, Object?>{'consent': false}
+          : <String, Object?>{
+              'consent': true,
+              'grade': field('grade', 80),
+              'year': field('year', 80),
+              'field': field('field', 120),
+              'goal': field('goal', 300),
+            },
+    )
+        .replaceAll('<', r'\u003c')
+        .replaceAll('>', r'\u003e')
+        .replaceAll('&', r'\u0026');
 
     final recent = <Map<String, String>>[];
     var budget = _maxHistoryChars;
+
     for (final message in history.reversed) {
       final role = message['role'];
       final content = message['content'];
-      final maxMessageLength = role == 'assistant'
-          ? EducationStore.maxAnswerLength
-          : EducationStore.maxQuestionLength;
+
       if ((role != 'user' && role != 'assistant') ||
           content is! String ||
-          content.isEmpty ||
-          content.length > maxMessageLength ||
+          content.trim().isEmpty ||
           message['status'] == 'failed' ||
           message['status'] == 'pending') {
         continue;
       }
+
+      final limit = role == 'assistant'
+          ? EducationStore.maxAnswerLength
+          : EducationStore.maxQuestionLength;
+
+      if (content.length > limit) continue;
       if (budget <= 0) break;
-      final retained =
-          content.length > budget ? _safeTruncate(content, budget) : content;
+
+      final retained = _safeTruncate(content, budget);
+
+      if (retained.isEmpty) break;
+
+      recent.add({
+        'role': role as String,
+        'content': retained,
+      });
+
       budget -= retained.length;
-      recent.add({'role': role as String, 'content': retained});
-      if (recent.length == _maxHistoryMessages) break;
+
+      if (recent.length >= _maxHistoryMessages) break;
     }
 
     final systemContent = buildSimorghSystemPrompt(
       studentContext: context,
       grade: field('grade', 80),
     );
-    final merged = systemInstruction == null
+
+    final instruction = systemInstruction?.trim();
+
+    final merged = instruction == null || instruction.isEmpty
         ? systemContent
-        : '$systemContent\n\nدستور ویژه این نوبت آموزشی:\n$systemInstruction';
+        : '$systemContent\n\n'
+            'دستور ویژه این نوبت آموزشی:\n$instruction';
 
     return [
       {'role': 'system', 'content': merged},
@@ -321,155 +653,356 @@ class AiAdvisorService {
     ];
   }
 
-  /// Truncates a string without breaking a UTF-16 surrogate pair, so
-  /// multi-byte characters (emoji, some symbols) never corrupt JSON payloads.
-  static String _safeTruncate(String value, int max) {
-    if (value.length <= max) return value;
-    var end = max;
-    if (end > 0 && _isHighSurrogate(value.codeUnitAt(end - 1))) end -= 1;
+  /// Truncate without splitting a UTF-16 surrogate pair.
+  static String _safeTruncate(String value, int maximum) {
+    if (maximum <= 0) return '';
+    if (value.length <= maximum) return value;
+
+    var end = maximum;
+
+    if (_isHighSurrogate(value.codeUnitAt(end - 1))) {
+      end--;
+    }
+
     return value.substring(0, end);
   }
 
-  static bool _isHighSurrogate(int unit) => unit >= 0xD800 && unit <= 0xDBFF;
+  static bool _isHighSurrogate(int value) {
+    return value >= 0xD800 && value <= 0xDBFF;
+  }
 
   Future<String> _post(
     Uri uri,
     List<int> body,
     Completer<void> abort,
   ) async {
-    if (abort.isCompleted) {
-      throw const AiException(
-          AiErrorKind.cancelled, 'درخواست پیش از پایان لغو شد.');
-    }
-    http.StreamedResponse? response;
+    _checkCancelled(abort);
+
+    final result = Completer<String>();
+
     StreamSubscription<List<int>>? subscription;
-    var subscriptionCancelled = false;
+    var finished = false;
 
     Future<void> cancelSubscription() async {
-      if (subscriptionCancelled) return;
-      subscriptionCancelled = true;
+      final current = subscription;
+      subscription = null;
+
+      if (current == null) return;
+
       try {
-        await subscription?.cancel();
+        await current.cancel();
       } on Object {
-        // The user-visible error state is already decided.
+        // Never replace the already selected result with cleanup errors.
       }
     }
 
-    Future<String> receive() async {
-      // AbortableRequest lets a timeout, dispose, or explicit cancel stop the
-      // underlying transport instead of merely stopping the wait.
-      final request =
-          http.AbortableRequest('POST', uri, abortTrigger: abort.future)
-            ..headers.addAll({
-              'Authorization': 'Bearer $apiKey',
-              'Content-Type': 'application/json; charset=utf-8',
-              'Accept': 'application/json',
-            })
-            ..bodyBytes = body;
-      response = await client.send(request);
-      final status = response!.statusCode;
-      if (status == 429) {
-        throw const AiException(AiErrorKind.rateLimit,
-            'تعداد درخواست‌ها زیاد شده است. کمی بعد دوباره تلاش کن.');
+    void stopTransport() {
+      if (!abort.isCompleted) {
+        abort.complete();
       }
-      if (status == 401 || status == 403) {
-        throw const AiException(AiErrorKind.configuration,
-            'دسترسی سرویس مشاور تأیید نشد. تنظیمات انتشار نیاز به بررسی دارد.');
-      }
-      if (status == 400 || status == 422) {
-        throw const AiException(AiErrorKind.input,
-            'درخواست برای سرویس قابل پردازش نبود. پرسش یا اطلاعات گفت‌وگو را کوتاه‌تر کن.');
-      }
-      if (status < 200 || status >= 300) {
-        throw const AiException(AiErrorKind.server,
-            'سرویس مشاور موقتاً پاسخ نداد. کمی بعد دوباره تلاش کن.');
-      }
-      final length = response!.contentLength;
-      if (length != null && length > maxResponseBytes) {
-        throw const AiException(
-            AiErrorKind.response, 'حجم پاسخ دریافتی بیش از حد مجاز است.');
-      }
-      final completer = Completer<List<int>>();
-      final bytes = BytesBuilder(copy: false);
-      subscription = response!.stream.listen(
-        (chunk) {
-          if (completer.isCompleted) return;
-          if (bytes.length + chunk.length > maxResponseBytes) {
-            completer.completeError(const AiException(
-                AiErrorKind.response, 'حجم پاسخ دریافتی بیش از حد مجاز است.'));
-            unawaited(cancelSubscription());
-            return;
-          }
-          bytes.add(chunk);
-        },
-        onError: (Object _) {
-          if (!completer.isCompleted) {
-            completer.completeError(const AiException(AiErrorKind.network,
-                'دریافت پاسخ کامل نشد. اتصال اینترنت را بررسی کن.'));
-          }
-        },
-        onDone: () {
-          if (!completer.isCompleted) completer.complete(bytes.takeBytes());
-        },
-        cancelOnError: true,
-      );
-      return _parse(await completer.future);
+
+      unawaited(cancelSubscription());
     }
+
+    void fail(AiException error) {
+      if (finished) return;
+
+      finished = true;
+      result.completeError(error);
+      stopTransport();
+    }
+
+    void succeed(String answer) {
+      if (finished) return;
+
+      finished = true;
+      result.complete(answer);
+    }
+
+    final timer = Timer(timeout, () {
+      fail(
+        const AiException(
+          AiErrorKind.timeout,
+          'پاسخ به‌موقع نرسید. '
+          'اتصال اینترنت را بررسی کن و دوباره تلاش کن.',
+        ),
+      );
+    });
+
+    // Explicit cancellation completes the public Future even when a
+    // custom HTTP client does not promptly interrupt its response stream.
+    unawaited(
+      abort.future.then((_) {
+        fail(
+          const AiException(
+            AiErrorKind.cancelled,
+            'درخواست لغو شد.',
+          ),
+        );
+      }),
+    );
+
+    Future<void> receive() async {
+      try {
+        if (finished) return;
+
+        final request = http.AbortableRequest(
+          'POST',
+          uri,
+          abortTrigger: abort.future,
+        )
+          ..followRedirects = false
+          ..headers.addAll({
+            'Authorization': 'Bearer $apiKey',
+            'Content-Type': 'application/json; charset=utf-8',
+            'Accept': 'application/json',
+          })
+          ..bodyBytes = body;
+
+        final response = await client.send(request);
+
+        if (finished) {
+          // A late response must not remain subscribed or be parsed.
+          try {
+            await response.stream.listen((_) {}).cancel();
+          } on Object {
+            // Cleanup only.
+          }
+          return;
+        }
+
+        final statusError = _statusError(response.statusCode);
+        final declaredLength = response.contentLength;
+
+        if (statusError != null ||
+            (declaredLength != null &&
+                declaredLength > maxResponseBytes)) {
+          final error = statusError ??
+              const AiException(
+                AiErrorKind.response,
+                'حجم پاسخ دریافتی بیش از حد مجاز است.',
+              );
+
+          fail(error);
+
+          try {
+            await response.stream.listen((_) {}).cancel();
+          } on Object {
+            // Cleanup only.
+          }
+          return;
+        }
+
+        final bytes = BytesBuilder(copy: false);
+
+        subscription = response.stream.listen(
+          (chunk) {
+            if (finished) return;
+
+            if (chunk.length > maxResponseBytes - bytes.length) {
+              fail(
+                const AiException(
+                  AiErrorKind.response,
+                  'حجم پاسخ دریافتی بیش از حد مجاز است.',
+                ),
+              );
+              return;
+            }
+
+            bytes.add(chunk);
+          },
+          onError: (Object _) {
+            if (abort.isCompleted) {
+              fail(
+                const AiException(
+                  AiErrorKind.cancelled,
+                  'درخواست لغو شد.',
+                ),
+              );
+            } else {
+              fail(
+                const AiException(
+                  AiErrorKind.network,
+                  'دریافت پاسخ کامل نشد. '
+                  'اتصال اینترنت را بررسی کن.',
+                ),
+              );
+            }
+          },
+          onDone: () {
+            if (finished) return;
+
+            try {
+              succeed(_parse(bytes.takeBytes()));
+            } on AiException catch (error) {
+              fail(error);
+            } on Object {
+              fail(
+                const AiException(
+                  AiErrorKind.response,
+                  'پاسخ معتبری از مشاور دریافت نشد.',
+                ),
+              );
+            }
+          },
+          cancelOnError: true,
+        );
+
+        // Handles cancellation racing with stream subscription setup.
+        if (finished) {
+          await cancelSubscription();
+        }
+      } on Object {
+        if (finished) return;
+
+        fail(
+          abort.isCompleted
+              ? const AiException(
+                  AiErrorKind.cancelled,
+                  'درخواست لغو شد.',
+                )
+              : const AiException(
+                  AiErrorKind.network,
+                  'ارتباط با مشاور برقرار نشد. '
+                  'اتصال اینترنت را بررسی کن.',
+                ),
+        );
+      }
+    }
+
+    unawaited(receive());
 
     try {
-      return await receive().timeout(timeout);
-    } on TimeoutException {
-      if (!abort.isCompleted) abort.complete();
-      throw const AiException(AiErrorKind.timeout,
-          'پاسخ به‌موقع نرسید. اتصال اینترنت را بررسی کن و دوباره تلاش کن.');
-    } on AiException {
-      rethrow;
-    } on Object {
-      if (abort.isCompleted) {
-        // Completed via `cancel()` or `dispose()`.
-        throw const AiException(
-            AiErrorKind.cancelled, 'درخواست پیش از پایان لغو شد.');
-      }
-      // Exception details may contain URLs or credentials; do not expose them.
-      throw const AiException(AiErrorKind.network,
-          'ارتباط با مشاور برقرار نشد. اتصال اینترنت را بررسی کن.');
+      return await result.future;
     } finally {
+      timer.cancel();
       await cancelSubscription();
     }
   }
 
+  AiException? _statusError(int status) {
+    if (status >= 200 && status < 300) return null;
+
+    if (status == 429) {
+      return const AiException(
+        AiErrorKind.rateLimit,
+        'تعداد درخواست‌ها زیاد شده است. '
+        'کمی بعد دوباره تلاش کن.',
+      );
+    }
+
+    if (status == 401 || status == 403) {
+      return const AiException(
+        AiErrorKind.configuration,
+        'دسترسی سرویس مشاور تأیید نشد. '
+        'تنظیمات انتشار نیاز به بررسی دارد.',
+      );
+    }
+
+    if (status == 404) {
+      return const AiException(
+        AiErrorKind.configuration,
+        'نشانی سرویس یا مدل پاسخ‌گویی در دسترس نیست.',
+      );
+    }
+
+    if (status == 400 || status == 413 || status == 422) {
+      return const AiException(
+        AiErrorKind.input,
+        'درخواست برای سرویس قابل پردازش نبود. '
+        'ممکن است حجم یا تنظیمات درخواست نیاز به اصلاح داشته باشد.',
+      );
+    }
+
+    if (status == 408 || status == 504) {
+      return const AiException(
+        AiErrorKind.timeout,
+        'سرویس پاسخ را به‌موقع آماده نکرد. '
+        'کمی بعد دوباره تلاش کن.',
+      );
+    }
+
+    if (status >= 300 && status < 400) {
+      return const AiException(
+        AiErrorKind.configuration,
+        'نشانی سرویس تغییر مسیر داد. '
+        'برای حفاظت از کلید دسترسی، درخواست متوقف شد.',
+      );
+    }
+
+    return const AiException(
+      AiErrorKind.server,
+      'سرویس مشاور موقتاً پاسخ نداد. '
+      'کمی بعد دوباره تلاش کن.',
+    );
+  }
+
   String _parse(List<int> bytes) {
     try {
-      final Object? data = jsonDecode(utf8.decode(bytes));
+      if (bytes.isEmpty || bytes.length > maxResponseBytes) {
+        throw const FormatException();
+      }
+
+      final Object? data = jsonDecode(
+        utf8.decode(bytes, allowMalformed: false),
+      );
+
       if (data is! Map ||
+          data['error'] != null ||
           data['choices'] is! List ||
           (data['choices'] as List).isEmpty) {
-        throw const FormatException('Missing choices');
+        throw const FormatException();
       }
+
       final Object? choice = (data['choices'] as List).first;
+
       if (choice is! Map || choice['message'] is! Map) {
-        throw const FormatException('Missing message');
+        throw const FormatException();
       }
-      final Object? content = (choice['message'] as Map)['content'];
+
+      final finishReason = choice['finish_reason'];
+
+      // Accept providers omitting finish_reason, but reject explicit
+      // truncation, tool calls, filtering and other non-final answers.
+      if (finishReason != null && finishReason != 'stop') {
+        throw const FormatException();
+      }
+
+      final message = choice['message'] as Map;
+      final Object? content = message['content'];
+
       if (content is! String ||
           content.trim().isEmpty ||
-          content.length > EducationStore.maxAnswerLength) {
-        throw const FormatException('Invalid content');
+          content.length > EducationStore.maxAnswerLength ||
+          message['tool_calls'] != null ||
+          message['function_call'] != null) {
+        throw const FormatException();
       }
+
       return content.trim();
     } on Object {
-      throw const AiException(AiErrorKind.response,
-          'پاسخ معتبری از مشاور دریافت نشد؛ پر رزروشده به کیسه‌ات بازمی‌گردد.');
+      throw const AiException(
+        AiErrorKind.response,
+        'پاسخ کامل و معتبری از مشاور دریافت نشد. '
+        'وضعیت درخواست و اعتبار در برنامه بررسی می‌شود.',
+      );
     }
   }
 
   void dispose() {
     if (_disposed) return;
+
     _disposed = true;
-    for (final abort in _aborts.values.toList()) {
-      if (!abort.isCompleted) abort.complete();
+
+    for (final request in _inFlight.values.toList()) {
+      if (!request.abort.isCompleted) {
+        request.abort.complete();
+      }
     }
-    _aborts.clear();
-    if (_ownsClient) client.close();
+
+    // Entries are removed when their Futures finish, after ledger cleanup.
+    if (_ownsClient) {
+      client.close();
+    }
   }
 }
