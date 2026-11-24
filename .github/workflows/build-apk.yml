@@ -81,8 +81,8 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- lib test
-          git commit -m "style: format lib and test Dart sources"
+          git add -- lib test integration_test
+          git commit -m "style: format Dart source trees"
           git push origin "HEAD:${GITHUB_HEAD_REF}"
 
   validate-and-build:
