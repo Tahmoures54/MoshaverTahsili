@@ -215,7 +215,10 @@ android {
         }
 
         profile {
-            applicationIdSuffix = '.profile'
+            // Keep the profile variant for Flutter profiling. Do not set an
+            // applicationIdSuffix here: AGP also matches this build type to
+            // Android library modules (including cafebazaar_billing), where
+            // applicationIdSuffix is invalid.
             versionNameSuffix = '-profile'
 
             debuggable = false
