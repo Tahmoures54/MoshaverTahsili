@@ -513,9 +513,15 @@ void main() {
       await tester.pumpWidget(
         frame(AdvisorPage(store: store, service: service)),
       );
+      expect(store.hasActiveAiRequests, isFalse);
+      final startTeachingButton = tester.widget<OutlinedButton>(
+        find.byKey(const ValueKey('simorgh-start-teaching')),
+      );
+      expect(startTeachingButton.onPressed, isNotNull);
       await tester.tap(find.byKey(const ValueKey('simorgh-start-teaching')));
       await tester.pump();
       await tester.pumpAndSettle();
+      expect(find.text('شروع تدریس با سیمرغ'), findsOneWidget);
       await tester.enterText(find.byType(TextField).last, 'کسرها');
       await tester.tap(find.widgetWithText(FilledButton, 'شروع ارزیابی'));
       await tester.pumpAndSettle();
@@ -616,9 +622,15 @@ void main() {
       await tester.pumpWidget(
         frame(AdvisorPage(store: store, service: service)),
       );
+      expect(store.hasActiveAiRequests, isFalse);
+      final startTeachingButton = tester.widget<OutlinedButton>(
+        find.byKey(const ValueKey('simorgh-start-teaching')),
+      );
+      expect(startTeachingButton.onPressed, isNotNull);
       await tester.tap(find.byKey(const ValueKey('simorgh-start-teaching')));
       await tester.pump();
       await tester.pumpAndSettle();
+      expect(find.text('شروع تدریس با سیمرغ'), findsOneWidget);
       await tester.enterText(find.byType(TextField).last, 'کسرها');
       await tester.tap(find.widgetWithText(FilledButton, 'شروع ارزیابی'));
       await tester.pumpAndSettle();
