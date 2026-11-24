@@ -223,7 +223,8 @@ Workflow اصلی: [`.github/workflows/build-apk.yml`](.github/workflows/build-a
 
 ### Variables
 
-`BAZAAR_CATALOG_CONFIRMED=true` را فقط پس از ایجاد و تطبیق واقعی سه محصول در پنل بازار قرار دهید؛ صرفاً برای سبزکردن CI آن را فعال نکنید.
+- `EXPECTED_RELEASE_CERT_SHA256`: اثرانگشت SHA-256 گواهی عمومیِ همان keystore انتشار؛ مقدار را به‌صورت GitHub Actions Variable ثبت کنید. این اثرانگشت محرمانه نیست، اما باید دقیقاً با گواهی کلید موجود تطبیق داشته باشد.
+- `BAZAAR_CATALOG_CONFIRMED=true` را فقط پس از ایجاد و تطبیق واقعی سه محصول در پنل بازار قرار دهید؛ صرفاً برای سبزکردن CI آن را فعال نکنید.
 
 ### پشتیبان کلید امضای Android
 
