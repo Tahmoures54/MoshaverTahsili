@@ -169,7 +169,7 @@ void main() {
         grade: 'دانش‌آموز کنکوری',
       );
 
-      expect(primary.message, contains('بیا یکی را با هم انتخاب کنیم'));
+      expect(primary.message, contains('بیا یکی را انتخاب کنیم'));
       expect(older.message, contains('اولویت‌بندی کن'));
     });
 
