@@ -35,7 +35,8 @@ void main() {
           });
 
       await tester.pumpWidget(const MaterialApp(home: ReferralPage()));
-      await tester.ensureVisible(find.text('کپی متن و لینک'));
+      await tester.drag(find.byType(ListView).first, const Offset(0, -650));
+      await tester.pumpAndSettle();
       await tester.pumpAndSettle();
       await tester.tap(find.text('کپی متن و لینک'));
       await tester.pump();
