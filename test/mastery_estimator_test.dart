@@ -81,7 +81,7 @@ void main() {
     expect(result, hasLength(2));
     expect(result.first.topic, 'هندسه');
     expect(result.last.topic, 'آمار');
-    expect(result.last.confidence, 'شواهد متوسط');
+    expect(result.last.confidence, 'شواهد محدود');
   });
 
   test('bounds remain within zero and one for extreme outcomes', () {
