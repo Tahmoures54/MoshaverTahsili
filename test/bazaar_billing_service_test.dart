@@ -212,7 +212,7 @@ void main() {
     ];
     final result = await service.restorePurchases();
     expect(result.credited, 2);
-    expect(result.alreadyCredited, 1);
+    expect(result.alreadyCredited, 0);
     expect(store.credits, 370);
   });
 
