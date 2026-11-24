@@ -2,14 +2,21 @@ name: Flutter checks and Android build
 
 on:
   push:
-    branches: [main, 'arena/**']
-    tags: ['v*']
+    branches:
+      - main
+      - 'arena/**'
+    tags:
+      - 'v*'
+
   pull_request:
-    branches: [main]
+    branches:
+      - main
+
   workflow_dispatch:
     inputs:
       publish_candidate:
-        description: 'Publish an explicitly NON-PRODUCTION test release from this ref'
+        description: 'Publish an explicitly NON-PRODUCTION test release from main'
+        required: false
         type: boolean
         default: false
 
@@ -17,11 +24,18 @@ permissions:
   contents: read
 
 concurrency:
-  group: android-${{ github.ref }}
-  cancel-in-progress: true
+  group: android-${{ github.workflow }}-${{ github.ref }}
+  # Do not interrupt tag releases or explicitly requested publication.
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') && !(github.event_name == 'workflow_dispatch' && inputs.publish_candidate) }}
+
+defaults:
+  run:
+    shell: bash
 
 env:
-  # جلوگیری از توقف Gradle daemon در CI و کاهش مصرف حافظه
+  CI: 'true'
+
+  # Limit Gradle memory and parallel workers.
   GRADLE_OPTS: >-
     -Dorg.gradle.daemon=false
     -Dorg.gradle.workers.max=2
@@ -31,34 +45,121 @@ jobs:
   validate-and-build:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+
     outputs:
       production_ready: ${{ steps.config.outputs.production_ready }}
       version: ${{ steps.config.outputs.version }}
-    steps:
-      - uses: actions/checkout@v7
+      artifact_name: ${{ steps.artifact.outputs.name }}
 
-      - name: Set up Java (with Gradle cache)
-        uses: actions/setup-java@v6
+    # Secrets are available only for:
+    # - push to main
+    # - push of a v* tag
+    # - manual execution from main
+    #
+    # Protect main and v* tags with repository rulesets.
+    # PRs and arena branches receive empty secret values.
+    env:
+      AI_API_KEY: ${{ ((github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && secrets.AI_API_KEY || '' }}
+
+      DEEPSEEK_API_KEY: ${{ ((github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && secrets.DEEPSEEK_API_KEY || '' }}
+
+      AI_API_ENDPOINT: ${{ vars.AI_API_ENDPOINT || (((github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && secrets.AI_API_ENDPOINT) || '' }}
+
+      DEEPSEEK_API_ENDPOINT: ${{ vars.DEEPSEEK_API_ENDPOINT || (((github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && secrets.DEEPSEEK_API_ENDPOINT) || '' }}
+
+      AI_MODEL: ${{ vars.AI_MODEL || (((github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && secrets.AI_MODEL) || '' }}
+
+      DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL || (((github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && secrets.DEEPSEEK_MODEL) || '' }}
+
+      BAZAAR_RSA_PUBLIC_KEY: ${{ ((github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && secrets.BAZAAR_RSA_PUBLIC_KEY || '' }}
+
+      BAZAAR_CATALOG_CONFIRMED: ${{ ((github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && (vars.BAZAAR_CATALOG_CONFIRMED || secrets.BAZAAR_CATALOG_CONFIRMED) || '' }}
+
+      RELEASE_KEYSTORE_BASE64: ${{ ((github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && secrets.RELEASE_KEYSTORE_BASE64 || '' }}
+
+      RELEASE_KEYSTORE_PASSWORD: ${{ ((github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && secrets.RELEASE_KEYSTORE_PASSWORD || '' }}
+
+      RELEASE_KEY_ALIAS: ${{ ((github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && secrets.RELEASE_KEY_ALIAS || '' }}
+
+      RELEASE_KEY_PASSWORD: ${{ ((github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && secrets.RELEASE_KEY_PASSWORD || '' }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Validate publication request
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_candidate
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Manual candidate publication is allowed only from main."
+            exit 1
+          fi
+
+      - name: Require release tags to point to main history
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+
+          if ! git show-ref --verify --quiet refs/remotes/origin/main; then
+            echo "::error::Cannot verify origin/main."
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor \
+            "${GITHUB_SHA}^{commit}" \
+            refs/remotes/origin/main; then
+            echo "::error::Release tag must point to a commit in main history."
+            exit 1
+          fi
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
-          # problem-matcher در v6.3.0 به‌صورت پیش‌فرض خاموش است； نیازی به فعال‌سازی نیست
 
-      # gradle/actions/setup-gradle جایگزین دانلود دستی wrapper.jar
-      # wrapper را اعتبارسنجی می‌کند و توزیع Gradle را خودکار کش می‌کند.
-      - name: Setup Gradle (wrapper validation + distribution cache)
-        uses: gradle/actions/setup-gradle@v6
+      # Use one Gradle cache manager, not two overlapping caches.
+      - name: Set up Gradle and validate wrapper
+        uses: gradle/actions/setup-gradle@v4
         with:
-          # در صورت نیاز به Basic Caching (۱۰۰٪ Open Source):
-          # cache-provider: basic
+          validate-wrappers: true
+          cache-read-only: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
 
-      - uses: subosito/flutter-action@v2.23.0
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
         with:
           flutter-version-file: .fvmrc
           channel: stable
           cache: true
-          pub-cache: true
+
+      - name: Check required project files
+        run: |
+          set -euo pipefail
+
+          required=(
+            pubspec.yaml
+            pubspec.lock
+            scripts/security_check.py
+            scripts/annotate_analysis.py
+            scripts/build_config.py
+            scripts/write_build_config.py
+            scripts/write_signing_config.py
+            scripts/flutter_build.py
+            scripts/apk_size_report.py
+            scripts/check_signer.py
+          )
+
+          for file in "${required[@]}"; do
+            if [[ ! -f "$file" ]]; then
+              echo "::error::Required project file is missing: $file"
+              exit 1
+            fi
+          done
 
       - name: Resolve locked dependencies
         run: flutter pub get --enforce-lockfile
@@ -66,211 +167,550 @@ jobs:
       - name: Source and Android security checks
         run: python3 scripts/security_check.py
 
-      # format در CI باید fail شود تا کدِ فرمت‌نشده وارد نشود.
       - name: Check Dart formatting
         run: dart format --output=none --set-exit-if-changed .
 
-      - name: Static analysis (errors and warnings fail; style infos are non-blocking)
+      - name: Static analysis
         run: |
+          set -euo pipefail
           mkdir -p build/reports
+
           set +e
-          flutter analyze --no-fatal-infos --write=build/reports/analyze.txt
+          flutter analyze \
+            --no-fatal-infos \
+            --write=build/reports/analyze.txt
           result=$?
           set -e
-          cat build/reports/analyze.txt
-          python3 scripts/annotate_analysis.py build/reports/analyze.txt
+
+          if [[ -f build/reports/analyze.txt ]]; then
+            cat build/reports/analyze.txt
+            python3 scripts/annotate_analysis.py \
+              build/reports/analyze.txt
+          fi
+
           exit "$result"
 
       - name: Unit and widget tests
         run: |
           set -euo pipefail
           mkdir -p build/reports
-          flutter test --coverage --reporter expanded 2>&1 | tee build/reports/tests.txt
+
+          flutter test \
+            --coverage \
+            --reporter expanded \
+            2>&1 | tee build/reports/tests.txt
 
       - name: Check release configuration without exposing values
         id: config
-        env:
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          AI_API_ENDPOINT: ${{ vars.AI_API_ENDPOINT || secrets.AI_API_ENDPOINT }}
-          DEEPSEEK_API_ENDPOINT: ${{ vars.DEEPSEEK_API_ENDPOINT || secrets.DEEPSEEK_API_ENDPOINT }}
-          AI_MODEL: ${{ vars.AI_MODEL || secrets.AI_MODEL }}
-          DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL || secrets.DEEPSEEK_MODEL }}
-          BAZAAR_RSA_PUBLIC_KEY: ${{ secrets.BAZAAR_RSA_PUBLIC_KEY }}
-          BAZAAR_CATALOG_CONFIRMED: ${{ vars.BAZAAR_CATALOG_CONFIRMED || secrets.BAZAAR_CATALOG_CONFIRMED }}
-          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
-          python3 scripts/build_config.py >> "$GITHUB_OUTPUT"
-          python3 scripts/build_config.py --summary >> "$GITHUB_STEP_SUMMARY"
+          set -euo pipefail
+          umask 077
+
+          config_output="$RUNNER_TEMP/android-config-output.txt"
+          trap 'rm -f -- "$config_output"' EXIT
+
+          # Expected script output:
+          # production_ready=true|false
+          # version=<pubspec version>
+          python3 scripts/build_config.py > "$config_output"
+
+          # Validate output before exposing it to later workflow steps.
+          CONFIG_OUTPUT="$config_output" python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          values = {}
+
+          for line in Path(os.environ["CONFIG_OUTPUT"]).read_text(
+              encoding="utf-8"
+          ).splitlines():
+              if not line.strip():
+                  continue
+
+              if "=" not in line:
+                  raise SystemExit("Invalid build_config.py output format.")
+
+              key, value = line.split("=", 1)
+
+              if key in {"production_ready", "version"}:
+                  if key in values:
+                      raise SystemExit(f"Duplicate configuration output: {key}")
+                  values[key] = value
+
+          if values.get("production_ready") not in {"true", "false"}:
+              raise SystemExit("production_ready must be true or false.")
+
+          version = values.get("version", "")
+          pattern = (
+              r"[0-9]+\.[0-9]+\.[0-9]+"
+              r"(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?"
+              r"(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?"
+          )
+
+          if not re.fullmatch(pattern, version):
+              raise SystemExit("Invalid or unsafe pubspec version.")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"production_ready={values['production_ready']}\n")
+              out.write(f"version={version}\n")
+          PY
+
+          python3 scripts/build_config.py --summary \
+            >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Require matching version for release tags
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          VERSION: ${{ steps.config.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_REF_NAME" != "v${VERSION}" ]]; then
+            echo "::error::Tag must exactly match v followed by the pubspec version."
+            exit 1
+          fi
 
       - name: Require production inputs for a stable tag
-        if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
         env:
-          PRODUCTION_READY: ${{ steps.config.outputs.production_ready }}
-        run: |
-          test "$PRODUCTION_READY" = true || {
-            echo '::error::Production secrets/catalog confirmation are missing. See the safe configuration summary.'
-            exit 1
-          }
-          test "refs/tags/v${{ steps.config.outputs.version }}" = "$GITHUB_REF" || {
-            echo '::error::Tag must match pubspec version'
-            exit 1
-          }
-
-      - name: Build Android artifacts
-        env:
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          AI_API_ENDPOINT: ${{ vars.AI_API_ENDPOINT || secrets.AI_API_ENDPOINT }}
-          DEEPSEEK_API_ENDPOINT: ${{ vars.DEEPSEEK_API_ENDPOINT || secrets.DEEPSEEK_API_ENDPOINT }}
-          AI_MODEL: ${{ vars.AI_MODEL || secrets.AI_MODEL }}
-          DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL || secrets.DEEPSEEK_MODEL }}
-          BAZAAR_RSA_PUBLIC_KEY: ${{ secrets.BAZAAR_RSA_PUBLIC_KEY }}
-          BAZAAR_CATALOG_CONFIRMED: ${{ vars.BAZAAR_CATALOG_CONFIRMED || secrets.BAZAAR_CATALOG_CONFIRMED }}
-          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
           PRODUCTION_READY: ${{ steps.config.outputs.production_ready }}
         run: |
           set -euo pipefail
-          trap 'rm -f android/key.properties android/app/upload-keystore.jks "$RUNNER_TEMP/ai-build-config.json"' EXIT
 
-          python3 scripts/write_build_config.py "$RUNNER_TEMP/ai-build-config.json"
-          chmod 600 "$RUNNER_TEMP/ai-build-config.json"
+          if [[ "$PRODUCTION_READY" != "true" ]]; then
+            echo "::error::Production secrets or catalog confirmation are missing. See the safe configuration summary."
+            exit 1
+          fi
+
+      - name: Build Android artifacts
+        env:
+          VERSION: ${{ steps.config.outputs.version }}
+          PRODUCTION_READY: ${{ steps.config.outputs.production_ready }}
+        run: |
+          set -euo pipefail
+          umask 077
+
+          config_file="$RUNNER_TEMP/ai-build-config.json"
+          keystore="android/app/upload-keystore.jks"
+          properties="android/key.properties"
+
+          cleanup() {
+            rm -f -- "$properties" "$keystore" "$config_file"
+          }
+
+          trap cleanup EXIT
+
+          mkdir -p build/reports/android build/installable
+
+          python3 scripts/write_build_config.py "$config_file"
+          chmod 600 "$config_file"
 
           signing=(-PciTestBuild=true)
-          if [[ -n "${RELEASE_KEYSTORE_BASE64:-}" ]]; then
-            for name in RELEASE_KEYSTORE_PASSWORD RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD; do
-              test -n "${!name}" || {
-                echo "::error::Incomplete signing configuration: $name"
-                exit 1
-              }
-            done
-            printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
-            test -s android/app/upload-keystore.jks
+
+          signing_count=0
+          for name in \
+            RELEASE_KEYSTORE_BASE64 \
+            RELEASE_KEYSTORE_PASSWORD \
+            RELEASE_KEY_ALIAS \
+            RELEASE_KEY_PASSWORD
+          do
+            if [[ -n "${!name}" ]]; then
+              signing_count=$((signing_count + 1))
+            fi
+          done
+
+          if [[ "$signing_count" -ne 0 && "$signing_count" -ne 4 ]]; then
+            echo "::error::Incomplete signing configuration. All four signing secrets must be provided together."
+            exit 1
+          fi
+
+          if [[ "$PRODUCTION_READY" == "true" &&
+                "$signing_count" -ne 4 ]]; then
+            echo "::error::Production build requires the existing release signing identity."
+            exit 1
+          fi
+
+          if [[ "$signing_count" -eq 4 ]]; then
+            mkdir -p android/app
+
+            if ! printf '%s' "$RELEASE_KEYSTORE_BASE64" |
+              base64 --decode > "$keystore"; then
+              echo "::error::RELEASE_KEYSTORE_BASE64 is invalid."
+              exit 1
+            fi
+
+            if [[ ! -s "$keystore" ]]; then
+              echo "::error::Decoded release keystore is empty."
+              exit 1
+            fi
+
+            chmod 600 "$keystore"
+
+            if ! keytool -list \
+              -keystore "$keystore" \
+              -storepass:env RELEASE_KEYSTORE_PASSWORD \
+              -alias "$RELEASE_KEY_ALIAS" \
+              >/dev/null 2>&1; then
+              echo "::error::Cannot open the existing keystore or locate its alias."
+              exit 1
+            fi
+
+            if ! keytool -certreq \
+              -keystore "$keystore" \
+              -storepass:env RELEASE_KEYSTORE_PASSWORD \
+              -alias "$RELEASE_KEY_ALIAS" \
+              -keypass:env RELEASE_KEY_PASSWORD \
+              -file /dev/null \
+              >/dev/null 2>&1; then
+              echo "::error::Cannot use the existing private key. Check the keystore type, passwords, and alias."
+              exit 1
+            fi
+
             python3 scripts/write_signing_config.py
+
+            if [[ ! -s "$properties" ]]; then
+              echo "::error::Signing configuration was not created."
+              exit 1
+            fi
+
+            chmod 600 "$properties"
             signing=()
           fi
 
           build_with_retry() {
-            local label="$1"; shift
+            local label="$1"
+            shift
+
             local log="build/reports/android/build-${label}.txt"
-            mkdir -p build/reports/android
+            local status=1
+
             for attempt in 1 2 3; do
+              # Remove stale evidence before every attempt.
+              rm -f -- "$log"
+
               if python3 scripts/flutter_build.py "$@"; then
                 return 0
-              fi
-              if [[ -f "$log" ]] && grep -Eq \
-                'SocketTimeoutException|HTTP response code: 5|Downloading from|Read timed out|Could not GET|Could not HEAD' \
-                "$log"; then
-                echo "::warning::Transient build/download failure; retrying ${label} (attempt ${attempt})"
-                sleep 20
               else
-                return 1
+                status=$?
+              fi
+
+              if [[ "$attempt" -eq 3 ]]; then
+                return "$status"
+              fi
+
+              # Retry only recognizable network/download failures.
+              # "Downloading from" alone is not evidence of a failure.
+              if [[ -f "$log" ]] && grep -Eq \
+                'SocketTimeoutException|HTTP response code: 5[0-9]{2}|Read timed out|Connect timed out|Connection reset|Could not GET|Could not HEAD|Temporary failure in name resolution' \
+                "$log"; then
+                echo "::warning::Transient build/download failure; retrying ${label} after attempt ${attempt}."
+                sleep $((attempt * 20))
+              else
+                return "$status"
               fi
             done
-            return 1
+
+            return "$status"
           }
 
           build_with_retry apk-arm64 apk \
             --release \
             --target-platform android-arm64 \
-            --dart-define-from-file="$RUNNER_TEMP/ai-build-config.json" \
+            --dart-define-from-file="$config_file" \
             "${signing[@]}"
 
-          mkdir -p build/reports/android build/installable
-          cp build/app/outputs/flutter-apk/app-release.apk \
-            "build/installable/MoshaverTahsili-${{ steps.config.outputs.version }}-arm64.apk"
+          source_apk="build/app/outputs/flutter-apk/app-release.apk"
+          target_apk="build/installable/MoshaverTahsili-${VERSION}-arm64.apk"
 
-          python3 scripts/apk_size_report.py build/installable build/reports/android
-          cat build/reports/android/summary.md >> "$GITHUB_STEP_SUMMARY"
+          if [[ ! -s "$source_apk" ]]; then
+            echo "::error::Expected release APK was not produced."
+            exit 1
+          fi
+
+          cp -- "$source_apk" "$target_apk"
+          chmod 644 "$target_apk"
+
+          python3 scripts/apk_size_report.py \
+            build/installable \
+            build/reports/android
+
+          # Store checksums next to the installable files.
+          (
+            cd build/installable
+            sha256sum -- *.apk > SHA256SUMS
+          )
 
       - name: Verify release signature
         env:
+          VERSION: ${{ steps.config.outputs.version }}
           PRODUCTION_READY: ${{ steps.config.outputs.production_ready }}
         run: |
           set -euo pipefail
-          signer=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
-          "$signer" verify --verbose --print-certs build/installable/*-arm64.apk \
-            > build/reports/android/signature.txt
-          python3 scripts/check_signer.py build/reports/android/signature.txt
 
-      - name: Upload installable test artifacts
-        uses: actions/upload-artifact@v7
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+
+          if [[ -z "$sdk_root" || ! -d "$sdk_root/build-tools" ]]; then
+            echo "::error::Android SDK build-tools directory was not found."
+            exit 1
+          fi
+
+          signer="$(
+            find "$sdk_root/build-tools" \
+              -type f \
+              -name apksigner |
+              sort -V |
+              tail -n 1
+          )"
+
+          if [[ -z "$signer" || ! -x "$signer" ]]; then
+            echo "::error::apksigner was not found."
+            exit 1
+          fi
+
+          "$signer" verify \
+            --verbose \
+            --print-certs \
+            "build/installable/MoshaverTahsili-${VERSION}-arm64.apk" \
+            > build/reports/android/signature.txt
+
+          python3 scripts/check_signer.py \
+            build/reports/android/signature.txt
+
+      - name: Prepare artifact name
+        id: artifact
+        env:
+          VERSION: ${{ steps.config.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          echo "name=android-${VERSION}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            >> "$GITHUB_OUTPUT"
+
+      - name: Redact known sensitive values from text reports
+        if: always()
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from urllib.parse import quote
+
+          names = (
+              "AI_API_KEY",
+              "DEEPSEEK_API_KEY",
+              "RELEASE_KEYSTORE_BASE64",
+              "RELEASE_KEYSTORE_PASSWORD",
+              "RELEASE_KEY_PASSWORD",
+          )
+
+          replacements = set()
+
+          for name in names:
+              value = os.environ.get(name, "")
+              if not value:
+                  continue
+
+              replacements.add(value)
+              replacements.add(json.dumps(value, ensure_ascii=False)[1:-1])
+              replacements.add(quote(value, safe=""))
+
+              # Also redact long individual lines of multiline secrets.
+              for line in value.splitlines():
+                  if len(line) >= 8:
+                      replacements.add(line)
+
+          replacements = sorted(
+              (value for value in replacements if value),
+              key=len,
+              reverse=True,
+          )
+
+          root = Path("build/reports")
+          allowed_suffixes = {
+              ".txt", ".log", ".md", ".json", ".xml", ".csv", ".html"
+          }
+
+          if root.exists():
+              for path in root.rglob("*"):
+                  if (
+                      not path.is_file()
+                      or path.is_symlink()
+                      or path.suffix.lower() not in allowed_suffixes
+                  ):
+                      continue
+
+                  text = path.read_text(encoding="utf-8", errors="replace")
+                  redacted = text
+
+                  for value in replacements:
+                      redacted = redacted.replace(value, "[REDACTED]")
+
+                  if redacted != text:
+                      path.write_text(redacted, encoding="utf-8")
+          PY
+
+      - name: Publish Android size summary
+        if: success()
+        run: |
+          set -euo pipefail
+
+          if [[ -f build/reports/android/summary.md ]]; then
+            cat build/reports/android/summary.md \
+              >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
         with:
-          name: android-${{ steps.config.outputs.version }}-${{ github.sha }}
+          name: ${{ steps.artifact.outputs.name }}
           path: |
             build/installable/
-            build/reports/android/
+            build/reports/android/summary.md
+            build/reports/android/signature.txt
             pubspec.lock
           if-no-files-found: error
           retention-days: 14
+          compression-level: 0
 
       - name: Publish failure diagnostics to job summary
         if: failure()
         run: |
+          set -euo pipefail
+
           python3 - <<'PY'
           import os
           from pathlib import Path
-          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as output:
-              output.write('\n## Failure diagnostics\n')
-              for path in sorted(Path('build/reports').rglob('*.txt')):
-                  output.write(f'\n### {path.name}\n\n```text\n')
-                  output.write('\n'.join(path.read_text(errors='replace').splitlines()[-160:]))
-                  output.write('\n```\n')
+
+          root = Path("build/reports")
+
+          with open(
+              os.environ["GITHUB_STEP_SUMMARY"],
+              "a",
+              encoding="utf-8",
+          ) as output:
+              output.write("\n## Failure diagnostics\n")
+
+              if not root.exists():
+                  output.write("\nNo diagnostic reports were generated.\n")
+              else:
+                  paths = sorted(
+                      path
+                      for path in root.rglob("*.txt")
+                      if path.is_file() and not path.is_symlink()
+                  )
+
+                  for path in paths[:10]:
+                      lines = path.read_text(
+                          encoding="utf-8",
+                          errors="replace",
+                      ).splitlines()[-100:]
+
+                      text = "\n".join(lines)[-12000:]
+                      text = text.replace("```", "` ` `")
+
+                      output.write(f"\n### {path.name}\n\n```text\n")
+                      output.write(text)
+                      output.write("\n```\n")
           PY
 
       - name: Upload test evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
-          name: test-evidence-${{ github.sha }}
+          name: test-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             coverage/lcov.info
-            build/reports/
+            build/reports/**/*.txt
+            build/reports/**/*.log
+            build/reports/**/*.md
+            build/reports/**/*.json
+            build/reports/**/*.xml
+            build/reports/**/*.csv
           if-no-files-found: ignore
           retention-days: 14
 
+      - name: Clean temporary signing and build configuration files
+        if: always()
+        run: |
+          set -euo pipefail
+
+          rm -f -- \
+            android/key.properties \
+            android/app/upload-keystore.jks \
+            "$RUNNER_TEMP/ai-build-config.json" \
+            "$RUNNER_TEMP/android-config-output.txt"
 
   android-smoke:
-    needs: validate-and-build
+    needs:
+      - validate-and-build
+
     runs-on: ubuntu-24.04
     timeout-minutes: 35
-    steps:
-      - uses: actions/checkout@v7
 
-      - name: Set up Java (with Gradle cache)
-        uses: actions/setup-java@v6
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
+      - name: Set up Gradle and validate wrapper
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          validate-wrappers: true
+          cache-read-only: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
 
-      - uses: subosito/flutter-action@v2.23.0
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
         with:
           flutter-version-file: .fvmrc
           channel: stable
           cache: true
-          pub-cache: true
 
-      - run: flutter pub get --enforce-lockfile
+      - name: Resolve locked dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: Check smoke-test scripts
+        run: |
+          set -euo pipefail
+
+          for file in \
+            scripts/android_smoke.sh \
+            scripts/annotate_log.py
+          do
+            if [[ ! -f "$file" ]]; then
+              echo "::error::Required smoke-test script is missing: $file"
+              exit 1
+            fi
+          done
 
       - name: Enable emulator acceleration
         run: |
+          set -euo pipefail
+
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
             | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Smoke-test app on Android emulator (temporary debug build)
-        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+          if [[ ! -e /dev/kvm ]]; then
+            echo "::error::KVM acceleration is unavailable."
+            exit 1
+          fi
+
+      # This tests a temporary debug build.
+      # It does not install or test the arm64 release APK.
+      - name: Smoke-test app on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
           target: google_apis
@@ -278,46 +718,110 @@ jobs:
           profile: pixel_6
           disable-animations: true
           emulator-boot-timeout: 1200
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          emulator-options: >-
+            -no-window
+            -gpu swiftshader_indirect
+            -no-snapshot
+            -noaudio
+            -no-boot-anim
           script: bash scripts/android_smoke.sh
 
       - name: Annotate Android smoke failure
         if: failure()
         run: |
-          python3 scripts/annotate_log.py \
+          set -euo pipefail
+
+          logs=()
+
+          for file in \
             build/reports/device/app-integration.txt \
             build/reports/device/secure-storage-integration.txt \
             build/reports/device/install.txt \
             build/reports/device/launch.txt \
             build/reports/device/crash-log.txt
+          do
+            if [[ -f "$file" ]]; then
+              logs+=("$file")
+            fi
+          done
+
+          if [[ "${#logs[@]}" -gt 0 &&
+                -f scripts/annotate_log.py ]]; then
+            python3 scripts/annotate_log.py "${logs[@]}"
+          else
+            echo "::warning::No Android smoke diagnostic logs are available."
+          fi
 
       - name: Upload emulator evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
-          name: android-emulator-evidence-${{ github.sha }}
+          name: android-emulator-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/reports/device/
           if-no-files-found: ignore
           retention-days: 14
 
-
   publish:
-    needs: [validate-and-build, android-smoke]
-    # استفاده از github.event.inputs برای سازگاری با workflow_dispatch
+    needs:
+      - validate-and-build
+      - android-smoke
+
     if: >-
-      startsWith(github.ref, 'refs/tags/v') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.publish_candidate == 'true')
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' &&
+       inputs.publish_candidate &&
+       github.ref == 'refs/heads/main')
+
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+
     permissions:
       contents: write
+
     steps:
-      - uses: actions/download-artifact@v8
+      - name: Download Android artifacts
+        uses: actions/download-artifact@v4
         with:
-          name: android-${{ needs.validate-and-build.outputs.version }}-${{ github.sha }}
+          name: ${{ needs.validate-and-build.outputs.artifact_name }}
           path: release-files
 
-      - name: Publish only honestly labelled releases
+      - name: Validate release assets
+        run: |
+          set -euo pipefail
+
+          # The upload paths have the repository root as their common
+          # ancestor, so build/installable is preserved after download.
+          installable="release-files/build/installable"
+
+          if [[ ! -d "$installable" ]]; then
+            echo "::error::Downloaded artifact does not contain build/installable."
+            exit 1
+          fi
+
+          mapfile -d '' -t apks < <(
+            find "$installable" \
+              -maxdepth 1 \
+              -type f \
+              -name '*-arm64.apk' \
+              -print0
+          )
+
+          if [[ "${#apks[@]}" -ne 1 ]]; then
+            echo "::error::Expected exactly one arm64 APK."
+            exit 1
+          fi
+
+          if [[ ! -s "$installable/SHA256SUMS" ]]; then
+            echo "::error::APK checksum file is missing."
+            exit 1
+          fi
+
+          (
+            cd "$installable"
+            sha256sum -c SHA256SUMS
+          )
+
+      - name: Publish honestly labelled release
         env:
           GH_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
@@ -325,27 +829,124 @@ jobs:
           READY: ${{ needs.validate-and-build.outputs.production_ready }}
         run: |
           set -euo pipefail
-          mapfile -t files < <(find release-files/build/installable -type f | sort)
 
-          if [[ "$GITHUB_REF" == refs/tags/v* && "$GITHUB_REF_NAME" != *-* && "$READY" == true ]]; then
-            gh release create "$GITHUB_REF_NAME" "${files[@]}" \
-              --verify-tag \
-              --title "سیمرغ $VERSION" \
-              --notes 'نسخه انتشار با امضای خصوصی، سرویس هوش مصنوعی پیکربندی‌شده و کاتالوگ تأییدشده بازار. آزمون پرداخت واقعی روی گوشی باید در پرونده انتشار ثبت شود.'
+          installable="release-files/build/installable"
+
+          mapfile -d '' -t files < <(
+            find "$installable" \
+              -maxdepth 1 \
+              -type f \
+              -name '*.apk' \
+              -print0
+          )
+
+          files+=("$installable/SHA256SUMS")
+
+          # Attach only selected public reports, not raw build logs.
+          for report in \
+            release-files/build/reports/android/summary.md \
+            release-files/build/reports/android/signature.txt \
+            release-files/pubspec.lock
+          do
+            if [[ -f "$report" ]]; then
+              files+=("$report")
+            fi
+          done
+
+          stable=false
+
+          if [[ "$GITHUB_EVENT_NAME" == "push" &&
+                "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="$GITHUB_REF_NAME"
+
+            if [[ "$tag" != "v${VERSION}" ]]; then
+              echo "::error::Tag and application version do not match."
+              exit 1
+            fi
+
+            if [[ "$tag" != *-* ]]; then
+              if [[ "$READY" != "true" ]]; then
+                echo "::error::A stable release requires production_ready=true."
+                exit 1
+              fi
+
+              stable=true
+            fi
           else
-            notes='این نسخه برای نصب و آزمون است، نه انتشار تجاری. ممکن است با کلید debug امضا شده باشد یا کلید AI/تأیید کاتالوگ بازار نداشته باشد. گزارش پیکربندی و اندازه‌ها در پیوست موجود است. پرداخت و ارتباط واقعی تنها در صورت پیکربندی و آزمون مستقل تأیید می‌شوند.'
-            if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-              gh release create "$GITHUB_REF_NAME" "${files[@]}" \
+            if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+              echo "::error::Manual publication is allowed only from main."
+              exit 1
+            fi
+
+            tag="v${VERSION}-test.${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
+          fi
+
+          # Do not silently replace assets of an existing release.
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "::error::A release already exists for this tag. Existing releases are not overwritten."
+            exit 1
+          fi
+
+          notes_file="$RUNNER_TEMP/android-release-notes.md"
+          trap 'rm -f -- "$notes_file"' EXIT
+
+          if [[ "$stable" == "true" ]]; then
+            cat > "$notes_file" <<'TXT'
+          ## نسخه انتشار
+
+          - پیکربندی تولید و تأیید کاتالوگ طبق کنترل‌های خودکار پروژه بررسی شده‌اند.
+          - APK با هویت امضای موجود ساخته شده و بررسی امضا انجام شده است.
+          - بررسی ایستا، آزمون‌های unit/widget و smoke test اندروید موفق بوده‌اند.
+          - smoke test روی ساخت debug موقت اجرا شده است، نه روی APK انتشار پیوست.
+          - فایل SHA256SUMS و گزارش امضا در پیوست قرار دارند.
+
+          آزمون پرداخت واقعی، ارتباط واقعی سرویس‌ها و نصب APK انتشار روی گوشی باید جداگانه انجام و در پرونده انتشار ثبت شوند. موفقیت CI به‌تنهایی تأییدکننده این موارد نیست.
+          TXT
+
+            gh release create "$tag" "${files[@]}" \
+              --verify-tag \
+              --latest \
+              --title "سیمرغ $VERSION" \
+              --notes-file "$notes_file"
+          else
+            cat > "$notes_file" <<'TXT'
+          ## NON-PRODUCTION — نسخه آزمایشی
+
+          این نسخه فقط برای نصب و آزمون است و تأیید انتشار تجاری ندارد.
+
+          - ممکن است با کلید debug امضا شده باشد.
+          - ممکن است پیکربندی AI یا تأیید کاتالوگ بازار را نداشته باشد.
+          - موفقیت CI به معنای تأیید پرداخت واقعی یا ارتباط واقعی سرویس‌ها نیست.
+          - smoke test روی ساخت debug موقت اجرا شده است، نه روی APK انتشار پیوست.
+          - نصب APK پیوست و آزمون آن روی گوشی باید جداگانه انجام شود.
+          - فایل SHA256SUMS و گزارش‌های منتخب در پیوست قرار دارند.
+
+          این نسخه را جایگزین نسخه تولید نکنید.
+          TXT
+
+            if [[ "$GITHUB_EVENT_NAME" == "push" &&
+                  "$GITHUB_REF" == refs/tags/v* ]]; then
+              gh release create "$tag" "${files[@]}" \
                 --verify-tag \
                 --prerelease \
-                --title "نسخه آزمایشی $VERSION" \
-                --notes "$notes"
+                --latest=false \
+                --title "NON-PRODUCTION — نسخه آزمایشی $VERSION" \
+                --notes-file "$notes_file"
             else
-              tag="v${VERSION}-test.${GITHUB_RUN_NUMBER}"
               gh release create "$tag" "${files[@]}" \
                 --target "$GITHUB_SHA" \
                 --prerelease \
-                --title "نسخه آزمایشی $VERSION (ساخت $GITHUB_RUN_NUMBER)" \
-                --notes "$notes"
+                --latest=false \
+                --title "NON-PRODUCTION — نسخه آزمایشی $VERSION (ساخت $GITHUB_RUN_NUMBER)" \
+                --notes-file "$notes_file"
             fi
           fi
+
+          {
+            echo "## Android release published"
+            echo
+            printf -- '- Tag: `%s`\n' "$tag"
+            printf -- '- Production release: `%s`\n' "$stable"
+            echo "- APK checksum verification passed."
+            echo "- Existing release assets were not overwritten."
+          } >> "$GITHUB_STEP_SUMMARY"
