@@ -74,7 +74,7 @@ jobs:
           set -euo pipefail
           dart format lib test integration_test
 
-          if git diff --quiet -- lib test; then
+          if git diff --quiet -- lib test integration_test; then
             echo "Dart sources are already formatted."
             exit 0
           fi
