@@ -636,7 +636,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('شروع تدریس با سیمرغ'), findsOneWidget);
       await tester.enterText(find.byType(TextField).last, 'کسرها');
-      await tester.tap(find.widgetWithText(FilledButton, 'شروع ارزیابی'));
+      await tester.tap(find.text('شروع ارزیابی'));
       await tester.pumpAndSettle();
 
       Future<void> answer(String value) async {
