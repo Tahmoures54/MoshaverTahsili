@@ -208,7 +208,7 @@ String buildFamilyProgressReport({
     if (hasValidAdherence)
       'از ${faNumber(report.adherenceSample)} کار دارای موعد '
           'در بازه بررسی ۱۴ روزه، '
-          '${faNumber((adherence! * 100).round())}٪ '
+          '${faNumber(((adherence ?? 0) * 100).round())}٪ '
           'تکمیل شده است.',
     'این اعداد از اطلاعات واردشده در برنامه به دست می‌آیند؛ '
         'زمان واقعی مطالعه یا کیفیت یادگیری را '
