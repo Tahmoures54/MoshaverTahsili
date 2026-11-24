@@ -8,9 +8,11 @@ SimorghTeachingSession _diagnosedSession(
 }) {
   var session = SimorghTeachingEngine.start(topic: topic, grade: grade);
 
-  for (var index = 0;
-      index < SimorghTeachingEngine.diagnosticQuestionLimit;
-      index++) {
+  for (
+    var index = 0;
+    index < SimorghTeachingEngine.diagnosticQuestionLimit;
+    index++
+  ) {
     session = SimorghTeachingEngine.recordDiagnostic(
       session,
       index < correctAnswers
@@ -49,10 +51,7 @@ SimorghTeachingSession _reteachSession(
   );
 }
 
-SimorghTeachingSession _masteryCheckSession(
-  String topic, {
-  String grade = '',
-}) {
+SimorghTeachingSession _masteryCheckSession(String topic, {String grade = ''}) {
   return SimorghTeachingEngine.recordPractice(
     session: _guidedPracticeSession(topic, grade: grade),
     outcome: SimorghAnswerOutcome.correct,
