@@ -725,7 +725,7 @@ void main() {
       expect(store.teachingSessions.single['reteachCount'], 1);
       expect(
         store.messages.last['content'],
-        contains('پاسخ آموزشی ساختار معتبری نداشت'),
+        contains('پاسخ آموزشی قالب معتبری نداشت'),
       );
 
       // Continue through reteaching, guided practice and all three transfer
