@@ -42,17 +42,16 @@ from pathlib import Path
 VERIFY_TIMEOUT_SECONDS = 120
 
 SHA256_PATTERN = re.compile(
-    r"^Signer #(?P<signer>[1-9][0-9]*) "
+    r"^[ \t]*Signer #[ \t]*(?P<signer>[1-9][0-9]*)[ \t]+"
     r"certificate SHA-256 digest:[ \t]*"
-    r"(?P<fingerprint>(?:[0-9a-fA-F]{64}|"
-    r"[0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){31}))[ \t]*$",
-    re.MULTILINE,
+    r"(?P<fingerprint>[^\r\n]+?)[ \t]*$",
+    re.MULTILINE | re.IGNORECASE,
 )
 
 DN_PATTERN = re.compile(
-    r"^Signer #(?P<signer>[1-9][0-9]*) "
-    r"certificate DN:[ \t]*(?P<dn>[^\r\n]*)$",
-    re.MULTILINE,
+    r"^[ \t]*Signer #[ \t]*(?P<signer>[1-9][0-9]*)[ \t]+"
+    r"certificate DN:[ \t]*(?P<dn>[^\r\n]*)[ \t]*$",
+    re.MULTILINE | re.IGNORECASE,
 )
 
 DEBUG_CN_PATTERN = re.compile(
@@ -77,16 +76,10 @@ def emit_error(message: str) -> None:
 def normalize_sha256(value: str) -> str:
     """Accept plain hex or 32 colon-separated hexadecimal octets."""
 
-    value = value.strip()
+    value = re.sub(r"[:\s]", "", value.strip())
 
     if re.fullmatch(r"[0-9a-fA-F]{64}", value):
         return value.upper()
-
-    if re.fullmatch(
-        r"[0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){31}",
-        value,
-    ):
-        return value.replace(":", "").upper()
 
     raise ConfigurationError(
         "EXPECTED_RELEASE_CERT_SHA256 must contain a valid "
@@ -234,35 +227,49 @@ def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
     # Android SDK builds may write certificate details to either stream.
     # Parse both while retaining the process exit code as the trust signal.
     output = f"{stdout}\n{stderr}"
+    output = output.replace("\r\n", "\n").replace("\r", "\n")
 
-    fingerprints = list(SHA256_PATTERN.finditer(output))
+    # Parse only normalized hexadecimal fingerprints. Ignore unrelated
+    # certificate digest lines (for example SHA-1 and MD5).
+    fingerprints: list[tuple[str, str]] = []
+    for match in SHA256_PATTERN.finditer(output):
+        try:
+            normalized = normalize_sha256(match.group("fingerprint"))
+        except ConfigurationError:
+            continue
+        fingerprints.append((match.group("signer"), normalized))
 
-    # Explicit single-signer policy. Supporting multiple current signers
-    # requires a separate allowlist policy.
-    if len(fingerprints) != 1:
+    # Repeated identical records are harmless; different signers or
+    # fingerprints require a separate explicit multi-signer policy.
+    unique_fingerprints = set(fingerprints)
+    if len(unique_fingerprints) != 1:
         raise VerificationError(
-            "Expected exactly one signer certificate SHA-256 record."
+            "Expected one unique signer certificate SHA-256 record; "
+            f"found {len(unique_fingerprints)}."
         )
 
-    fingerprint_match = fingerprints[0]
-
-    if fingerprint_match.group("signer") != "1":
+    signer, fingerprint = next(iter(unique_fingerprints))
+    if signer != "1":
         raise VerificationError(
             "Unexpected signer identifier in apksigner output."
         )
 
     distinguished_names = list(DN_PATTERN.finditer(output))
-
-    if (
-        len(distinguished_names) != 1
-        or distinguished_names[0].group("signer") != "1"
-    ):
+    unique_names = {
+        (match.group("signer"), match.group("dn"))
+        for match in distinguished_names
+    }
+    if len(unique_names) != 1:
         raise VerificationError(
-            "Could not identify a single signer certificate DN."
+            "Expected one unique signer certificate DN; "
+            f"found {len(unique_names)}."
         )
 
-    fingerprint = fingerprint_match.group("fingerprint").replace(":", "").upper()
-    distinguished_name = distinguished_names[0].group("dn")
+    signer_name, distinguished_name = next(iter(unique_names))
+    if signer_name != "1":
+        raise VerificationError(
+            "Unexpected signer identifier in certificate DN."
+        )
 
     # A DN marker is only a heuristic; pinning is the identity check.
     is_debug = bool(DEBUG_CN_PATTERN.search(distinguished_name))
