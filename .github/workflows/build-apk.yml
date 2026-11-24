@@ -72,7 +72,7 @@ jobs:
       - name: Format lib and test
         run: |
           set -euo pipefail
-          dart format lib test
+          dart format lib test integration_test
 
           if git diff --quiet -- lib test; then
             echo "Dart sources are already formatted."
@@ -217,7 +217,7 @@ jobs:
         run: python3 scripts/security_check.py
 
       - name: Check Dart formatting
-        run: dart format --output=none --set-exit-if-changed .
+        run: dart format --output=none --set-exit-if-changed lib test integration_test
 
       - name: Static analysis
         run: |
