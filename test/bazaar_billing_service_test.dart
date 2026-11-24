@@ -197,7 +197,7 @@ void main() {
       final result = await service.restorePurchases();
       expect(result.skipped, 3);
       expect(result.credited, 0);
-      expect(result.message, contains('پری اضافه نشد'));
+      expect(result.message, contains('مورد نامعتبر یا نامرتبط پردازش نشد'));
       expect(store.credits, 5);
       expect(gateway.consumes, 0);
     },
@@ -287,7 +287,7 @@ void main() {
           isA<BillingException>().having(
             (error) => error.message,
             'safe timeout',
-            contains('خریدهای قبلی را بازیابی کن'),
+            contains('خریدها را بازیابی کن'),
           ),
         ),
       );
