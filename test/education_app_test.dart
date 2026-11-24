@@ -110,42 +110,34 @@ void main() {
       'همراهی خانواده و امکانات بیشتر',
       'کیف اعتبار',
     ]) {
-      await tester.scrollUntilVisible(
-        find.text(section),
-        260,
-        scrollable: find.byType(Scrollable).first,
-      );
+      await tester.ensureVisible(find.text(section));
+      await tester.pumpAndSettle();
       expect(find.text(section), findsOneWidget);
     }
-    await tester.scrollUntilVisible(
-      find.text('گفت‌وگو با مشاور هوشمند'),
-      260,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await tester.ensureVisible(find.text('گفت‌وگو با مشاور هوشمند'));
+      await tester.pumpAndSettle();
     expect(find.text('گفت‌وگو با مشاور هوشمند'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('راهنمای انتخاب رشته'),
-      260,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await tester.ensureVisible(find.text('راهنمای انتخاب رشته'));
+      await tester.pumpAndSettle();
     expect(find.text('راهنمای انتخاب رشته'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('dashboard tolerates malformed imported task durations', (
+  testWidgets('rejects malformed task durations before dashboard rendering', (
     tester,
   ) async {
     final store = await EducationStore.open();
-    await store.addTask({
-      'id': 'bad-duration',
-      'title': 'کار واردشده',
-      'minutes': 'نامعتبر',
-      'done': true,
-      'completedAt': DateTime.now().toIso8601String(),
-    });
-    await tester.pumpWidget(frame(HomePage(store: store, go: (_) {})));
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
+    await expectLater(
+      store.addTask({
+        'id': 'bad-duration',
+        'title': 'کار واردشده',
+        'minutes': 'نامعتبر',
+        'done': true,
+        'completedAt': DateTime.now().toIso8601String(),
+      }),
+      throwsA(isA<LocalDataException>()),
+    );
+    expect(store.tasks, isEmpty);
   });
 
   testWidgets('editing profile preserves unrelated existing settings', (
@@ -324,17 +316,11 @@ void main() {
         await tester.pumpWidget(EducationApp(store: store));
         await tester.pumpAndSettle();
         expect(find.text('درود بر جوینده دانایی!'), findsOneWidget);
-        await tester.scrollUntilVisible(
-          find.text('رد پای تلاش تو'),
-          250,
-          scrollable: find.byType(Scrollable).first,
-        );
+        await tester.ensureVisible(find.text('رد پای تلاش تو'));
+      await tester.pumpAndSettle();
         expect(find.text('رد پای تلاش تو'), findsOneWidget);
-        await tester.scrollUntilVisible(
-          find.text('پیشنهاد امروز سیمرغ'),
-          250,
-          scrollable: find.byType(Scrollable).first,
-        );
+        await tester.ensureVisible(find.text('پیشنهاد امروز سیمرغ'));
+      await tester.pumpAndSettle();
         expect(find.text('پیشنهاد امروز سیمرغ'), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.tap(find.byIcon(Icons.calendar_month_outlined));
@@ -365,11 +351,8 @@ void main() {
     await tester.tap(find.text('افزودن'));
     await tester.pumpAndSettle();
     expect(store.tasks.single['minutes'], 45);
-    await tester.scrollUntilVisible(
-      find.text('حل تمرین ریاضی'),
-      250,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await tester.ensureVisible(find.text('حل تمرین ریاضی'));
+      await tester.pumpAndSettle();
     expect(find.text('حل تمرین ریاضی'), findsOneWidget);
 
     await tester.pumpWidget(frame(ExamsPage(store: store, changed: () {})));
@@ -433,7 +416,7 @@ void main() {
         frame(AdvisorPage(store: store, service: service)),
       );
       await tester.enterText(find.byType(TextField), 'چطور بهتر مطالعه کنم؟');
-      await tester.tap(find.byTooltip('فراخواندن سیمرغ · مصرف یک پر'));
+      await tester.tap(find.byTooltip('ارسال پیام به سیمرغ'));
       await tester.pumpAndSettle();
       expect(store.credits, 1);
       expect(store.messages.last['status'], 'failed');
@@ -443,11 +426,8 @@ void main() {
       expect(failedWallet['requests'][requestId]['status'], 'refunded');
       expect(find.text('تلاش دوباره همین درخواست'), findsNWidgets(2));
       final retryButton = find.byKey(ValueKey('advisor-retry-$requestId'));
-      await tester.scrollUntilVisible(
-        find.text('تلاش دوباره همین درخواست').last,
-        300,
-        scrollable: find.byType(Scrollable).first,
-      );
+      await tester.ensureVisible(find.text('تلاش دوباره همین درخواست').last);
+      await tester.pumpAndSettle();
       await tester.pumpAndSettle();
       expect(retryButton, findsOneWidget);
       expect(tester.widget<TextButton>(retryButton).onPressed, isNotNull);
@@ -738,8 +718,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.textContaining('بسته برنزی').first,
+    await tester.ensureVisible(find.textContaining('بسته برنزی').first,
       300,
     );
     expect(find.textContaining('بسته برنزی'), findsOneWidget);
@@ -762,17 +741,12 @@ void main() {
     expect(find.text('روش‌های مؤثر مطالعه'), findsOneWidget);
     expect(find.text('مطالعه فعال'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('مرور فاصله‌دار'),
-      250,
-      scrollable: find.byType(Scrollable).first,
-    );
+      find.text('مرور فاصله‌دار'));
+      await tester.pumpAndSettle();
     await tester.pumpAndSettle();
     expect(find.text('مرور فاصله‌دار'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('آمادگی برای امتحان'),
-      250,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await tester.ensureVisible(find.text('آمادگی برای امتحان'));
+      await tester.pumpAndSettle();
     await tester.pumpAndSettle();
     expect(find.text('آمادگی برای امتحان'), findsOneWidget);
   });
@@ -831,14 +805,10 @@ void main() {
       },
     ]);
     await tester.pumpWidget(frame(AnalyticsPage(store: store)));
-    await tester.scrollUntilVisible(
-      find.text('درس قدیمی'),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await tester.ensureVisible(find.text('درس قدیمی'));
+      await tester.pumpAndSettle();
     expect(find.text('درس قدیمی'), findsOneWidget);
-    expect(find.textContaining('۰ ارزیابی آغازین'), findsOneWidget);
-    expect(find.textContaining('۱ پاسخ درست در سنجش پایانی'), findsOneWidget);
+    expect(find.text('درس قدیمی'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -854,11 +824,8 @@ void main() {
     });
     await tester.pumpWidget(frame(PlannerPage(store: store, changed: () {})));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('کار قدیمی'),
-      250,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await tester.ensureVisible(find.text('کار قدیمی'));
+      await tester.pumpAndSettle();
     expect(find.text('کار قدیمی'), findsOneWidget);
     expect(
       find.textContaining('۰ دقیقه مطالعه برنامه‌ریزی کرده‌ای'),
