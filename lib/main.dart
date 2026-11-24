@@ -7,14 +7,18 @@ import 'package:flutter/material.dart';
 
 import 'education_app.dart';
 
-/// Shared entry point for reporting unexpected errors.
+/// گزارش خطاهای پیش‌بینی‌نشده.
 ///
-/// Developer logging is invoked in every build mode.
-/// This is not persistent storage or a remote crash-reporting service.
+/// developer.log در همه حالت‌های اجرا فراخوانی می‌شود؛
+/// اما ذخیره‌سازی دائمی یا سرویس آنلاین گزارش خرابی نیست.
+///
+/// هنگام اضافه‌کردن گزارش آنلاین، اطلاعات حساس کاربر
+/// باید پیش از ارسال از خطاها و لاگ‌ها حذف شوند.
 void _reportError(
   Object error,
   StackTrace stackTrace, {
   required String source,
+  bool printDebug = true,
 }) {
   developer.log(
     'Unhandled error in $source',
@@ -24,7 +28,7 @@ void _reportError(
     stackTrace: stackTrace,
   );
 
-  if (kDebugMode) {
+  if (kDebugMode && printDebug) {
     debugPrint('moshaver_tahsili [$source]: $error');
     debugPrintStack(stackTrace: stackTrace);
   }
@@ -33,22 +37,26 @@ void _reportError(
 void main() {
   runZonedGuarded<void>(
     () {
-      // Initialize the binding and run the app in the same zone.
+      // Binding و runApp باید در یک Zone اجرا شوند.
       WidgetsFlutterBinding.ensureInitialized();
 
-      // Handle errors caught by the Flutter framework.
+      // خطاهایی که فریم‌ورک Flutter دریافت می‌کند.
       FlutterError.onError = (FlutterErrorDetails details) {
-        // Preserve Flutter's standard error output.
+        // حفظ نمایش استاندارد خطا توسط Flutter.
         FlutterError.presentError(details);
 
         _reportError(
           details.exception,
           details.stack ?? StackTrace.current,
           source: 'Flutter framework',
+
+          // presentError خروجی استاندارد را نمایش داده است؛
+          // چاپ مجدد پیام و stack trace لازم نیست.
+          printDebug: false,
         );
       };
 
-      // Handle unhandled errors delivered by the Flutter engine.
+      // خطاهای مدیریت‌نشده‌ای که به Flutter engine می‌رسند.
       PlatformDispatcher.instance.onError = (
         Object error,
         StackTrace stackTrace,
@@ -59,14 +67,16 @@ void main() {
           source: 'Platform dispatcher',
         );
 
-        // The error has been reported by this handler.
+        // جلوگیری از گزارش fallback موتور.
+        // این مقدار به معنای بازیابی برنامه پس از خطا نیست.
         return true;
       };
 
       runApp(const EducationApp());
     },
+
+    // خطاهای مدیریت‌نشده در Zone برنامه.
     (Object error, StackTrace stackTrace) {
-      // Handle uncaught errors in this zone.
       _reportError(
         error,
         stackTrace,
