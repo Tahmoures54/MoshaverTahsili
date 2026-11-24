@@ -5,7 +5,8 @@ on:
     branches:
       - main
       - 'arena/**'
-      - 'release/**'
+      # Release branches are validated by pull_request events to avoid
+      # duplicate push/PR runs cancelling each other in the shared group.
     tags:
       - 'v*'
 
