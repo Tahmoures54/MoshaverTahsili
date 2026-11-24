@@ -55,9 +55,9 @@ class CheckSignerTests(unittest.TestCase):
     def test_accepts_alternate_build_tools_certificate_labels(self) -> None:
         digest = "12" * 32
         output = (
-            "Verifies\\n"
-            "  Signer #1 DN: CN=CI Validation,O=Temporary Build,C=US\\n"
-            f"  Signer #1 SHA-256 digest: {digest}\\n"
+            "Verifies\n"
+            "  Signer #1 DN: CN=CI Validation,O=Temporary Build,C=US\n"
+            f"  Signer #1 SHA-256 digest: {digest}\n"
         )
 
         with tempfile.TemporaryDirectory() as directory:
