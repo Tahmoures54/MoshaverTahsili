@@ -58,7 +58,7 @@ void main() {
     }
   });
   test(
-    'limits historical crisis carryover to three recent completed user turns',
+    'retains historical crisis signals across later neutral user turns',
     () {
       final history = [
         {
@@ -90,12 +90,12 @@ void main() {
           'لطفاً توان را توضیح بده',
           history,
         ).shouldBlockRemoteAi,
-        isFalse,
+        isTrue,
       );
     },
   );
 
-  test('ignores failed and pending historical crisis messages', () {
+  test('includes failed and pending historical user messages in safety checks', () {
     final history = [
       {'role': 'user', 'content': 'می‌خوام خودمو بکشم', 'status': 'failed'},
       {
@@ -109,7 +109,7 @@ void main() {
         'برای فیزیک کمک می‌خواهم',
         history,
       ).shouldBlockRemoteAi,
-      isFalse,
+      isTrue,
     );
   });
 }
