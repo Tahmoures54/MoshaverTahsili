@@ -1,4 +1,3 @@
-
 import 'dart:async';
 
 import 'package:cafebazaar_billing/cafebazaar_billing.dart';
@@ -6,6 +5,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'education_store.dart';
+
+// -----------------------------------------------------------------------------
+// Exceptions and models
+// -----------------------------------------------------------------------------
 
 class BillingException implements Exception {
   const BillingException(
@@ -20,6 +23,13 @@ class BillingException implements Exception {
   String toString() => message;
 }
 
+/// Purchase information returned by the gateway.
+///
+/// The class name is retained for compatibility.
+/// Its presence alone does NOT prove cryptographic verification.
+///
+/// The gateway/backend must verify purchase authenticity before wallet credit
+/// is trusted. Checking that a signature string is present is insufficient.
 class VerifiedPurchase {
   const VerifiedPurchase({
     required this.productId,
@@ -52,46 +62,63 @@ class BillingResult {
     this.failed = 0,
   });
 
+  /// Number of credited packages, not number of individual credits.
   final int credited;
+
   final int alreadyCredited;
   final int skipped;
   final int failed;
   final bool consumptionPending;
 
   String get message {
-    if (consumptionPending) {
-      if (credited > 0) {
-        return '$credited بسته پر ثبت شد؛ اما نهایی‌سازی بعضی خریدها در بازار کامل نشد. بعداً بازیابی خریدها را اجرا کن.';
-      }
-
-      return 'اعتبار خریدهای قبلی حفظ شده است، اما نهایی‌سازی خرید در بازار کامل نشد. بعداً بازیابی خریدها را اجرا کن.';
-    }
-
-    if (failed > 0) {
-      return 'بازیابی خریدها کامل نشد. $failed خرید نیازمند بررسی است. دوباره تلاش کن.';
-    }
-
-    if (credited > 0 && alreadyCredited > 0) {
-      return '$credited بسته پر جدید ثبت شد. $alreadyCredited خرید قبلاً ثبت شده بود و دوباره شارژ نشد.';
-    }
+    final messages = <String>[];
 
     if (credited > 0) {
-      return '$credited بسته پر به کیسه پرهای سیمرغ اضافه شد.';
+      messages.add(
+        '$credited بسته پر به کیسه پرهای سیمرغ اضافه شد.',
+      );
     }
 
     if (alreadyCredited > 0) {
-      return 'این خریدها قبلاً ثبت شده‌اند؛ پر تکراری اضافه نشد.';
+      messages.add(
+        '$alreadyCredited خرید قبلاً ثبت شده بود؛ '
+        'پر تکراری اضافه نشد.',
+      );
+    }
+
+    if (consumptionPending) {
+      messages.add(
+        'نهایی‌سازی بعضی خریدها در بازار تأیید نشد. '
+        'اعتبار ثبت‌شده حفظ شده است؛ '
+        'بعداً بازیابی خریدها را اجرا کن.',
+      );
+    }
+
+    if (failed > 0) {
+      messages.add(
+        '$failed خرید بررسی یا پردازش کامل نشد. '
+        'پیش از پرداخت دوباره، بازیابی خریدها را اجرا کن.',
+      );
     }
 
     if (skipped > 0) {
-      return 'خرید قابل تأییدی برای این برنامه پیدا نشد. پری اضافه نشد.';
+      messages.add(
+        '$skipped مورد نامعتبر یا نامرتبط پردازش نشد.',
+      );
     }
 
-    return 'خرید مصرف‌نشده‌ای برای بازیابی پیدا نشد.';
+    if (messages.isEmpty) {
+      return 'خرید مصرف‌نشده‌ای برای بازیابی پیدا نشد.';
+    }
+
+    return messages.join('\n');
   }
 }
 
-/// مرز قابل‌آزمایش ارتباط با بازار.
+// -----------------------------------------------------------------------------
+// Gateway contract
+// -----------------------------------------------------------------------------
+
 abstract class BazaarGateway {
   Future<void> connect(
     String publicKey, {
@@ -109,7 +136,10 @@ abstract class BazaarGateway {
   Future<void> disconnect();
 }
 
-/// پیاده‌سازی واقعی درگاه بازار.
+// -----------------------------------------------------------------------------
+// Cafe Bazaar plugin adapter
+// -----------------------------------------------------------------------------
+
 class PluginBazaarGateway implements BazaarGateway {
   @override
   Future<void> connect(
@@ -128,30 +158,31 @@ class PluginBazaarGateway implements BazaarGateway {
       if (!connected.isCompleted) {
         connected.completeError(
           const BillingException(
-            'اتصال به بازار برقرار نشد. بازار را به‌روز کن و دوباره تلاش کن.',
+            'اتصال به بازار برقرار نشد. '
+            'نصب و به‌روز بودن بازار را بررسی کن.',
           ),
         );
       }
     }
 
-    await Future.wait<void>([
-      CafeBazaarBilling.connect(
-        publicKey,
-        onSucceed: succeed,
-        onFailed: fail,
-        onDisconnected: () {
-          fail();
-          onDisconnected();
-        },
-      ),
-      connected.future,
-    ]).timeout(
-      const Duration(seconds: 20),
-      onTimeout: () {
-        throw const BillingException(
-          'بازار به‌موقع پاسخ نداد. اتصال اینترنت و نصب بازار را بررسی کن.',
-        );
-      },
+    // Timeout is managed by BazaarBillingService.
+    // A timeout here would hide an underlying connection still in progress.
+    await Future.wait<void>(
+      [
+        Future<void>.sync(
+          () => CafeBazaarBilling.connect(
+            publicKey,
+            onSucceed: succeed,
+            onFailed: fail,
+            onDisconnected: () {
+              fail();
+              onDisconnected();
+            },
+          ),
+        ),
+        connected.future,
+      ],
+      eagerError: true,
     );
   }
 
@@ -167,29 +198,43 @@ class PluginBazaarGateway implements BazaarGateway {
 
   @override
   Future<VerifiedPurchase> purchase(String productId) async {
-    return _map(await CafeBazaarBilling.purchase(productId));
+    final info = await CafeBazaarBilling.purchase(productId);
+
+    return _map(info);
   }
 
   @override
   Future<List<VerifiedPurchase>> purchasedProducts() async {
-    final items = await CafeBazaarBilling.getAllPurchasedProducts();
-    return items.map(_map).toList();
+    final purchases =
+        await CafeBazaarBilling.getAllPurchasedProducts();
+
+    return purchases.map(_map).toList(growable: false);
   }
 
   @override
   Future<List<ShopProduct>> products(List<String> ids) async {
     final details = await CafeBazaarBilling.getInAppSkuDetails(ids);
+    final requested = ids.toSet();
+    final seen = <String>{};
+    final result = <ShopProduct>[];
 
-    return [
-      for (final item in details)
-        if (CreditCatalog.byId(item.sku) != null &&
-            item.type == 'inapp' &&
-            item.price.isNotEmpty)
-          ShopProduct(
-            CreditCatalog.byId(item.sku)!,
-            item.price,
-          ),
-    ];
+    for (final item in details) {
+      final product = CreditCatalog.byId(item.sku);
+      final price = item.price.trim();
+
+      if (product == null ||
+          !requested.contains(item.sku) ||
+          item.type != 'inapp' ||
+          price.isEmpty ||
+          price.length > 256 ||
+          !seen.add(item.sku)) {
+        continue;
+      }
+
+      result.add(ShopProduct(product, price));
+    }
+
+    return result;
   }
 
   @override
@@ -202,6 +247,29 @@ class PluginBazaarGateway implements BazaarGateway {
     return CafeBazaarBilling.disconnect();
   }
 }
+
+// -----------------------------------------------------------------------------
+// Shared in-memory operation state
+// -----------------------------------------------------------------------------
+
+class _BillingOperationState {
+  bool busy = false;
+
+  /// Set when a payment may have occurred but its outcome is not reconciled.
+  ///
+  /// This is not durable. Persist equivalent state in a production wallet or
+  /// backend if it must survive application termination.
+  bool recoveryRequired = false;
+
+  /// Completes only when the original gateway Future actually completes.
+  ///
+  /// Future.timeout does not cancel the native operation.
+  Future<void>? pendingGateway;
+}
+
+// -----------------------------------------------------------------------------
+// Billing service
+// -----------------------------------------------------------------------------
 
 class BazaarBillingService {
   BazaarBillingService(
@@ -219,7 +287,22 @@ class BazaarBillingService {
             const bool.fromEnvironment('BAZAAR_CATALOG_CONFIRMED'),
         supportedPlatform = supportedPlatform ??
             (!kIsWeb &&
-                defaultTargetPlatform == TargetPlatform.android);
+                defaultTargetPlatform == TargetPlatform.android) {
+    if (operationTimeout <= Duration.zero) {
+      throw ArgumentError.value(
+        operationTimeout,
+        'operationTimeout',
+        'Must be greater than zero.',
+      );
+    }
+
+    _state = _states[store] ??= _BillingOperationState();
+  }
+
+  static final Expando<_BillingOperationState> _states =
+      Expando<_BillingOperationState>('bazaarBillingState');
+
+  static const String packageName = 'ir.moshaver.tahsili';
 
   final EducationStore store;
   final BazaarGateway gateway;
@@ -229,15 +312,23 @@ class BazaarBillingService {
   final bool supportedPlatform;
   final Duration operationTimeout;
 
-  static const String packageName = 'ir.moshaver.tahsili';
+  late final _BillingOperationState _state;
 
   bool _connected = false;
-  bool _busy = false;
   bool _disposed = false;
 
-  Future<void>? _connecting;
+  int _connectionGeneration = 0;
 
-  bool get isBusy => _busy;
+  Future<void>? _connecting;
+  Future<void>? _disconnecting;
+
+  bool get isBusy {
+    return _state.busy ||
+        _state.pendingGateway != null ||
+        _disconnecting != null;
+  }
+
+  bool get requiresPurchaseRecovery => _state.recoveryRequired;
 
   bool get isConfigured {
     return publicKey.isNotEmpty &&
@@ -247,18 +338,66 @@ class BazaarBillingService {
 
   String get configurationMessage {
     if (!supportedPlatform) {
-      return 'خرید درون‌برنامه‌ای فقط در نسخه اندروید و از طریق بازار در دسترس است.';
+      return 'خرید درون‌برنامه‌ای فقط در نسخه اندروید '
+          'و از طریق بازار در دسترس است.';
     }
 
     if (publicKey.isEmpty) {
-      return 'کلید عمومی بازار در این نسخه تنظیم نشده است؛ خرید فعال نیست.';
+      return 'کلید عمومی بازار در این نسخه تنظیم نشده است؛ '
+          'خرید فعال نیست.';
     }
 
     if (!catalogConfirmed) {
-      return 'شناسه محصولات هنوز با پروژه مرجع و پنل بازار تأیید نشده‌اند؛ پرداخت غیرفعال است.';
+      return 'شناسه محصولات هنوز با پروژه مرجع و پنل بازار '
+          'تأیید نشده‌اند؛ پرداخت غیرفعال است.';
     }
 
     return '';
+  }
+
+  // ---------------------------------------------------------------------------
+  // Gateway execution
+  // ---------------------------------------------------------------------------
+
+  /// Applies a caller-facing timeout while keeping the underlying operation
+  /// registered until it actually finishes.
+  ///
+  /// Late purchase results are not automatically credited here. They are
+  /// reconciled through restorePurchases.
+  Future<T> _gatewayCall<T>(
+    Future<T> Function() action,
+  ) async {
+    if (_state.pendingGateway != null) {
+      throw const BillingException(
+        'عملیات قبلی بازار هنوز پایان نیافته است. '
+        'پس از بسته‌شدن پنجره پرداخت یا پایان عملیات، '
+        'دوباره تلاش کن.',
+      );
+    }
+
+    final source = Future<T>.sync(action);
+
+    // Attach an error handler immediately so a late native error is observed.
+    final settled = source.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace __) {},
+    );
+
+    _state.pendingGateway = settled;
+
+    unawaited(
+      settled.then<void>((_) {
+        if (identical(_state.pendingGateway, settled)) {
+          _state.pendingGateway = null;
+        }
+
+        if (_disposed) {
+          unawaited(_disconnectIfPossible());
+        }
+      }),
+    );
+
+    return source.timeout(operationTimeout);
   }
 
   // ---------------------------------------------------------------------------
@@ -266,31 +405,46 @@ class BazaarBillingService {
   // ---------------------------------------------------------------------------
 
   Future<void> _connect() async {
-    if (!isConfigured) {
-      throw BillingException(configurationMessage);
-    }
-
     if (_disposed) {
       throw const BillingException('سرویس پرداخت بسته شده است.');
+    }
+
+    if (!isConfigured) {
+      throw BillingException(configurationMessage);
     }
 
     if (_connected) return;
 
     final active = _connecting;
+
     if (active != null) {
-      return active;
+      await active;
+      return;
     }
 
+    final generation = ++_connectionGeneration;
+    var disconnected = false;
+
     final future = () async {
-      await gateway.connect(
-        publicKey,
-        onDisconnected: () {
-          _connected = false;
-        },
+      await _gatewayCall<void>(
+        () => gateway.connect(
+          publicKey,
+          onDisconnected: () {
+            disconnected = true;
+
+            if (generation == _connectionGeneration) {
+              _connected = false;
+            }
+          },
+        ),
       );
 
-      if (_disposed) {
-        throw const BillingException('سرویس پرداخت بسته شده است.');
+      if (_disposed ||
+          generation != _connectionGeneration ||
+          disconnected) {
+        throw const BillingException(
+          'اتصال بازار دیگر فعال نیست. دوباره تلاش کن.',
+        );
       }
 
       _connected = true;
@@ -315,12 +469,12 @@ class BazaarBillingService {
     Future<T> Function() action,
   ) async {
     if (_disposed) {
-      throw const BillingException('صفحه خرید بسته شده است.');
+      throw const BillingException('سرویس پرداخت بسته شده است.');
     }
 
-    if (_busy) {
+    if (isBusy) {
       throw const BillingException(
-        'یک عملیات پرداخت در حال انجام است. کمی صبر کن.',
+        'یک عملیات بازار هنوز در حال انجام است. کمی صبر کن.',
       );
     }
 
@@ -328,12 +482,12 @@ class BazaarBillingService {
       throw LocalDataException(store.walletError!);
     }
 
-    _busy = true;
+    _state.busy = true;
 
     try {
       return await action();
     } finally {
-      _busy = false;
+      _state.busy = false;
 
       if (_disposed) {
         unawaited(_disconnectIfPossible());
@@ -342,56 +496,82 @@ class BazaarBillingService {
   }
 
   // ---------------------------------------------------------------------------
-  // Product catalog
+  // Catalog
   // ---------------------------------------------------------------------------
 
   Future<List<ShopProduct>> loadProducts() {
     return _exclusive(() async {
-      await _safe(_connect);
+      await _safe<void>(_connect);
 
-      return _safe(
-        () => gateway
-            .products(
-              CreditCatalog.products.map((p) => p.id).toList(),
-            )
-            .timeout(operationTimeout),
+      final ids = CreditCatalog.products
+          .map((product) => product.id)
+          .toSet()
+          .toList(growable: false);
+
+      final details = await _safe<List<ShopProduct>>(
+        () => _gatewayCall(() => gateway.products(ids)),
       );
+
+      // Validate custom gateways as well as the plugin adapter.
+      final seen = <String>{};
+      final result = <ShopProduct>[];
+
+      for (final item in details) {
+        final catalogProduct = CreditCatalog.byId(item.product.id);
+        final price = item.price.trim();
+
+        if (catalogProduct == null ||
+            !ids.contains(catalogProduct.id) ||
+            price.isEmpty ||
+            price.length > 256 ||
+            !seen.add(catalogProduct.id)) {
+          continue;
+        }
+
+        result.add(ShopProduct(catalogProduct, price));
+      }
+
+      return result;
     });
   }
 
   // ---------------------------------------------------------------------------
-  // Purchase validation
+  // Purchase shape checks
   // ---------------------------------------------------------------------------
+
+  bool _hasValidPurchaseShape(
+    VerifiedPurchase purchase,
+    String expectedProduct,
+  ) {
+    return purchase.purchased &&
+        purchase.productId == expectedProduct &&
+        purchase.packageName == packageName &&
+        purchase.purchaseToken.trim().isNotEmpty &&
+        purchase.purchaseToken.length <= 512 &&
+        purchase.signature.trim().isNotEmpty &&
+        purchase.signature.length <= 16 * 1024;
+  }
 
   void _validate(
     VerifiedPurchase purchase,
     String expectedProduct,
   ) {
-    if (!purchase.purchased ||
-        purchase.productId != expectedProduct ||
-        purchase.packageName != packageName ||
-        purchase.purchaseToken.trim().isEmpty ||
-        purchase.purchaseToken.length > 512 ||
-        purchase.signature.trim().isEmpty) {
+    if (!_hasValidPurchaseShape(purchase, expectedProduct)) {
       throw const BillingException(
-        'خرید برای این برنامه قابل تأیید نیست؛ پری اضافه نشد. با بازیابی خریدها دوباره بررسی کن.',
+        'اطلاعات خرید برای این برنامه معتبر نیست؛ '
+        'در این مرحله پری اضافه نشد. '
+        'برای بررسی وضعیت، بازیابی خریدها را اجرا کن.',
       );
     }
   }
 
   bool _isValidRestoredPurchase(VerifiedPurchase purchase) {
-    final product = CreditCatalog.byId(purchase.productId);
-
-    return product != null &&
-        purchase.purchased &&
-        purchase.packageName == packageName &&
-        purchase.purchaseToken.trim().isNotEmpty &&
-        purchase.purchaseToken.length <= 512 &&
-        purchase.signature.trim().isNotEmpty;
+    return CreditCatalog.byId(purchase.productId) != null &&
+        _hasValidPurchaseShape(purchase, purchase.productId);
   }
 
   // ---------------------------------------------------------------------------
-  // Credit and consume
+  // Credit first, consume second
   // ---------------------------------------------------------------------------
 
   Future<({bool credited, bool consumed})> _creditAndConsume(
@@ -400,19 +580,22 @@ class BazaarBillingService {
   ) async {
     final product = CreditCatalog.byId(productId);
 
-    if (product == null) {
+    if (product == null || product.credits <= 0) {
       throw const BillingException(
-        'شناسه بسته پر سیمرغ معتبر نیست.',
+        'شناسه یا مقدار اعتبار بسته پر معتبر نیست.',
       );
     }
 
     _validate(purchase, productId);
 
-    // ابتدا توکن یکتا و اعتبار در حافظه پایدار ثبت می‌شوند.
-    // سپس خرید در بازار مصرف می‌شود.
+    // Required EducationStore guarantees:
     //
-    // اگر برنامه در این فاصله بسته شود، بازیابی خریدها می‌تواند
-    // همان توکن را دوباره بررسی کند؛ ثبت تکراری نباید اعتبار جدید بسازد.
+    // 1. Persist token and wallet increment atomically.
+    // 2. The same token must never increment credits twice.
+    // 3. A token must not be reassigned to another product.
+    // 4. Backup import must not overwrite this protected ledger.
+    //
+    // Authenticity must be verified by a trusted gateway/backend.
     final credited = await store.grantProduct(
       productId: productId,
       purchaseToken: purchase.purchaseToken,
@@ -420,17 +603,16 @@ class BazaarBillingService {
     );
 
     try {
-      final consumed = await gateway
-          .consume(purchase.purchaseToken)
-          .timeout(operationTimeout);
+      final consumed = await _gatewayCall<bool>(
+        () => gateway.consume(purchase.purchaseToken),
+      );
 
       return (
         credited: credited,
         consumed: consumed,
       );
     } on Object {
-      // اعتبار قبلاً ثبت شده است.
-      // خطای مصرف نباید باعث حذف یا برگشت اعتبار شود.
+      // Never undo a persisted grant because consumption failed.
       return (
         credited: credited,
         consumed: false,
@@ -444,28 +626,49 @@ class BazaarBillingService {
 
   Future<BillingResult> buy(String productId) {
     return _exclusive(() async {
-      if (CreditCatalog.byId(productId) == null) {
+      final product = CreditCatalog.byId(productId);
+
+      if (product == null || product.credits <= 0) {
         throw const BillingException(
-          'بسته پر سیمرغ ناشناخته است.',
+          'بسته پر سیمرغ ناشناخته یا نامعتبر است.',
         );
       }
 
-      await _safe(_connect);
+      if (_state.recoveryRequired) {
+        throw const BillingException(
+          'وضعیت خرید قبلی هنوز کامل بررسی نشده است. '
+          'پیش از پرداخت دوباره، بازیابی خریدها را اجرا کن.',
+        );
+      }
 
-      // در صورت timeout نتیجه خرید نامشخص است.
-      // قبل از خرید مجدد، بازیابی خریدها باید اجرا شود.
-      final purchase = await _safe(
-        () => gateway
-            .purchase(productId)
-            .timeout(operationTimeout),
-      );
+      await _safe<void>(_connect);
+
+      // From this point onward a payment might have occurred.
+      _state.recoveryRequired = true;
+
+      VerifiedPurchase purchase;
+
+      try {
+        purchase = await _safe<VerifiedPurchase>(
+          () => _gatewayCall(() => gateway.purchase(productId)),
+        );
+      } on BillingException catch (error) {
+        if (error.cancelled) {
+          _state.recoveryRequired = false;
+        }
+
+        rethrow;
+      }
 
       _validate(purchase, productId);
 
+      // Storage failures propagate. Recovery remains required.
       final result = await _creditAndConsume(
         purchase,
         productId,
       );
+
+      _state.recoveryRequired = !result.consumed;
 
       return BillingResult(
         credited: result.credited ? 1 : 0,
@@ -476,17 +679,15 @@ class BazaarBillingService {
   }
 
   // ---------------------------------------------------------------------------
-  // Restore purchases
+  // Restore
   // ---------------------------------------------------------------------------
 
   Future<BillingResult> restorePurchases() {
     return _exclusive(() async {
-      await _safe(_connect);
+      await _safe<void>(_connect);
 
-      final purchases = await _safe(
-        () => gateway
-            .purchasedProducts()
-            .timeout(operationTimeout),
+      final purchases = await _safe<List<VerifiedPurchase>>(
+        () => _gatewayCall(gateway.purchasedProducts),
       );
 
       var credited = 0;
@@ -495,23 +696,52 @@ class BazaarBillingService {
       var failed = 0;
       var pending = false;
 
+      final unique = <String, VerifiedPurchase>{};
+      final conflictingTokens = <String>{};
+
       for (final purchase in purchases) {
         if (!_isValidRestoredPurchase(purchase)) {
           skipped++;
           continue;
         }
 
-        final product = CreditCatalog.byId(purchase.productId);
+        final token = purchase.purchaseToken;
+        final previous = unique[token];
 
-        if (product == null) {
-          skipped++;
+        if (previous == null) {
+          unique[token] = purchase;
           continue;
         }
+
+        if (previous.productId != purchase.productId ||
+            previous.packageName != purchase.packageName) {
+          conflictingTokens.add(token);
+        }
+
+        // Exact-token duplicates are processed once.
+      }
+
+      for (final token in conflictingTokens) {
+        unique.remove(token);
+        failed++;
+      }
+
+      final validPurchases = unique.values.toList(growable: false);
+
+      for (var index = 0; index < validPurchases.length; index++) {
+        // A timed-out consume may still be running natively.
+        // Do not start another native call over it.
+        if (_state.pendingGateway != null) {
+          failed += validPurchases.length - index;
+          break;
+        }
+
+        final purchase = validPurchases[index];
 
         try {
           final result = await _creditAndConsume(
             purchase,
-            product.id,
+            purchase.productId,
           );
 
           if (result.credited) {
@@ -526,11 +756,28 @@ class BazaarBillingService {
         } on BillingException {
           failed++;
         } on LocalDataException {
-          // خطای ذخیره‌سازی محلی مهم است؛
-          // ادامه پردازش می‌تواند وضعیت کیف پول را مبهم کند.
+          _state.recoveryRequired = true;
+
+          // Stop on wallet persistence failure.
           rethrow;
+        } on Object {
+          _state.recoveryRequired = true;
+
+          // Unexpected grant errors are not treated as harmless skips.
+          throw const BillingException(
+            'ثبت یکی از خریدها کامل نشد. '
+            'خریدهای قبلی ممکن است ثبت شده باشند؛ '
+            'پیش از پرداخت مجدد، بازیابی خریدها را اجرا کن.',
+          );
         }
       }
+
+      // Skipped records are not enough to safely reconcile an uncertain
+      // payment. Require a clean restore before enabling another purchase.
+      _state.recoveryRequired = pending ||
+          failed > 0 ||
+          skipped > 0 ||
+          _state.pendingGateway != null;
 
       return BillingResult(
         credited: credited,
@@ -551,21 +798,31 @@ class BazaarBillingService {
   ) async {
     try {
       return await action();
+    } on MissingPluginException {
+      _connected = false;
+
+      throw const BillingException(
+        'درگاه پرداخت بازار در این نسخه در دسترس نیست.',
+      );
     } on PlatformException catch (error) {
       _connected = false;
 
       throw BillingException(
         switch (error.code) {
           'PURCHASE_CANCELLED' =>
-            'پرداخت لغو شد. موجودی پر تغییر نکرد.',
+            'پرداخت لغو شد؛ این عملیات اعتباری اضافه نکرد.',
           'FAILED_TO_BEGIN_FLOW' =>
-            'بازار نتوانست پرداخت را باز کند. نصب، ورود و به‌روز بودن بازار را بررسی کن.',
+            'بازار نتوانست پرداخت را باز کند. '
+                'نصب، ورود و به‌روز بودن بازار را بررسی کن.',
           'PAYMENT_CONNECTION_IS_NOT_CONNECTED' =>
-            'ارتباط با بازار قطع شد. دوباره تلاش کن.',
+            'ارتباط با بازار قطع شد. '
+                'برای بررسی پرداخت احتمالی، خریدها را بازیابی کن.',
           'QUERY_GET_IN_APP_SKU_DETAILS_FAILED' =>
-            'اطلاعات بسته‌ها دریافت نشد. محصولات پنل بازار و اتصال اینترنت را بررسی کن.',
+            'اطلاعات بسته‌ها دریافت نشد. '
+                'محصولات پنل بازار و اتصال را بررسی کن.',
           _ =>
-            'عملیات پرداخت کامل نشد. اتصال اینترنت را بررسی کن؛ برای خرید احتمالی از بازیابی خریدها استفاده کن.',
+            'عملیات بازار کامل نشد. '
+                'پیش از پرداخت دوباره، بازیابی خریدها را اجرا کن.',
         },
         cancelled: error.code == 'PURCHASE_CANCELLED',
       );
@@ -573,38 +830,70 @@ class BazaarBillingService {
       _connected = false;
 
       throw const BillingException(
-        'بازار به‌موقع پاسخ نداد. پیش از پرداخت دوباره، خریدهای قبلی را بازیابی کن.',
+        'بازار به‌موقع پاسخ نداد. '
+        'این وضعیت به معنی لغوشدن پرداخت نیست. '
+        'پس از پایان عملیات قبلی، خریدها را بازیابی کن.',
       );
     } on BillingException {
       rethrow;
     } on LocalDataException {
       rethrow;
     } on Object {
+      _connected = false;
+
       throw const BillingException(
-        'ارتباط با بازار کامل نشد. برای بررسی خرید احتمالی، بازیابی خریدها را بزن.',
+        'ارتباط با بازار کامل نشد. '
+        'برای بررسی خرید احتمالی، بازیابی خریدها را اجرا کن.',
       );
     }
   }
 
   // ---------------------------------------------------------------------------
-  // Disconnect and disposal
+  // Disposal
   // ---------------------------------------------------------------------------
 
   Future<void> _disconnectIfPossible() async {
-    if (_busy || _connecting != null || !_connected) {
+    final active = _disconnecting;
+
+    if (active != null) {
+      await active;
       return;
     }
 
+    if (_state.busy ||
+        _state.pendingGateway != null ||
+        _connecting != null) {
+      return;
+    }
+
+    // Attempt cleanup even if a timeout made _connected false.
+    // Native resources may still exist.
     _connected = false;
+    _connectionGeneration++;
+
+    final future = () async {
+      try {
+        await gateway.disconnect();
+      } on Object {
+        // Do not log raw billing exceptions or purchase information.
+      }
+    }();
+
+    _disconnecting = future;
 
     try {
-      await gateway.disconnect();
-    } on Object {
-      // اطلاعات خام خطای درگاه در لاگ ثبت نمی‌شود؛
-      // ممکن است حاوی داده خرید باشد.
+      await future;
+    } finally {
+      if (identical(_disconnecting, future)) {
+        _disconnecting = null;
+      }
     }
   }
 
+  /// Marks this service as disposed.
+  ///
+  /// If an operation is still running, cleanup is deferred.
+  /// This Future does not necessarily wait for that deferred cleanup.
   Future<void> disconnect() async {
     _disposed = true;
 
