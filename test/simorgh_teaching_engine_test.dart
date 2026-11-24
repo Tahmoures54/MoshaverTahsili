@@ -138,10 +138,10 @@ void main() {
       );
       expect(session.stage, SimorghTeachingStage.reteach);
       expect(session.lastError, SimorghErrorKind.conceptual);
-      expect(session.explanationVariant, 1);
+      expect(session.explanationVariant, 2);
       expect(
         SimorghTeachingEngine.instructionFor(session),
-        contains('روش توضیح متفاوت'),
+        contains('شیوه توضیح این نوبت'),
       );
       session = SimorghTeachingEngine.finishReteach(session);
       expect(session.stage, SimorghTeachingStage.guidedPractice);
@@ -425,7 +425,7 @@ void main() {
         error: SimorghErrorKind.prerequisite,
       );
       final prompt = SimorghTeachingEngine.instructionFor(session);
-      expect(prompt, contains('ضعف در پیش‌نیاز'));
+      expect(prompt, contains('نیاز به تقویت پیش‌نیاز'));
       expect(prompt, contains('فرضیه'));
       expect(prompt, isNot(contains('prerequisite')));
     });
@@ -476,9 +476,7 @@ void main() {
       reteach,
     );
 
-    final mastery = diagnostic.copyWith(
-      stage: SimorghTeachingStage.masteryCheck,
-    );
+    final mastery = _masteryCheckSession('کسرها');
     expect(
       SimorghTeachingEngine.recordMasteryCheck(
         session: mastery,
