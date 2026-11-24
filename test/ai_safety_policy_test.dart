@@ -57,59 +57,51 @@ void main() {
       );
     }
   });
+  test('retains historical crisis signals across later neutral user turns', () {
+    final history = [
+      {'role': 'user', 'content': 'می‌خوام خودمو بکشم', 'status': 'completed'},
+      {
+        'role': 'assistant',
+        'content': 'لطفاً تنها نمان',
+        'status': 'completed',
+      },
+      {'role': 'user', 'content': 'سلام', 'status': 'completed'},
+      {'role': 'assistant', 'content': 'سلام', 'status': 'completed'},
+      {'role': 'user', 'content': 'یک سؤال ریاضی دارم', 'status': 'completed'},
+      {'role': 'assistant', 'content': 'بپرس', 'status': 'completed'},
+      {
+        'role': 'user',
+        'content': 'حاصل دو به توان سه چیست؟',
+        'status': 'completed',
+      },
+    ];
+    expect(
+      AiSafetyPolicy.assessTurn(
+        'لطفاً توان را توضیح بده',
+        history,
+      ).shouldBlockRemoteAi,
+      isTrue,
+    );
+  });
+
   test(
-    'retains historical crisis signals across later neutral user turns',
+    'includes failed and pending historical user messages in safety checks',
     () {
       final history = [
+        {'role': 'user', 'content': 'می‌خوام خودمو بکشم', 'status': 'failed'},
         {
           'role': 'user',
-          'content': 'می‌خوام خودمو بکشم',
-          'status': 'completed',
-        },
-        {
-          'role': 'assistant',
-          'content': 'لطفاً تنها نمان',
-          'status': 'completed',
-        },
-        {'role': 'user', 'content': 'سلام', 'status': 'completed'},
-        {'role': 'assistant', 'content': 'سلام', 'status': 'completed'},
-        {
-          'role': 'user',
-          'content': 'یک سؤال ریاضی دارم',
-          'status': 'completed',
-        },
-        {'role': 'assistant', 'content': 'بپرس', 'status': 'completed'},
-        {
-          'role': 'user',
-          'content': 'حاصل دو به توان سه چیست؟',
-          'status': 'completed',
+          'content': 'می‌خواهم به خودم آسیب بزنم',
+          'status': 'pending',
         },
       ];
       expect(
         AiSafetyPolicy.assessTurn(
-          'لطفاً توان را توضیح بده',
+          'برای فیزیک کمک می‌خواهم',
           history,
         ).shouldBlockRemoteAi,
         isTrue,
       );
     },
   );
-
-  test('includes failed and pending historical user messages in safety checks', () {
-    final history = [
-      {'role': 'user', 'content': 'می‌خوام خودمو بکشم', 'status': 'failed'},
-      {
-        'role': 'user',
-        'content': 'می‌خواهم به خودم آسیب بزنم',
-        'status': 'pending',
-      },
-    ];
-    expect(
-      AiSafetyPolicy.assessTurn(
-        'برای فیزیک کمک می‌خواهم',
-        history,
-      ).shouldBlockRemoteAi,
-      isTrue,
-    );
-  });
 }

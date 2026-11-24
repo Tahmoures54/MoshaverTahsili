@@ -64,7 +64,10 @@ void main() {
         deadlines: const [],
         now: DateTime(2026, 11, 18),
       );
-      expect(report, contains('هنوز نمره معتبر و قابل محاسبه‌ای ثبت نشده است.'));
+      expect(
+        report,
+        contains('هنوز نمره معتبر و قابل محاسبه‌ای ثبت نشده است.'),
+      );
       expect(report, contains('معادل میزان یادگیری نیست'));
     },
   );
