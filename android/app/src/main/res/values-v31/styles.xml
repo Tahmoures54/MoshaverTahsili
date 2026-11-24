@@ -1,10 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+
+    <!--
+        تم آغازین برای Android 12 و بالاتر.
+
+        وابستگی‌ها:
+            @color/splash_bg
+            @drawable/ic_education
+            @drawable/launch_background
+
+        لوگو یک VectorDrawable ثابت و چندرنگ است.
+        اندازه و ماسک لوگوی اسپلش سیستمی توسط Android کنترل می‌شود.
+    -->
+    <style
+        name="LaunchTheme"
+        parent="@android:style/Theme.Light.NoTitleBar">
+
+        <!-- پس‌زمینه پنجره هنگام راه‌اندازی -->
         <item name="android:windowBackground">@drawable/launch_background</item>
-        <item name="android:windowSplashScreenBackground">#F4F7FB</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/simorgh_logo</item>
-        <item name="android:windowSplashScreenIconBackgroundColor">#F4F7FB</item>
-        <item name="android:windowSplashScreenAnimationDuration">200</item>
+
+        <!-- رنگ پس‌زمینه اسپلش سیستمی -->
+        <item name="android:windowSplashScreenBackground">@color/splash_bg</item>
+
+        <!-- لوگوی اسپلش؛ VectorDrawable ثابت نیز پشتیبانی می‌شود -->
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_education</item>
+
     </style>
+
+    <!--
+        تم عادی برنامه پس از مرحله راه‌اندازی.
+        در پروژه Flutter توسط FlutterActivity استفاده می‌شود.
+    -->
+    <style
+        name="NormalTheme"
+        parent="@android:style/Theme.Light.NoTitleBar">
+
+        <item name="android:windowBackground">?android:colorBackground</item>
+
+    </style>
+
 </resources>
