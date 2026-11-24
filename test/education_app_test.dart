@@ -429,7 +429,13 @@ void main() {
         frame(AdvisorPage(store: store, service: service)),
       );
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), 'چطور بهتر مطالعه کنم؟');
+      final composer = find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField &&
+            widget.decoration?.hintText == 'با سیمرغ حرف بزن…',
+      );
+      expect(composer, findsOneWidget);
+      await tester.enterText(composer, 'چطور بهتر مطالعه کنم؟');
       await tester.pump();
       final sendButton = find.byTooltip('ارسال پیام به سیمرغ');
       expect(tester.widget<IconButton>(sendButton).onPressed, isNotNull);
