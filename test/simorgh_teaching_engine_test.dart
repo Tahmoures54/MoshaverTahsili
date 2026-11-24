@@ -141,7 +141,7 @@ void main() {
       expect(session.explanationVariant, 1);
       expect(
         SimorghTeachingEngine.instructionFor(session),
-        contains('شیوه توضیح این نوبت'),
+        contains('نسخه توضیح جایگزین'),
       );
       session = SimorghTeachingEngine.finishReteach(session);
       expect(session.stage, SimorghTeachingStage.guidedPractice);
