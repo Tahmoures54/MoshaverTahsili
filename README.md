@@ -166,23 +166,43 @@
 ## ۷. ساخت و اجرای محلی
 
 پیش‌نیازها:
-- Flutter مطابق `.fvmrc` (نسخه 3.35.7)
-- JDK 17 و Android SDK
+- Flutter دقیقاً مطابق `.fvmrc` (نسخه 3.35.7)
+- Dart همراه همان Flutter SDK
+- JDK 17 و Android SDK Platform 36
+- Gradle Wrapper ثبت‌شده در `android/gradle/wrapper`
+
+اعتبارسنجی محلی:
 
 ```bash
 flutter pub get --enforce-lockfile
-dart format --output=none --set-exit-if-changed .
+dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
 flutter test
-flutter build apk --release
 ```
 
-برای ساخت با تنظیمات AI و پرداخت از dart-define یا تنظیمات خارج از مخزن استفاده کنید. هیچ کلید واقعی را در سورس، فایل نمونه، Issue، README یا گزارش CI قرار ندهید.
+ساخت APK انتشار واقعی به فایل `android/key.properties` و کلید خصوصی موجود در `android/app/upload-keystore.jks` نیاز دارد. کلید و فایل تنظیمات امضا باید خارج از Git نگهداری شوند. فرمان ساخت پس از آماده‌سازی امضای انتشار:
+
+```bash
+flutter build apk --release --target-platform android-arm64
+```
+
+برای آزمون محلی بدون کلید انتشار، فقط از حالت آزمایشی Gradle استفاده کنید؛ این خروجی با کلید debug امضا می‌شود و برای کافه‌بازار قابل انتشار نیست:
+
+```bash
+cd android
+./gradlew :app:assembleRelease -PciTestBuild=true
+```
+
+Workflow شاخه انتشار برای PR داخلی `release/prepare-v1` یک‌بار قالب‌بندی Dart را اجرا و نتیجه را با کامیت مستقل `style:` ثبت می‌کند؛ سپس همان شاخه را تحلیل و تست می‌کند. APK آزمایشی CI با امضای debug، محصول انتشار تجاری محسوب نمی‌شود. ساخت دارای امضای واقعی فقط در مسیرهای محافظت‌شده انتشار انجام می‌شود.
+
+تنظیمات AI و پرداخت باید از فایل خصوصی یا GitHub Actions Secrets/Variables تأمین شوند. هیچ کلید واقعی را در سورس، فایل نمونه، Issue، README یا گزارش CI قرار ندهید.
 
 ## ۸. تنظیمات GitHub Actions و انتشار
 
 Workflow اصلی: [`.github/workflows/build-apk.yml`](.github/workflows/build-apk.yml)  
 نتایج CI: [GitHub Actions](https://github.com/Tahmoures54/MoshaverTahsili/actions)
+
+تمام Actionهای شخص ثالث در Workflow با SHA کامل commit pin شده‌اند؛ نسخه Flutter نیز از `.fvmrc` خوانده می‌شود و Gradle Wrapper با checksum توزیع و اعتبارسنجی JAR کنترل می‌شود.
 
 ### Secrets موردنیاز
 
@@ -277,7 +297,7 @@ OpenSSL گذرواژه `SIGNING_BACKUP_PASSPHRASE` را تعاملی درخوا�
 ## ۱۲. آزمون و کنترل کیفیت
 
 ```bash
-dart format --output=none --set-exit-if-changed .
+dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
 flutter test
 ```
