@@ -87,7 +87,7 @@ void main() {
     },
   );
 
-  testWidgets('home groups tools and keeps full privacy details accessible', (
+  testWidgets('dashboard shows local learning summary and quick actions', (
     tester,
   ) async {
     final store = await EducationStore.open();
@@ -103,23 +103,19 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     expect(find.text('درود، سارا!'), findsOneWidget);
     expect(find.text('پیشنهاد امروز سیمرغ'), findsOneWidget);
-    for (final section in [
-      'برنامه‌ریزی و یادگیری',
-      'سنجش و تحلیل پیشرفت',
-      'مشاوره و آینده تحصیلی',
-      'همراهی خانواده و امکانات بیشتر',
-      'کیف اعتبار',
-    ]) {
-      await tester.ensureVisible(find.text(section));
-      await tester.pumpAndSettle();
-      expect(find.text(section), findsOneWidget);
-    }
-    await tester.ensureVisible(find.text('گفت‌وگو با مشاور هوشمند'));
+
+    final homeList = find.byKey(
+      const PageStorageKey<String>('education-home-scroll'),
+    );
+    await tester.drag(homeList, const Offset(0, -420));
     await tester.pumpAndSettle();
-    expect(find.text('گفت‌وگو با مشاور هوشمند'), findsOneWidget);
-    await tester.ensureVisible(find.text('راهنمای انتخاب رشته'));
+    expect(find.text('خلاصه مسیر یادگیری'), findsOneWidget);
+
+    await tester.drag(homeList, const Offset(0, -420));
     await tester.pumpAndSettle();
-    expect(find.text('راهنمای انتخاب رشته'), findsOneWidget);
+    expect(find.text('دسترسی سریع'), findsOneWidget);
+    expect(find.text('برنامه مطالعه'), findsOneWidget);
+    expect(find.text('روش‌های مؤثر مطالعه'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -239,10 +235,17 @@ void main() {
   });
 
   testWidgets(
-    'home weekly progress uses completion date rather than creation date',
+    'dashboard weekly progress uses completion date rather than creation date',
     (tester) async {
       final store = await EducationStore.open();
       final now = DateTime.now();
+      await store.saveProfile({
+        'fullName': 'آزمون',
+        'nickname': 'آزمون',
+        'grade': 'متوسطه دوم',
+        'year': 'دهم',
+        'field': 'عمومی',
+      });
       await store.addTask({
         'id': 'completed-recently',
         'title': 'مرور فصل اول',
@@ -261,13 +264,16 @@ void main() {
         'createdAt': now.subtract(const Duration(days: 20)).toIso8601String(),
         'completedAt': now.subtract(const Duration(days: 12)).toIso8601String(),
       });
-      await tester.pumpWidget(frame(HomePage(store: store, go: (_) {})));
-      expect(
-        find.textContaining(
-          'در هفت روز اخیر، ۱ کار تکمیل شده است؛ برای این کارها ۳۵ دقیقه زمان برنامه‌ریزی شده بود.',
-        ),
-        findsOneWidget,
+      await tester.pumpWidget(MaterialApp(home: Dashboard(store: store)));
+      await tester.pump();
+      await tester.drag(
+        find.byKey(const PageStorageKey<String>('education-home-scroll')),
+        const Offset(0, -420),
       );
+      await tester.pumpAndSettle();
+      expect(find.text('کار تکمیل‌شده در ۷ روز'), findsOneWidget);
+      expect(find.text('دقیقه ثبت‌شده در ۷ روز'), findsOneWidget);
+      expect(find.text('۳۵'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -316,11 +322,13 @@ void main() {
         await tester.pumpWidget(EducationApp(store: store));
         await tester.pumpAndSettle();
         expect(find.text('درود بر جوینده دانایی!'), findsOneWidget);
-        await tester.ensureVisible(find.text('رد پای تلاش تو'));
+        await tester.drag(
+          find.byKey(const PageStorageKey<String>('education-home-scroll')),
+          const Offset(0, -420),
+        );
         await tester.pumpAndSettle();
         expect(find.text('رد پای تلاش تو'), findsOneWidget);
-        await tester.ensureVisible(find.text('پیشنهاد امروز سیمرغ'));
-        await tester.pumpAndSettle();
+        expect(find.text('پیشنهاد امروز سیمرغ'), findsOneWidget);
         expect(find.text('پیشنهاد امروز سیمرغ'), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.tap(find.byIcon(Icons.calendar_month_outlined));
@@ -351,7 +359,7 @@ void main() {
     await tester.tap(find.text('افزودن'));
     await tester.pumpAndSettle();
     expect(store.tasks.single['minutes'], 45);
-    await tester.ensureVisible(find.text('حل تمرین ریاضی'));
+    await tester.drag(find.byType(ListView).first, const Offset(0, -320));
     await tester.pumpAndSettle();
     expect(find.text('حل تمرین ریاضی'), findsOneWidget);
 
@@ -420,7 +428,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(store.credits, 1);
       expect(store.messages.last['status'], 'failed');
-      final requestId = store.messages.last['id'].toString();
+      final requestId = store.messages
+          .lastWhere((message) => message['role'] == 'user')['id']
+          .toString();
       final failedWallet = store.walletSnapshot;
       expect(failedWallet['requests'][requestId]['charge'], 'credit');
       expect(failedWallet['requests'][requestId]['status'], 'refunded');
@@ -504,6 +514,7 @@ void main() {
         frame(AdvisorPage(store: store, service: service)),
       );
       await tester.tap(find.byKey(const ValueKey('simorgh-start-teaching')));
+      await tester.pump();
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).last, 'کسرها');
       await tester.tap(find.widgetWithText(FilledButton, 'شروع ارزیابی'));
@@ -606,6 +617,7 @@ void main() {
         frame(AdvisorPage(store: store, service: service)),
       );
       await tester.tap(find.byKey(const ValueKey('simorgh-start-teaching')));
+      await tester.pump();
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).last, 'کسرها');
       await tester.tap(find.widgetWithText(FilledButton, 'شروع ارزیابی'));
