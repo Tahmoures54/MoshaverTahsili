@@ -48,7 +48,7 @@ void main() {
       await tester.tap(find.text('جزئیات حریم خصوصی و نکات مهم'));
       await tester.pumpAndSettle();
       expect(
-        find.textContaining('زمینه تحصیلی فقط با رضایت جداگانه'),
+        find.textContaining('اجازه استفاده از زمینه تحصیلی جداگانه در پروفایل انتخاب می‌شود'),
         findsOneWidget,
       );
       expect(
@@ -730,16 +730,17 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.textContaining('بسته برنزی').first);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.drag(find.byType(ListView).first, const Offset(0, -360));
     await tester.pumpAndSettle();
     expect(find.textContaining('بسته برنزی'), findsOneWidget);
     await tester.tap(find.text('خرید از بازار').first);
     await tester.pumpAndSettle();
     expect(store.credits, 105);
-    await tester.ensureVisible(find.text('تاریخچه پرها'));
+    await tester.drag(find.byType(ListView).first, const Offset(0, -420));
     await tester.pumpAndSettle();
     expect(find.text('تاریخچه پرها'), findsOneWidget);
-    await tester.ensureVisible(find.textContaining('بسته برنزی').last);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -420));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
@@ -749,10 +750,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('روش‌های مؤثر مطالعه'), findsOneWidget);
     expect(find.text('مطالعه فعال'), findsOneWidget);
-    await tester.ensureVisible(find.text('مرور فاصله‌دار'));
+    await tester.drag(find.byType(ListView).first, const Offset(0, -320));
     await tester.pumpAndSettle();
     expect(find.text('مرور فاصله‌دار'), findsOneWidget);
-    await tester.ensureVisible(find.text('آمادگی برای امتحان'));
+    await tester.drag(find.byType(ListView).first, const Offset(0, -320));
     await tester.pumpAndSettle();
     expect(find.text('آمادگی برای امتحان'), findsOneWidget);
   });
@@ -811,7 +812,7 @@ void main() {
       },
     ]);
     await tester.pumpWidget(frame(AnalyticsPage(store: store)));
-    await tester.ensureVisible(find.text('درس قدیمی'));
+    await tester.drag(find.byType(ListView).first, const Offset(0, -360));
     await tester.pumpAndSettle();
     expect(find.text('درس قدیمی'), findsOneWidget);
     expect(find.text('درس قدیمی'), findsOneWidget);
@@ -830,7 +831,7 @@ void main() {
     });
     await tester.pumpWidget(frame(PlannerPage(store: store, changed: () {})));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('کار قدیمی'));
+    await tester.drag(find.byType(ListView).first, const Offset(0, -360));
     await tester.pumpAndSettle();
     expect(find.text('کار قدیمی'), findsOneWidget);
     expect(
