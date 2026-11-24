@@ -2328,10 +2328,7 @@ class AboutPage extends StatelessWidget {
 }
 
 class _AboutSection extends StatelessWidget {
-  const _AboutSection({
-    required this.title,
-    required this.text,
-  });
+  const _AboutSection({required this.title, required this.text});
 
   final String title;
   final String text;
@@ -2340,9 +2337,7 @@ class _AboutSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(17),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -2361,9 +2356,9 @@ class _AboutSection extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               text,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                height: 1.7,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(height: 1.7),
             ),
           ],
         ),
