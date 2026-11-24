@@ -656,9 +656,12 @@ class _SimorghCompanionState extends State<SimorghCompanion>
       grade: widget.grade,
     );
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Card(
+    return TickerMode(
+      key: const ValueKey('simorgh-animation-ticker'),
+      enabled: _motionEnabled,
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Card(
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
         child: DecoratedBox(
@@ -733,6 +736,7 @@ class _SimorghCompanionState extends State<SimorghCompanion>
             ),
           ),
         ),
+      ),
       ),
     );
   }
