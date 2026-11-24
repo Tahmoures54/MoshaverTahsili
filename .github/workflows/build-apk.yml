@@ -182,7 +182,6 @@ jobs:
         uses: gradle/actions/setup-gradle@0f4528296b4bc09e8ae0fc7be30185a4ab435545 # v6.0.0
         with:
           validate-wrappers: true
-          cache-provider: basic
           cache-read-only: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
 
       - name: Set up Flutter
@@ -500,12 +499,13 @@ jobs:
             sha256sum -- *.apk > SHA256SUMS
           )
 
-      - name: Verify release signature
+      - name: Verify APK signature
         env:
           VERSION: ${{ steps.config.outputs.version }}
           PRODUCTION_READY: ${{ steps.config.outputs.production_ready }}
         run: |
           set -euo pipefail
+          umask 077
 
           sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
 
@@ -527,13 +527,65 @@ jobs:
             exit 1
           fi
 
-          # Pass the trusted SDK tool explicitly. The verifier accepts an
-          # APK path, not a pre-rendered signature report, and performs the
-          # verification itself before applying the certificate policy.
+          apk="build/installable/MoshaverTahsili-${VERSION}-arm64.apk"
+
+          if [[ "$PRODUCTION_READY" != "true" ]]; then
+            # PRs intentionally receive no production signing secrets.
+            # Sign their validation APK with a one-run temporary identity,
+            # then pin that identity for this verification only.
+            validation_keystore="$RUNNER_TEMP/ci-validation-keystore.jks"
+            validation_password="$(openssl rand -hex 24)"
+            export CI_VALIDATION_KEY_PASSWORD="$validation_password"
+
+            keytool -genkeypair -noprompt \
+              -keystore "$validation_keystore" \
+              -storetype JKS \
+              -storepass:env CI_VALIDATION_KEY_PASSWORD \
+              -keypass:env CI_VALIDATION_KEY_PASSWORD \
+              -alias ci-validation \
+              -dname "CN=CI Validation,O=Temporary Build,C=US" \
+              -keyalg RSA -keysize 2048 -validity 2 \
+              >/dev/null 2>&1
+
+            temporary_signed_apk="$RUNNER_TEMP/ci-validation-signed.apk"
+            "$signer" sign \
+              --ks "$validation_keystore" \
+              --ks-pass env:CI_VALIDATION_KEY_PASSWORD \
+              --key-pass env:CI_VALIDATION_KEY_PASSWORD \
+              --ks-key-alias ci-validation \
+              --out "$temporary_signed_apk" \
+              "$apk"
+
+            mv -- "$temporary_signed_apk" "$apk"
+
+            EXPECTED_RELEASE_CERT_SHA256="$(
+              keytool -exportcert \
+                -keystore "$validation_keystore" \
+                -storepass:env CI_VALIDATION_KEY_PASSWORD \
+                -alias ci-validation |
+                sha256sum |
+                cut -d ' ' -f 1
+            )"
+            export EXPECTED_RELEASE_CERT_SHA256
+
+            rm -f -- "$validation_keystore"
+            unset CI_VALIDATION_KEY_PASSWORD validation_password
+            echo "::notice::APK signed with a temporary CI-only certificate; this artifact is not a store release."
+          elif [[ -z "${EXPECTED_RELEASE_CERT_SHA256:-}" ]]; then
+            echo "::error::Production release certificate pin is missing."
+            exit 1
+          fi
+
           python3 scripts/check_signer.py \
-            "build/installable/MoshaverTahsili-${VERSION}-arm64.apk" \
+            "$apk" \
             --apksigner "$signer" \
             | tee build/reports/android/signature.txt
+
+          # The APK changed when a temporary CI signature was applied.
+          (
+            cd build/installable
+            sha256sum -- *.apk > SHA256SUMS
+          )
 
       - name: Prepare artifact name
         id: artifact
@@ -725,7 +777,6 @@ jobs:
         uses: gradle/actions/setup-gradle@0f4528296b4bc09e8ae0fc7be30185a4ab435545 # v6.0.0
         with:
           validate-wrappers: true
-          cache-provider: basic
           cache-read-only: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
 
       - name: Set up Flutter
