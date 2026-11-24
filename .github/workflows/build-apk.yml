@@ -519,14 +519,13 @@ jobs:
             exit 1
           fi
 
-          "$signer" verify \
-            --verbose \
-            --print-certs \
-            "build/installable/MoshaverTahsili-${VERSION}-arm64.apk" \
-            > build/reports/android/signature.txt
-
+          # Pass the trusted SDK tool explicitly. The verifier accepts an
+          # APK path, not a pre-rendered signature report, and performs the
+          # verification itself before applying the certificate policy.
           python3 scripts/check_signer.py \
-            build/reports/android/signature.txt
+            "build/installable/MoshaverTahsili-${VERSION}-arm64.apk" \
+            --apksigner "$signer" \
+            | tee build/reports/android/signature.txt
 
       - name: Prepare artifact name
         id: artifact
