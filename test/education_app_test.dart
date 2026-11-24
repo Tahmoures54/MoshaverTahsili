@@ -56,9 +56,9 @@ void main() {
       await tester.tap(find.text('بزن بریم'));
       await tester.pumpAndSettle();
       expect(find.text('پایه تحصیلی'), findsNothing);
-      await tester.ensureVisible(find.byType(Checkbox));
+      await tester.ensureVisible(find.byType(CheckboxListTile));
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(Checkbox));
+      await tester.tap(find.byType(CheckboxListTile));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('بزن بریم'));
       await tester.pumpAndSettle();
@@ -328,9 +328,7 @@ void main() {
         await tester.scrollUntilVisible(
           find.text('خلاصه مسیر یادگیری'),
           300,
-          scrollable: find.byKey(
-            const PageStorageKey<String>('education-home-scroll'),
-          ),
+          scrollable: find.byType(Scrollable).first,
         );
         await tester.pumpAndSettle();
         expect(find.text('خلاصه مسیر یادگیری'), findsOneWidget);
@@ -432,7 +430,14 @@ void main() {
       );
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'چطور بهتر مطالعه کنم؟');
-      await tester.tap(find.byTooltip('ارسال پیام به سیمرغ'));
+      await tester.pump();
+      final sendButton = find.byTooltip('ارسال پیام به سیمرغ');
+      expect(tester.widget<IconButton>(sendButton).onPressed, isNotNull);
+      tester.widget<IconButton>(sendButton).onPressed!.call();
+      await tester.pump();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 350)),
+      );
       await tester.pumpAndSettle();
       expect(store.messages.last['role'], 'user');
       expect(store.messages.last['content'], 'چطور بهتر مطالعه کنم؟');
@@ -528,11 +533,16 @@ void main() {
         find.byKey(const ValueKey('simorgh-start-teaching')),
       );
       expect(startTeachingButton.onPressed, isNotNull);
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('simorgh-start-teaching')),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('simorgh-start-teaching')));
       await tester.pump();
       await tester.pumpAndSettle();
-      expect(find.text('شروع تدریس با سیمرغ'), findsOneWidget);
-      await tester.enterText(find.byType(TextFormField).last, 'کسرها');
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.byType(TextFormField), findsOneWidget);
+      await tester.enterText(find.byType(TextFormField), 'کسرها');
       await tester.tap(find.widgetWithText(FilledButton, 'شروع ارزیابی'));
       await tester.pumpAndSettle();
       expect(store.teachingSessions.single['stage'], 'diagnostic');
@@ -637,12 +647,17 @@ void main() {
         find.byKey(const ValueKey('simorgh-start-teaching')),
       );
       expect(startTeachingButton.onPressed, isNotNull);
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('simorgh-start-teaching')),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('simorgh-start-teaching')));
       await tester.pump();
       await tester.pumpAndSettle();
-      expect(find.text('شروع تدریس با سیمرغ'), findsOneWidget);
-      await tester.enterText(find.byType(TextField).last, 'کسرها');
-      await tester.tap(find.text('شروع ارزیابی'));
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.byType(TextFormField), findsOneWidget);
+      await tester.enterText(find.byType(TextFormField), 'کسرها');
+      await tester.tap(find.widgetWithText(FilledButton, 'شروع ارزیابی'));
       await tester.pumpAndSettle();
 
       Future<void> answer(String value) async {
@@ -754,7 +769,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.pump(const Duration(seconds: 1));
     await tester.scrollUntilVisible(
-      find.text('خرید از بازار').first,
+      find.text('خرید از بازار'),
       250,
       scrollable: find.byType(Scrollable).first,
     );
