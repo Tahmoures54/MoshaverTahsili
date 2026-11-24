@@ -677,7 +677,7 @@ void main() {
         final previousCall = call;
         await tester.enterText(find.byType(TextField).last, value);
         final sendButton = find.ancestor(
-          of: find.byTooltip('فراخواندن سیمرغ · مصرف یک پر'),
+          of: find.byTooltip('ارسال پیام به سیمرغ'),
           matching: find.byType(IconButton),
         );
         tester.widget<IconButton>(sendButton).onPressed!.call();
