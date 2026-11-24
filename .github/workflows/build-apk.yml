@@ -460,7 +460,7 @@ jobs:
               # Retry only recognizable network/download failures.
               # "Downloading from" alone is not evidence of a failure.
               if [[ -f "$log" ]] && grep -Eq \
-                'SocketTimeoutException|HTTP response code: 5[0-9]{2}|Read timed out|Connect timed out|Connection reset|Could not GET|Could not HEAD|Temporary failure in name resolution' \
+                'SocketTimeoutException|HTTP response code: 429|HTTP response code: 5[0-9]{2}|Received status code 429|Too Many Requests|Read timed out|Connect timed out|Connection reset|Could not GET|Could not HEAD|Temporary failure in name resolution|Gradle threw an error while downloading artifacts from the network' \
                 "$log"; then
                 echo "::warning::Transient build/download failure; retrying ${label} after attempt ${attempt}."
                 sleep $((attempt * 20))
