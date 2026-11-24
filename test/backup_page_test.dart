@@ -76,7 +76,7 @@ void main() {
     });
 
     await tester.pumpWidget(MaterialApp(home: BackupPage(store: store)));
-    await tester.tap(find.text('انتخاب فایل پشتیبان'));
+    await tester.tap(find.text('انتخاب و بررسی فایل پشتیبان'));
     await tester.pumpAndSettle();
 
     expect(
