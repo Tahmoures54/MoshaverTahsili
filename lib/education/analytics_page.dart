@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import 'education_store.dart';
@@ -6,40 +5,93 @@ import 'learning_engine.dart';
 import 'mastery_estimator.dart';
 import 'ui.dart';
 
-/// Converts potentially incomplete numeric values into safe non-negative
-/// integers. Persian and Arabic digits are supported.
-int _safeLessonCount(Object? value) {
-  if (value is int && value >= 0) return value;
+// ---------------------------------------------------------------------------
+// Data validation
+// ---------------------------------------------------------------------------
 
-  if (value is num && value.isFinite && value >= 0) {
-    return value.toInt();
+/// Missing or invalid data must not be presented as a recorded zero.
+int? _validCount(Object? value) {
+  if (value is int) {
+    return value >= 0 ? value : null;
   }
 
-  final parsed = int.tryParse(
-    digitsToEnglish(value?.toString() ?? ''),
-  );
+  if (value is num) {
+    if (!value.isFinite || value < 0) return null;
 
-  return parsed != null && parsed >= 0 ? parsed : 0;
+    final integer = value.toInt();
+    return value == integer ? integer : null;
+  }
+
+  if (value is String) {
+    final parsed = int.tryParse(digitsToEnglish(value.trim()));
+    return parsed != null && parsed >= 0 ? parsed : null;
+  }
+
+  return null;
 }
 
-/// Converts a percentage into a safe progress-indicator value.
-double _safeProgress(double value) {
-  if (!value.isFinite) return 0;
-  return value.clamp(0.0, 1.0).toDouble();
+double? _validPercentage(Object? value) {
+  if (value is! num || !value.isFinite) return null;
+
+  final result = value.toDouble();
+
+  if (result < 0 || result > 100) return null;
+
+  return result;
 }
 
-/// Converts a percentage into a safe display value.
-double _safePercentage(double value) {
-  if (!value.isFinite) return 0;
-  return value.clamp(0.0, 100.0).toDouble();
+double? _validProbability(Object? value) {
+  if (value is! num || !value.isFinite) return null;
+
+  final result = value.toDouble();
+
+  if (result < 0 || result > 1) return null;
+
+  return result;
 }
+
+String? _nonEmptyText(Object? value) {
+  if (value is! String) return null;
+
+  final text = value.trim();
+  return text.isEmpty ? null : text;
+}
+
+String? _lessonStage(Entry lesson) {
+  return _nonEmptyText(lesson['stage']);
+}
+
+String _percentageText(double percentage) {
+  return '${faNumber(percentage.toStringAsFixed(1))}٪';
+}
+
+String _minutesText(int? minutes) {
+  return minutes == null
+      ? 'داده معتبر موجود نیست'
+      : '${faNumber(minutes)} دقیقه';
+}
+
+/// The underlying engine uses Gregorian DateTime values.
+/// Keep this label explicit rather than implying a Jalali conversion.
+String _gregorianDateText(DateTime date) {
+  final year = date.year.toString().padLeft(4, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  final day = date.day.toString().padLeft(2, '0');
+
+  return faNumber('$year/$month/$day');
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
 
 /// Local performance analytics.
 ///
-/// All displayed metrics are derived from the student's own records.
-/// Missing evidence is never replaced with invented data.
+/// This page computes its report locally and does not itself initiate
+/// network requests.
 ///
-/// This page does not upload student records to remote services.
+/// It does not make guarantees about storage, synchronization or networking
+/// elsewhere in the application.
 class AnalyticsPage extends StatelessWidget {
   const AnalyticsPage({
     super.key,
@@ -50,6 +102,21 @@ class AnalyticsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // EducationStore's declaration is not assumed to implement Listenable.
+    // If it does, subscribe to changes. Otherwise the parent must rebuild.
+    final Object source = store;
+
+    if (source is Listenable) {
+      return ListenableBuilder(
+        listenable: source,
+        builder: (context, _) => _buildPage(context),
+      );
+    }
+
+    return _buildPage(context);
+  }
+
+  Widget _buildPage(BuildContext context) {
     final report = buildLearningReport(
       exams: store.exams,
       tasks: store.tasks,
@@ -59,127 +126,110 @@ class AnalyticsPage extends StatelessWidget {
 
     final topicMastery = estimateTopicMastery(store.cards);
 
-    // Display only the eight most recent teaching sessions.
-    final teachingSessions = store.teachingSessions.reversed
-        .take(8)
-        .toList();
+    final allSessions = List<Entry>.of(store.teachingSessions);
 
-    final totalSessions = store.teachingSessions.length;
+    // Uses the store's existing order; this is not a timestamp sort.
+    final recentSessions = allSessions.reversed.take(8).toList();
 
-    final completedLessons = store.teachingSessions
-        .where((item) => item['stage'] == 'completed')
+    final completedSessions = allSessions
+        .where((lesson) => _lessonStage(lesson) == 'completed')
         .length;
 
-    // Calculate a safe chart maximum.
-    var maxMinutes = 1;
-
-    for (final week in report.weeks) {
-      if (week.plannedMinutes > maxMinutes) {
-        maxMinutes = week.plannedMinutes;
-      }
-
-      if (week.completedMinutes > maxMinutes) {
-        maxMinutes = week.completedMinutes;
-      }
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('تحلیل عملکرد تحصیلی'),
-        centerTitle: false,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-        children: [
-          _buildIntroduction(),
-
-          // Data quality warnings.
-          for (final gap in report.dataGaps)
-            NoticeCard(
-              text: gap,
-              warning: true,
-            ),
-
-          // General academic overview.
-          _buildAcademicHighlights(report),
-
-          // Subject performance.
-          _buildSubjectSection(report),
-
-          // Topic-level mastery.
-          _buildTopicSection(topicMastery),
-
-          // Teaching sessions.
-          _buildTeachingSection(
-            sessions: teachingSessions,
-            totalSessions: totalSessions,
-            completedLessons: completedLessons,
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('تحلیل عملکرد تحصیلی'),
+          centerTitle: false,
+        ),
+        body: SafeArea(
+          top: false,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+            children: [
+              const NoticeCard(
+                text:
+                    'این صفحه گزارش را از داده‌های ثبت‌شده خودت محاسبه می‌کند '
+                    'و برای ساخت آن درخواست شبکه‌ای ارسال نمی‌کند. '
+                    'نتیجه‌ها نشانه‌هایی برای تصمیم‌گیری‌اند، '
+                    'نه حکم قطعی درباره توانایی تو.',
+                icon: Icons.insights_outlined,
+              ),
+              for (final gap in report.dataGaps)
+                NoticeCard(
+                  text: gap,
+                  warning: true,
+                ),
+              _buildAcademicHighlights(report),
+              _buildSubjectSection(report),
+              _buildTopicSection(topicMastery),
+              _buildTeachingSection(
+                sessions: recentSessions,
+                totalSessions: allSessions.length,
+                completedSessions: completedSessions,
+              ),
+              _buildAdherenceSection(report),
+              _buildWeeklySection(report.weeks),
+              _buildReviewSection(report),
+            ],
           ),
-
-          // Study plan adherence.
-          _buildAdherenceSection(report),
-
-          // Weekly study activity.
-          _buildWeeklySection(report.weeks, maxMinutes),
-        ],
+        ),
       ),
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Introduction
-  // ---------------------------------------------------------------------------
-
-  Widget _buildIntroduction() {
-    return const NoticeCard(
-      text: 'این تحلیل فقط از داده‌های ثبت‌شده خودت ساخته می‌شود و روی گوشی می‌ماند. '
-          'نتیجه‌ها نشانه‌هایی برای تصمیم‌گیری‌اند، نه حکم قطعی درباره توانایی تو.',
-      icon: Icons.insights_outlined,
-    );
-  }
-
-  // ---------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
   // Academic highlights
-  // ---------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
 
   Widget _buildAcademicHighlights(LearningReport report) {
+    final strengths = report.strengths
+        .where((item) => _validPercentage(item.average) != null)
+        .map((item) => item.subject)
+        .toSet()
+        .toList();
+
+    final weaknesses = report.weaknesses
+        .where((item) => _validPercentage(item.average) != null)
+        .map((item) => item.subject)
+        .toSet()
+        .toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (report.strengths.isNotEmpty)
+        if (strengths.isNotEmpty)
           NoticeCard(
-            text: 'نقاط قوت: '
-                '${report.strengths.map((s) => s.subject).join('، ')}',
+            text: 'درس‌های با میانگین ثبت‌شده بالاتر: '
+                '${strengths.join('، ')}',
             icon: Icons.emoji_events_outlined,
           ),
-
-        if (report.weaknesses.isNotEmpty)
+        if (weaknesses.isNotEmpty)
           NoticeCard(
-            text: 'درس‌های نیازمند تمرین بیشتر: '
-                '${report.weaknesses.map((s) => s.subject).join('، ')}',
+            text: 'درس‌های پیشنهادی برای تمرین بیشتر: '
+                '${weaknesses.join('، ')}',
             warning: true,
           ),
       ],
     );
   }
 
-  // ---------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
   // Subject performance
-  // ---------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
 
   Widget _buildSubjectSection(LearningReport report) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _section('میانگین درس‌ها'),
-
         if (report.subjects.isEmpty)
           const EmptyState(
             title: 'هنوز داده‌ای نداریم',
-            subtitle: 'با ثبت نمره آزمون، میانگین و روند هر درس نمایش داده می‌شود.',
+            subtitle: 'با ثبت نمره معتبر و نام درس، '
+                'میانگین و روند هر درس نمایش داده می‌شود.',
             icon: Icons.assessment_outlined,
           ),
-
         for (final subject in report.subjects)
           _buildSubjectCard(subject),
       ],
@@ -187,195 +237,222 @@ class AnalyticsPage extends StatelessWidget {
   }
 
   Widget _buildSubjectCard(SubjectProgress subject) {
-    final average = _safePercentage(subject.average);
+    final average = _validPercentage(subject.average);
+    final title = _nonEmptyText(subject.subject) ?? 'درس بدون نام';
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    subject.subject,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Text(
-                  '${faNumber(average.toStringAsFixed(1))}٪',
-                  style: const TextStyle(
-                    color: blue,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 10),
-
-            Semantics(
-              label: 'میانگین درس ${subject.subject}',
-              value: '${average.toStringAsFixed(1)} درصد',
-              child: LinearProgressIndicator(
-                value: _safeProgress(average / 100),
-                minHeight: 8,
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            Text(
-              _trendText(subject),
-              style: const TextStyle(
-                fontSize: 13,
-                height: 1.7,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Topic mastery
-  // ---------------------------------------------------------------------------
-
-  Widget _buildTopicSection(List<dynamic> topicMastery) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return _contentCard(
       children: [
-        _section('شواهد یادگیری به تفکیک مبحث'),
-
-        if (topicMastery.isEmpty)
-          const EmptyState(
-            title: 'هنوز شواهد موضوعی ثبت نشده',
-            subtitle: 'برای هر فلش‌کارت، نام مبحث را ثبت کن و پس از مرور، '
-                'نتیجه یادآوری را ارزیابی کن.',
-            icon: Icons.school_outlined,
+        _titleAndValue(
+          title: title,
+          value: average == null ? 'نامعتبر' : _percentageText(average),
+        ),
+        const SizedBox(height: 10),
+        if (average != null)
+          _progress(
+            label: 'میانگین درس $title',
+            percentage: average,
+          )
+        else
+          const Text(
+            'میانگین معتبر برای نمایش موجود نیست.',
+            style: TextStyle(height: 1.8),
           ),
-
-        for (final item in topicMastery)
-          _buildTopicCard(item),
-
-        const NoticeCard(
-          text: 'این درصد، برآوردی از سابقه یادآوری فلش‌کارت‌هاست؛ '
-              'نمره امتحان یا احتمال قطعی موفقیت نیست. '
-              'شواهد بیشتر، برآورد را قابل اتکاتر می‌کند.',
-          icon: Icons.info_outline,
+        const SizedBox(height: 8),
+        Text(
+          _trendText(subject),
+          style: const TextStyle(
+            fontSize: 13,
+            height: 1.8,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildTopicCard(dynamic item) {
-    final estimate = _safeProgress(item.estimate as double);
+  String _trendText(SubjectProgress subject) {
+    final count = _validCount(subject.examCount);
 
-    final lowerBound = _safePercentage(
-      (item.lowerBound as num).toDouble() * 100,
-    );
+    if (count == null) {
+      return 'تعداد نمره‌های ثبت‌شده معتبر نیست.';
+    }
 
-    final upperBound = _safePercentage(
-      (item.upperBound as num).toDouble() * 100,
-    );
+    final prefix = '${faNumber(count)} نمره معتبر ثبت شده است.';
 
-    final evidenceCount = _safeLessonCount(item.evidenceCount);
+    if (count < 2) {
+      return '$prefix برای مقایسه روند، حداقل دو نمره لازم است.';
+    }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    item.topic.toString(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Text(
-                  '${faNumber((estimate * 100).round())}٪',
-                  style: const TextStyle(
-                    color: blue,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
+    final trend = subject.trend;
 
-            const SizedBox(height: 10),
+    if (trend == null ||
+        !trend.isFinite ||
+        trend < -100 ||
+        trend > 100) {
+      return '$prefix داده معتبر برای مقایسه روند موجود نیست.';
+    }
 
-            Semantics(
-              label: 'برآورد یادگیری ${item.topic}',
-              value: '${(estimate * 100).round()} درصد',
-              child: LinearProgressIndicator(
-                value: estimate,
-                minHeight: 8,
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
+    if (trend >= 3) {
+      return '$prefix آخرین نمره حدود '
+          '${faNumber(trend.round())} واحد درصد '
+          'بالاتر از میانگین نمره‌های قبلی است.';
+    }
 
-            const SizedBox(height: 8),
+    if (trend <= -3) {
+      return '$prefix آخرین نمره حدود '
+          '${faNumber(trend.abs().round())} واحد درصد '
+          'پایین‌تر از میانگین نمره‌های قبلی است.';
+    }
 
-            Text(
-              '${item.confidence} · '
-              '${faNumber(evidenceCount)} مرور ثبت‌شده · '
-              'بازه برآورد '
-              '${faNumber(lowerBound.round())} تا '
-              '${faNumber(upperBound.round())} درصد',
-              style: const TextStyle(
-                fontSize: 12,
-                height: 1.8,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return '$prefix آخرین نمره نزدیک به میانگین نمره‌های قبلی است.';
+  }
+
+  // -------------------------------------------------------------------------
+  // Topic mastery
+  // -------------------------------------------------------------------------
+
+  Widget _buildTopicSection(List<TopicMastery> topics) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _section('شواهد یادگیری به تفکیک مبحث'),
+        if (topics.isEmpty)
+          const EmptyState(
+            title: 'هنوز شواهد موضوعی ثبت نشده',
+            subtitle: 'برای فلش‌کارت‌ها نام مبحث ثبت کن و پس از مرور، '
+                'نتیجه یادآوری را ارزیابی کن.',
+            icon: Icons.school_outlined,
+          ),
+        for (final topic in topics) _buildTopicCard(topic),
+        if (topics.isNotEmpty)
+          const NoticeCard(
+            text: 'این برآورد از مرورهای ثبت‌شده فلش‌کارت‌ها ساخته می‌شود '
+                'و به بعضی کیفیت‌های یادآوری وزن متفاوت می‌دهد. '
+                'بازه نمایش‌داده‌شده تقریبی است؛ '
+                'نمره امتحان یا احتمال قطعی موفقیت نیست. '
+                'مرورهای تکراری یک کارت نیز شواهد مستقل محسوب نمی‌شوند.',
+            icon: Icons.info_outline,
+          ),
+      ],
     );
   }
 
-  // ---------------------------------------------------------------------------
+  Widget _buildTopicCard(TopicMastery item) {
+    final title = _nonEmptyText(item.topic) ?? 'مبحث بدون نام';
+
+    final estimate = _validProbability(item.estimate);
+    final lower = _validProbability(item.lowerBound);
+    final upper = _validProbability(item.upperBound);
+
+    final hasValidInterval = estimate != null &&
+        lower != null &&
+        upper != null &&
+        lower <= estimate &&
+        estimate <= upper;
+
+    final count = _validCount(item.evidenceCount);
+    final successes = _validCount(item.successes);
+
+    final hasValidCounts =
+        count != null && successes != null && successes <= count;
+
+    final evidenceText = hasValidCounts
+        ? '${faNumber(count)} مرور معتبر · '
+            '${faNumber(successes)} یادآوری موفق'
+        : 'تعداد شواهد معتبر موجود نیست';
+
+    final intervalText = hasValidInterval
+        ? 'بازه تقریبی برآورد: '
+            '${faNumber((lower * 100).toStringAsFixed(1))} تا '
+            '${faNumber((upper * 100).toStringAsFixed(1))} درصد'
+        : 'بازه برآورد معتبر موجود نیست';
+
+    final confidence = _nonEmptyText(item.confidence);
+
+    return _contentCard(
+      children: [
+        _titleAndValue(
+          title: title,
+          value: estimate == null
+              ? 'نامعتبر'
+              : _percentageText(estimate * 100),
+        ),
+        const SizedBox(height: 10),
+        if (estimate != null)
+          _progress(
+            label: 'برآورد یادآوری مبحث $title',
+            percentage: estimate * 100,
+          )
+        else
+          const Text(
+            'برآورد معتبر برای نمایش موجود نیست.',
+            style: TextStyle(height: 1.8),
+          ),
+        const SizedBox(height: 8),
+        Text(
+          evidenceText,
+          style: const TextStyle(fontSize: 12, height: 1.8),
+        ),
+        Text(
+          intervalText,
+          style: const TextStyle(fontSize: 12, height: 1.8),
+        ),
+        if (confidence != null && hasValidCounts)
+          Text(
+            'برچسب حجم شواهد: $confidence',
+            style: const TextStyle(fontSize: 12, height: 1.8),
+          ),
+      ],
+    );
+  }
+
+  // -------------------------------------------------------------------------
   // Teaching sessions
-  // ---------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
 
   Widget _buildTeachingSection({
-    required List<Map<String, dynamic>> sessions,
+    required List<Entry> sessions,
     required int totalSessions,
-    required int completedLessons,
+    required int completedSessions,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _section('یادگیری با سیمرغ'),
-
         if (totalSessions == 0)
           const EmptyState(
             title: 'هنوز جلسه تدریسی ثبت نشده',
-            subtitle: 'از صفحه گفت‌وگوی سیمرغ یک مبحث را برای یادگیری انتخاب کن.',
+            subtitle: 'از صفحه گفت‌وگوی سیمرغ '
+                'یک مبحث را برای یادگیری انتخاب کن.',
             icon: Icons.school_outlined,
           )
         else ...[
-          _buildTeachingSummary(
-            totalSessions,
-            completedLessons,
+          _contentCard(
+            children: [
+              Wrap(
+                spacing: 28,
+                runSpacing: 16,
+                children: [
+                  _metric('جلسه‌های ثبت‌شده', totalSessions),
+                  _metric('جلسه‌های تکمیل‌شده', completedSessions),
+                ],
+              ),
+            ],
           ),
-
-          for (final lesson in sessions)
-            _buildTeachingCard(lesson),
-
+          if (totalSessions > sessions.length)
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 4,
+                vertical: 8,
+              ),
+              child: Text(
+                '${faNumber(sessions.length)} جلسه پایانی '
+                'در ترتیب ذخیره‌شده نمایش داده می‌شود.',
+                style: const TextStyle(fontSize: 12, height: 1.8),
+              ),
+            ),
+          for (final lesson in sessions) _buildTeachingCard(lesson),
           const NoticeCard(
-            text: 'تکمیل جلسه یعنی عبور از معیار داخلی تمرین و سنجش این جلسه؛ '
+            text: 'وضعیت «تکمیل‌شده» مطابق رکورد ذخیره‌شده جلسه است. '
                 'این شاخص جایگزین نمره امتحان یا ارزیابی معلم نیست.',
             icon: Icons.info_outline,
           ),
@@ -384,35 +461,7 @@ class AnalyticsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildTeachingSummary(
-    int totalSessions,
-    int completedLessons,
-  ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Expanded(
-              child: _teachingMetric(
-                'جلسه‌های ثبت‌شده',
-                totalSessions,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _teachingMetric(
-                'جلسه‌های تکمیل‌شده',
-                completedLessons,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _teachingMetric(String label, int value) {
+  Widget _metric(String label, int value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -421,68 +470,69 @@ class AnalyticsPage extends StatelessWidget {
           style: const TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
-            color: blue,
           ),
         ),
         const SizedBox(height: 4),
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 12,
-            height: 1.5,
-          ),
+          style: const TextStyle(fontSize: 12, height: 1.7),
         ),
       ],
     );
   }
 
-  Widget _buildTeachingCard(Map<String, dynamic> lesson) {
-    final stage = lesson['stage']?.toString();
+  Widget _buildTeachingCard(Entry lesson) {
+    final stage = _lessonStage(lesson);
+    final completed = stage == 'completed';
+    final topic = _nonEmptyText(lesson['topic']) ?? 'مبحث بدون نام';
 
-    final isCompleted = stage == 'completed';
+    final diagnostic = _validCount(lesson['diagnosticCount']);
+    final correct = _validCount(lesson['masteryCorrect']);
 
-    final topic = lesson['topic']?.toString().trim();
-
-    final diagnosticCount = _safeLessonCount(
-      lesson['diagnosticCount'],
-    );
-
-    final masteryCorrect = _safeLessonCount(
-      lesson['masteryCorrect'],
-    );
-
-    return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 6,
+    return _contentCard(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              completed ? Icons.task_alt : Icons.menu_book_outlined,
+              color: completed ? teal : null,
+              size: 27,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    topic,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _teachingStageText(stage),
+                    style: const TextStyle(fontSize: 12, height: 1.8),
+                  ),
+                  Text(
+                    diagnostic == null
+                        ? 'تعداد ارزیابی آغازین ثبت نشده یا نامعتبر است.'
+                        : '${faNumber(diagnostic)} ارزیابی آغازین ثبت‌شده',
+                    style: const TextStyle(fontSize: 12, height: 1.8),
+                  ),
+                  Text(
+                    correct == null
+                        ? 'تعداد پاسخ‌های درست پایانی '
+                            'ثبت نشده یا نامعتبر است.'
+                        : '${faNumber(correct)} پاسخ درست '
+                            'در سنجش پایانی',
+                    style: const TextStyle(fontSize: 12, height: 1.8),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        leading: Icon(
-          isCompleted
-              ? Icons.task_alt
-              : Icons.menu_book_outlined,
-          color: isCompleted ? teal : blue,
-          size: 27,
-        ),
-        title: Text(
-          topic == null || topic.isEmpty
-              ? 'مبحث بدون نام'
-              : topic,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        subtitle: Text(
-          '${_teachingStageText(stage)} · '
-          '${faNumber(diagnosticCount)} ارزیابی آغازین · '
-          '${faNumber(masteryCorrect)} پاسخ درست در سنجش پایانی',
-          style: const TextStyle(
-            height: 1.8,
-            fontSize: 12,
-          ),
-        ),
-        isThreeLine: true,
-      ),
+      ],
     );
   }
 
@@ -490,155 +540,171 @@ class AnalyticsPage extends StatelessWidget {
     switch (stage) {
       case 'diagnostic':
         return 'ارزیابی آغازین';
-
       case 'explanation':
         return 'توضیح درس';
-
       case 'guidedPractice':
         return 'تمرین هدایت‌شده';
-
       case 'reteach':
         return 'بازآموزی';
-
       case 'masteryCheck':
         return 'سنجش یادگیری';
-
       case 'completed':
         return 'تکمیل‌شده';
-
       default:
         return 'وضعیت نامشخص';
     }
   }
 
-  // ---------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
   // Study plan adherence
-  // ---------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
 
   Widget _buildAdherenceSection(LearningReport report) {
-    final adherence = report.adherence;
+    final adherence = _validProbability(report.adherence);
+    final sample = _validCount(report.adherenceSample);
 
-    final hasData = adherence != null && adherence.isFinite;
+    final hasData = adherence != null && sample != null && sample > 0;
 
-    final percentage = hasData
-        ? _safePercentage(adherence! * 100)
-        : 0.0;
+    final noRecords =
+        report.adherence == null && report.adherenceSample == 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _section('پایبندی به برنامه'),
-
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!hasData)
-                  const Text(
-                    'هنوز کار با موعد گذشته‌ای برای سنجش نداریم.',
-                    style: TextStyle(height: 1.8),
-                  )
-                else ...[
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'میزان انجام کارهای موعددار',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        '${faNumber(percentage.round())}٪',
-                        style: const TextStyle(
-                          color: blue,
-                          fontSize: 19,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  Semantics(
-                    label: 'پایبندی به برنامه مطالعه',
-                    value: '${percentage.round()} درصد',
-                    child: LinearProgressIndicator(
-                      value: _safeProgress(percentage / 100),
-                      minHeight: 9,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  Text(
-                    'از ${faNumber(_safeLessonCount(report.adherenceSample))} '
-                    'کار با موعد گذشته، '
-                    '${faNumber(percentage.round())}٪ انجام شده است.',
-                    style: const TextStyle(
-                      height: 1.8,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
+        _contentCard(
+          children: [
+            if (!hasData)
+              Text(
+                noRecords
+                    ? 'در بازه بررسی، کاری با موعد گذشته ثبت نشده است.'
+                    : 'داده معتبر برای محاسبه پایبندی موجود نیست.',
+                style: const TextStyle(height: 1.8),
+              )
+            else ...[
+              _titleAndValue(
+                title: 'انجام کارهای با موعد گذشته',
+                value: _percentageText(adherence * 100),
+              ),
+              const SizedBox(height: 12),
+              _progress(
+                label: 'پایبندی به برنامه مطالعه',
+                percentage: adherence * 100,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'از ${faNumber(sample)} کار با موعد گذشته '
+                'در ۱۴ روز پیش از امروز، '
+                '${_percentageText(adherence * 100)} '
+                'در حال حاضر انجام‌شده علامت خورده است.',
+                style: const TextStyle(fontSize: 13, height: 1.8),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'این شاخص انجام‌شدن کار را می‌سنجد، '
+                'نه لزوماً انجام آن پیش از موعد.',
+                style: TextStyle(fontSize: 12, height: 1.8),
+              ),
+            ],
+          ],
         ),
       ],
     );
   }
 
-  // ---------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
   // Weekly study chart
-  // ---------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
 
-  Widget _buildWeeklySection(
-    List<WeekLoad> weeks,
-    int maxMinutes,
-  ) {
+  Widget _buildWeeklySection(List<WeekLoad> weeks) {
+    var maximum = 1;
+    var hasPositiveMinutes = false;
+    var hasInvalidMinutes = false;
+
+    for (final week in weeks) {
+      for (final raw in [
+        week.plannedMinutes,
+        week.completedMinutes,
+      ]) {
+        final minutes = _validCount(raw);
+
+        if (minutes == null) {
+          hasInvalidMinutes = true;
+          continue;
+        }
+
+        if (minutes > 0) hasPositiveMinutes = true;
+        if (minutes > maximum) maximum = minutes;
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _section('ساعت مطالعه چهار هفته اخیر'),
-
+        _section('مطالعه در چهار بازه هفت‌روزه اخیر'),
         if (weeks.isEmpty)
           const EmptyState(
             title: 'داده‌ای برای نمودار وجود ندارد',
             subtitle: 'با ثبت برنامه و انجام فعالیت‌های مطالعه، '
-                'گزارش هفتگی نمایش داده می‌شود.',
+                'گزارش نمایش داده می‌شود.',
             icon: Icons.bar_chart_outlined,
           )
-        else
+        else ...[
+          if (hasInvalidMinutes)
+            const NoticeCard(
+              text: 'بعضی مجموع‌های زمانی نامعتبرند '
+                  'و میله آن‌ها رسم نشده است.',
+              warning: true,
+            ),
+          if (!hasPositiveMinutes && !hasInvalidMinutes)
+            const NoticeCard(
+              text: 'در این بازه‌ها زمان مثبتی در گزارش ثبت نشده است. '
+                  'این موضوع به معنی مطالعه‌نکردن نیست.',
+              icon: Icons.info_outline,
+            ),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SizedBox(
-                    height: 150,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        for (var i = 0; i < weeks.length; i++)
-                          Expanded(
-                            child: _weekColumn(
-                              weeks[i],
-                              i + 1,
-                              maxMinutes,
-                            ),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final textScale =
+                          MediaQuery.textScalerOf(context).scale(12) / 12;
+
+                      final columnWidth =
+                          112.0 * textScale.clamp(1.0, 2.5).toDouble();
+
+                      final minimumWidth = columnWidth * weeks.length;
+
+                      final chartWidth =
+                          constraints.maxWidth > minimumWidth
+                              ? constraints.maxWidth
+                              : minimumWidth;
+
+                      return SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SizedBox(
+                          width: chartWidth,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              for (var i = 0; i < weeks.length; i++)
+                                Expanded(
+                                  child: _weekColumn(
+                                    weeks[i],
+                                    i + 1,
+                                    maximum,
+                                  ),
+                                ),
+                            ],
                           ),
-                      ],
-                    ),
+                        ),
+                      );
+                    },
                   ),
-
                   const SizedBox(height: 18),
-
                   const Wrap(
                     alignment: WrapAlignment.center,
                     spacing: 16,
@@ -658,6 +724,15 @@ class AnalyticsPage extends StatelessWidget {
               ),
             ),
           ),
+          const NoticeCard(
+            text: 'هر ستون یک بازه هفت‌روزه است، نه هفته تقویمی. '
+                'برنامه‌ریزی‌شده بر اساس موعد کار و انجام‌شده '
+                'بر اساس تاریخ تکمیل ثبت‌شده محاسبه می‌شود. '
+                'زمان‌ها مدت ثبت‌شده کارها هستند، '
+                'نه اندازه‌گیری خودکار زمان مطالعه.',
+            icon: Icons.info_outline,
+          ),
+        ],
       ],
     );
   }
@@ -665,108 +740,222 @@ class AnalyticsPage extends StatelessWidget {
   Widget _weekColumn(
     WeekLoad week,
     int number,
-    int maxMinutes,
+    int maximum,
   ) {
-    final planned = _safeLessonCount(week.plannedMinutes);
-    final completed = _safeLessonCount(week.completedMinutes);
+    final planned = _validCount(week.plannedMinutes);
+    final completed = _validCount(week.completedMinutes);
 
-    double barHeight(int minutes) {
-      if (minutes <= 0) return 2;
+    double heightFor(int? minutes) {
+      if (minutes == null || minutes == 0) return 0;
 
-      return (minutes / maxMinutes * 110)
-          .clamp(2.0, 110.0)
+      final denominator = maximum > 0 ? maximum : 1;
+
+      return (minutes / denominator * 110)
+          .clamp(0.0, 110.0)
           .toDouble();
     }
 
     return Semantics(
-      label: 'هفته ${faNumber(number)}',
-      value: 'برنامه‌ریزی‌شده ${faNumber(planned)} دقیقه، '
-          'انجام‌شده ${faNumber(completed)} دقیقه',
+      label: 'بازه ${faNumber(number)}، '
+          'از ${_gregorianDateText(week.start)} میلادی',
+      value: 'برنامه‌ریزی‌شده: ${_minutesText(planned)}، '
+          'انجام‌شده: ${_minutesText(completed)}',
       child: ExcludeSemantics(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                _bar(
-                  barHeight(planned),
-                  Colors.grey.shade400,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: Column(
+            children: [
+              SizedBox(
+                height: 112,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _bar(
+                        heightFor(planned),
+                        const Color(0xFFBDBDBD),
+                      ),
+                      const SizedBox(width: 6),
+                      _bar(heightFor(completed), teal),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 4),
-                _bar(
-                  barHeight(completed),
-                  teal,
+              ),
+              const Divider(height: 1),
+              const SizedBox(height: 8),
+              Text(
+                'بازه ${faNumber(number)}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
-              ],
-            ),
-
-            const SizedBox(height: 7),
-
-            Text(
-              'هفته ${faNumber(number)}',
-              style: const TextStyle(fontSize: 11),
-            ),
-          ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'از ${_gregorianDateText(week.start)}\nمیلادی',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 11, height: 1.6),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'برنامه: ${_minutesText(planned)}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 11, height: 1.7),
+              ),
+              Text(
+                'انجام: ${_minutesText(completed)}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 11, height: 1.7),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _bar(double height, Color color) {
+    if (height <= 0) {
+      return const SizedBox(width: 14);
+    }
+
     return Container(
-      width: 13,
+      width: 14,
       height: height,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(4),
-      ),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Common UI helpers
-  // ---------------------------------------------------------------------------
-
-  Widget _section(String title) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 22, 4, 10),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.bold,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(4),
         ),
       ),
     );
   }
 
-  String _trendText(SubjectProgress progress) {
-    final trend = progress.trend;
+  // -------------------------------------------------------------------------
+  // Due flashcards
+  // -------------------------------------------------------------------------
 
-    if (trend == null || !trend.isFinite) {
-      return '${faNumber(_safeLessonCount(progress.examCount))} '
-          'نمره ثبت شده است؛ برای سنجش روند، حداقل دو نمره لازم است.';
+  Widget _buildReviewSection(LearningReport report) {
+    final dueCards = _validCount(report.dueCards);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _section('مرور فلش‌کارت‌ها'),
+        _contentCard(
+          children: [
+            Text(
+              dueCards == null
+                  ? 'تعداد معتبر کارت‌های آماده مرور موجود نیست.'
+                  : dueCards == 0
+                      ? 'در زمان تهیه گزارش، کارتی آماده مرور نیست.'
+                      : '${faNumber(dueCards)} فلش‌کارت '
+                          'در زمان تهیه گزارش آماده مرور است.',
+              style: const TextStyle(height: 1.8),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'در منطق فعلی برنامه، کارت بدون تاریخ مرور معتبر '
+              'نیز آماده مرور محسوب می‌شود.',
+              style: TextStyle(fontSize: 12, height: 1.8),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Common UI
+  // -------------------------------------------------------------------------
+
+  Widget _section(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 22, 4, 10),
+      child: Semantics(
+        header: true,
+        child: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _contentCard({
+    required List<Widget> children,
+  }) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
+      ),
+    );
+  }
+
+  Widget _titleAndValue({
+    required String title,
+    required String value,
+  }) {
+    // Wrap avoids forcing large text into a narrow fixed-height row.
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 16,
+      runSpacing: 8,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _progress({
+    required String label,
+    required double percentage,
+  }) {
+    final valid = _validPercentage(percentage);
+
+    if (valid == null) {
+      return const Text('داده معتبر برای نمایش موجود نیست.');
     }
 
-    if (trend >= 3) {
-      return 'روند صعودی: آخرین نمره حدود '
-          '${faNumber(trend.round())} واحد درصد بالاتر '
-          'از میانگین قبلی است.';
-    }
-
-    if (trend <= -3) {
-      return 'روند نزولی: آخرین نمره حدود '
-          '${faNumber(trend.abs().round())} واحد درصد پایین‌تر '
-          'از میانگین قبلی است.';
-    }
-
-    return 'روند نمرات تقریباً ثابت است.';
+    return Semantics(
+      label: label,
+      value: '${faNumber(valid.toStringAsFixed(1))} درصد',
+      child: ExcludeSemantics(
+        child: LinearProgressIndicator(
+          value: valid / 100,
+          minHeight: 8,
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
   }
 }
 
-/// Legend item for the weekly study chart.
+// ---------------------------------------------------------------------------
+// Chart legend
+// ---------------------------------------------------------------------------
+
 class _ChartLegend extends StatelessWidget {
   const _ChartLegend({
     required this.color,
@@ -781,18 +970,22 @@ class _ChartLegend extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 11,
-          height: 11,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(3),
+        ExcludeSemantics(
+          child: Container(
+            width: 11,
+            height: 11,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(3),
+            ),
           ),
         ),
         const SizedBox(width: 6),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12),
+        Flexible(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 12, height: 1.7),
+          ),
         ),
       ],
     );
