@@ -1,34 +1,82 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  AndroidManifest.xml — نسخه‌ی توسعه‌یافته برای «سیمرغ».
-  - سازگار با Android 8.0 (API 26) تا Android 14 (API 34).
-  - امنیت تقویت‌شده: cleartext traffic ممنوع، backup غیرفعال (داده حساس محلی).
-  - پشتیبانی از adaptive icon و Android 12+ SplashScreen API.
-  - پشتیبانی از predictive back gesture (Android 13+).
-  مسیر جایگزینی: android/app/src/main/AndroidManifest.xml
--->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- دسترسی‌ها -->
+    <!-- =========================================================
+         دسترسی‌های موردنیاز
+         ========================================================= -->
+
+    <!-- ارتباط با سرور و دریافت محتوای آنلاین -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <!-- مشخصات سخت‌افزاری -->
+    <!-- بررسی وضعیت اتصال شبکه -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!--
+        فقط در صورت نیاز واقعی فعال شوند:
+
+        <uses-permission android:name="android.permission.VIBRATE" />
+        <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+        برخی افزونه‌ها مجوزهای موردنیاز خود را از طریق
+        Manifest Merger اضافه می‌کنند.
+    -->
+
+    <!-- =========================================================
+         ویژگی‌های دستگاه
+         ========================================================= -->
+
+    <!-- نصب روی دستگاه‌های بدون صفحه لمسی نیز مجاز است -->
     <uses-feature
         android:name="android.hardware.touchscreen"
         android:required="false" />
+
+    <!--
+        StrongBox اختیاری است.
+        استفاده واقعی از آن نیازمند بررسی و پیاده‌سازی در کد است.
+    -->
     <uses-feature
-        android:name="android.software.strongbox_keystore"
+        android:name="android.hardware.strongbox_keystore"
         android:required="false" />
 
+    <!-- =========================================================
+         Package visibility در Android 11 و بالاتر
+
+         این موارد برای بررسی برنامه‌های مقصد intentهای خروجی‌اند،
+         نه برای دریافت intent توسط سیمرغ.
+         ========================================================= -->
+
+    <queries>
+
+        <!-- بررسی برنامه‌های مناسب برای اشتراک‌گذاری متن -->
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="text/plain" />
+        </intent>
+
+        <!-- بررسی برنامه‌های مناسب برای بازکردن لینک HTTPS -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+
+        <!-- پردازش متن انتخاب‌شده؛ مطابق نیاز Text Processing در Flutter -->
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
+        </intent>
+
+    </queries>
+
+    <!-- =========================================================
+         تنظیمات برنامه
+         ========================================================= -->
+
     <application
-        android:label="سیمرغ"
         android:name="${applicationName}"
+        android:label="سیمرغ"
         android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@mipmap/ic_launcher"
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -37,8 +85,14 @@
         android:supportsRtl="true"
         android:enableOnBackInvokedCallback="true"
         android:appCategory="productivity"
-        android:hardwareAccelerated="true"
-        tools:targetApi="34">
+        android:hardwareAccelerated="true">
+
+        <!-- =====================================================
+             Activity اصلی Flutter
+
+             exported=true برای اجرای برنامه از Launcher و
+             دریافت متن اشتراک‌گذاری‌شده لازم است.
+             ===================================================== -->
 
         <activity
             android:name=".MainActivity"
@@ -49,37 +103,36 @@
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
 
+            <!-- تم عادی پنجره پس از مرحله راه‌اندازی Flutter -->
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
 
+            <!-- اجرای برنامه از Launcher -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- پردازش intent‌های share (برای اشتراک‌گذاری متن به سیمرغ) -->
+            <!--
+                دریافت متن اشتراک‌گذاری‌شده از برنامه‌های دیگر.
+
+                فقط در صورتی نگه دارید که دریافت متن در کد
+                Flutter یا native نیز پیاده‌سازی شده باشد.
+            -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
+
         </activity>
 
+        <!-- Flutter Android Embedding v2 -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
     </application>
 
-    <!-- Android 11+ package visibility — برای تشخیص intent share -->
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.SEND" />
-            <data android:mimeType="text/plain" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="https" />
-        </intent>
-    </queries>
 </manifest>
