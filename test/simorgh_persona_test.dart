@@ -26,7 +26,7 @@ void main() {
         expect(prompt, contains('ایجاد وابستگی'));
         expect(
           prompt,
-          contains('جایگزین خانواده، دوستان، معلم یا متخصص انسانی نیستی'),
+          contains('جای خانواده، دوستان یا معلم را می‌گیری'),
         );
         expect(prompt, contains('خدمات اضطراری'));
         expect(
