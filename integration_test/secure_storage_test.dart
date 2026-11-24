@@ -55,7 +55,10 @@ void main() {
         // === 3. No plaintext may leak into SharedPreferences ===
         expect(encryptedProfile, isNot(contains('keystore-private-profile')));
         expect(encryptedTasks, isNot(contains('keystore-private-task')));
-        expect(encryptedWallet, isNot(contains('keystore-private-purchase-token')));
+        expect(
+          encryptedWallet,
+          isNot(contains('keystore-private-purchase-token')),
+        );
         expect(encryptedWallet, isNot(contains('"credits"')));
 
         // === 4. Reopen on the same platform keystore must round-trip ===
