@@ -1,24 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Splash screen — نسخه‌ی توسعه‌یافته.
-  - پس‌زمینه: @color/splash_bg (همان رنگ قبلی، بدون تغییر).
-  - نشان: @drawable/simorgh_logo (لوگوی بهینه‌شده‌ی سیمرغ).
-  - اندازه‌ی نشان: 144dp × 144dp — برای نمایش بهتر روی صفحه‌های بزرگ‌تر.
-  - gravity: center — در مرکز صفحه.
-  - اندازه‌ی نشان بر اساس Material Design splash guideline (حداقل 144dp برای Android 12+).
-  مسیر جایگزین برای: android/app/src/main/res/drawable/splash_background.xml
-  (یا هر نام دیگری که در styles.xml برای LaunchTheme به آن ارجاع داده‌اید).
+    پس‌زمینه صفحه آغازین برنامه «سیمرغ».
+
+    Resource:
+        @drawable/launch_background
+
+    وابستگی‌ها:
+        @color/splash_bg
+        @drawable/ic_education
+
+    ویژگی‌ها:
+        - پس‌زمینه یکدست با رنگ تعریف‌شده در splash_bg.
+        - لوگوی چندرنگ با اندازه ثابت 144dp × 144dp.
+        - قرارگیری لوگو در مرکز محدوده drawable.
+        - بدون tint، برای حفظ رنگ‌های اصلی لوگو.
+
+    سازگاری:
+        - اندازه‌گذاری و gravity آیتم‌ها به API 23+ نیاز دارد.
+        - این فایل برای windowBackground در LaunchTheme است.
+        - صفحه آغازین سیستمی Android 12+ باید جداگانه
+          در values-v31/styles.xml پیکربندی شود.
 -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- پس‌زمینه: آبی برند اپ -->
+    <!-- لایه اول: پس‌زمینه تمام‌صفحه -->
     <item android:drawable="@color/splash_bg" />
 
-    <!-- نشان سیمرغ -->
+    <!-- لایه دوم: لوگوی سیمرغ در مرکز -->
     <item
-        android:gravity="center"
         android:width="144dp"
         android:height="144dp"
-        android:drawable="@drawable/simorgh_logo" />
+        android:gravity="center"
+        android:drawable="@drawable/ic_education" />
 
 </layer-list>
