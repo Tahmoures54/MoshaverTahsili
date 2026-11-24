@@ -462,7 +462,7 @@ void main() {
       final failedWallet = store.walletSnapshot;
       expect(failedWallet['requests'][requestId]['charge'], 'credit');
       expect(failedWallet['requests'][requestId]['status'], 'refunded');
-      expect(find.text('تلاش دوباره همین درخواست'), findsOneWidget);
+      expect(find.text('تلاش دوباره همین درخواست'), findsNWidgets(2));
       final retryButton = find.byKey(ValueKey('advisor-retry-$requestId'));
       await tester.ensureVisible(find.text('تلاش دوباره همین درخواست'));
       await tester.pumpAndSettle();
@@ -675,11 +675,19 @@ void main() {
 
       Future<void> answer(String value) async {
         final previousCall = call;
-        await tester.enterText(find.byType(TextField).last, value);
+        final composer = find.byWidgetPredicate(
+          (widget) =>
+              widget is TextField &&
+              widget.decoration?.hintText == 'با سیمرغ حرف بزن…',
+        );
+        expect(composer, findsOneWidget);
+        await tester.enterText(composer, value);
+        await tester.pump();
         final sendButton = find.ancestor(
           of: find.byTooltip('ارسال پیام به سیمرغ'),
           matching: find.byType(IconButton),
         );
+        expect(tester.widget<IconButton>(sendButton).onPressed, isNotNull);
         tester.widget<IconButton>(sendButton).onPressed!.call();
         await tester.pump();
         await tester.runAsync(
