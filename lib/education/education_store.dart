@@ -134,6 +134,7 @@ class EducationStore extends ChangeNotifier {
   ];
 
   final Map<String, String> _secureData = {};
+  final Map<String, String> _preservedInvalidPlaintext = {};
   final Map<String, String> _dataErrors = {};
 
   /// Request IDs currently owned by this running instance.
@@ -155,7 +156,8 @@ class EducationStore extends ChangeNotifier {
 
   /// Diagnostic/test access only.
   /// Never render or log this plaintext.
-  String? get walletRaw => _secureData[walletKey];
+  String? get walletRaw =>
+      _secureData[walletKey] ?? _preservedInvalidPlaintext[walletKey];
 
   /// Returns a detached validated copy.
   Map<String, dynamic> get walletSnapshot {
@@ -205,23 +207,20 @@ class EducationStore extends ChangeNotifier {
 
   Future<void> _initializeSecureData() async {
     for (final key in [...workspaceKeys, walletKey]) {
+      final stored = prefs.getString(key);
+
+      if (stored == null) continue;
+
+      String? plaintext;
+
       try {
-        final stored = prefs.getString(key);
-
-        if (stored == null) continue;
-
-        final String plaintext;
-
         if (stored.startsWith(encryptedPrefix)) {
           plaintext = await cipher.decrypt(stored, key: key);
         } else {
-          // Validate legacy plaintext before replacing its stored envelope.
-          if (key == walletKey) {
-            _decodeWallet(stored);
-          } else {
-            _validateWorkspacePayload(key, stored);
-          }
-
+          // Encrypt legacy bytes before schema validation. Even a damaged
+          // record may contain private student data; preserve it opaquely
+          // rather than leaving plaintext in SharedPreferences.
+          plaintext = stored;
           final encrypted = await cipher.encrypt(stored, key: key);
 
           if (await cipher.decrypt(encrypted, key: key) != stored) {
@@ -236,11 +235,9 @@ class EducationStore extends ChangeNotifier {
               'داده قبلی حفظ شد.',
             );
           }
-
-          plaintext = stored;
         }
 
-        // Validate decrypted data too, before making it readable.
+        // Validate decrypted data before making it readable.
         if (key == walletKey) {
           _decodeWallet(plaintext);
         } else {
@@ -248,8 +245,14 @@ class EducationStore extends ChangeNotifier {
         }
 
         _secureData[key] = plaintext;
+        _preservedInvalidPlaintext.remove(key);
       } on Object {
         _secureData.remove(key);
+
+        // Test/diagnostic-only preservation. Never render or log this value.
+        if (plaintext != null) {
+          _preservedInvalidPlaintext[key] = plaintext;
+        }
 
         if (key == walletKey) {
           _walletError =
