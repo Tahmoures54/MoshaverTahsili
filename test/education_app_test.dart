@@ -117,6 +117,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('دسترسی سریع'), findsOneWidget);
     expect(find.text('برنامه مطالعه'), findsOneWidget);
+    await tester.drag(homeList, const Offset(0, -420));
+    await tester.pumpAndSettle();
     expect(find.text('روش‌های مؤثر مطالعه'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -329,8 +331,7 @@ void main() {
           const Offset(0, -420),
         );
         await tester.pumpAndSettle();
-        expect(find.text('رد پای تلاش تو'), findsOneWidget);
-        expect(find.text('پیشنهاد امروز سیمرغ'), findsOneWidget);
+        expect(find.text('خلاصه مسیر یادگیری'), findsOneWidget);
         expect(find.text('پیشنهاد امروز سیمرغ'), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.tap(find.byIcon(Icons.calendar_month_outlined));
@@ -525,7 +526,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('شروع تدریس با سیمرغ'), findsOneWidget);
       await tester.enterText(find.byType(TextField).last, 'کسرها');
-      await tester.tap(find.widgetWithText(FilledButton, 'شروع ارزیابی'));
+      await tester.tap(find.text('شروع ارزیابی'));
       await tester.pumpAndSettle();
       expect(store.teachingSessions.single['stage'], 'diagnostic');
       expect(find.textContaining('روش تدریس سیمرغ'), findsOneWidget);
@@ -829,30 +830,23 @@ void main() {
     await tester.drag(find.byType(ListView).first, const Offset(0, -360));
     await tester.pumpAndSettle();
     expect(find.text('درس قدیمی'), findsOneWidget);
-    expect(find.text('درس قدیمی'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('planner tolerates malformed legacy task durations', (
+  testWidgets('planner rejects malformed task durations at storage boundary', (
     tester,
   ) async {
     final store = await EducationStore.open();
-    await store.addTask({
-      'id': 'legacy-task',
-      'title': 'کار قدیمی',
-      'minutes': 'نامعتبر',
-      'done': false,
-    });
-    await tester.pumpWidget(frame(PlannerPage(store: store, changed: () {})));
-    await tester.pumpAndSettle();
-    await tester.drag(find.byType(ListView).first, const Offset(0, -360));
-    await tester.pumpAndSettle();
-    expect(find.text('کار قدیمی'), findsOneWidget);
-    expect(
-      find.textContaining('۰ دقیقه مطالعه برنامه‌ریزی کرده‌ای'),
-      findsOneWidget,
+    await expectLater(
+      store.addTask({
+        'id': 'legacy-task',
+        'title': 'کار قدیمی',
+        'minutes': 'نامعتبر',
+        'done': false,
+      }),
+      throwsA(isA<LocalDataException>()),
     );
-    expect(tester.takeException(), isNull);
+    expect(store.tasks, isEmpty);
   });
 
   test('learning coach handles malformed legacy task durations', () {
