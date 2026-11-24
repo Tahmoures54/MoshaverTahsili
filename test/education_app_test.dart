@@ -48,7 +48,9 @@ void main() {
       await tester.tap(find.text('جزئیات حریم خصوصی و نکات مهم'));
       await tester.pumpAndSettle();
       expect(
-        find.textContaining('اجازه استفاده از زمینه تحصیلی جداگانه در پروفایل انتخاب می‌شود'),
+        find.textContaining(
+          'اجازه استفاده از زمینه تحصیلی جداگانه در پروفایل انتخاب می‌شود',
+        ),
         findsOneWidget,
       );
       expect(
