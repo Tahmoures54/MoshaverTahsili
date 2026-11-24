@@ -745,9 +745,9 @@ void main() {
       expect(reopenedStore.teachingSessions.single['active'], isFalse);
 
       expect(call, 10);
-      expect(prompts[0], contains('ابتدا یک پرسش کوتاه'));
-      expect(prompts[1], contains('ابتدا یک پرسش کوتاه'));
-      expect(prompts[2], contains('ابتدا یک پرسش کوتاه'));
+      expect(prompts[0], contains('پرسش شماره 1 از 3'));
+      expect(prompts[1], contains('پرسش شماره 2 از 3'));
+      expect(prompts[2], contains('پرسش شماره 3 از 3'));
       expect(prompts[3], contains('روش سقراطی'));
       expect(prompts[4], contains('روش توضیح متفاوت'));
       expect(prompts[0], contains('calculation یعنی خطای محاسبات عددی'));
