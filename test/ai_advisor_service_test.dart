@@ -128,7 +128,7 @@ void main() {
         history: const [],
         question: 'I want to end my life',
       );
-      expect(response, contains('خدمات اضطراری محل زندگی'));
+      expect(response, contains('خدمات اضطراری محل زندگی‌ات'));
       expect(called, isFalse);
       service.dispose();
     },
