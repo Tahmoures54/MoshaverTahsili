@@ -132,6 +132,9 @@ jobs:
 
       RELEASE_KEY_PASSWORD: ${{ ((github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && secrets.RELEASE_KEY_PASSWORD || '' }}
 
+      # Public SHA-256 fingerprint used to pin the release signing identity.
+      EXPECTED_RELEASE_CERT_SHA256: ${{ ((github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && (vars.EXPECTED_RELEASE_CERT_SHA256 || secrets.EXPECTED_RELEASE_CERT_SHA256) || '' }}
+
     steps:
       - name: Check out source
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
