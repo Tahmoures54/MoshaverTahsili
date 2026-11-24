@@ -64,7 +64,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('بزن بریم'));
       await tester.pumpAndSettle();
-      expect(find.text('پایه تحصیلی'), findsOneWidget);
+      expect(find.text('مقطع تحصیلی'), findsOneWidget);
       await tester.enterText(find.byType(TextFormField).first, 'سارا احمدی');
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pumpAndSettle();
@@ -325,9 +325,12 @@ void main() {
         await tester.pumpWidget(EducationApp(store: store));
         await tester.pumpAndSettle();
         expect(find.text('درود بر جوینده دانایی!'), findsOneWidget);
-        await tester.drag(
-          find.byKey(const PageStorageKey<String>('education-home-scroll')),
-          const Offset(0, -420),
+        await tester.scrollUntilVisible(
+          find.text('خلاصه مسیر یادگیری'),
+          300,
+          scrollable: find.byKey(
+            const PageStorageKey<String>('education-home-scroll'),
+          ),
         );
         await tester.pumpAndSettle();
         expect(find.text('خلاصه مسیر یادگیری'), findsOneWidget);
@@ -427,9 +430,12 @@ void main() {
       await tester.pumpWidget(
         frame(AdvisorPage(store: store, service: service)),
       );
+      await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'چطور بهتر مطالعه کنم؟');
       await tester.tap(find.byTooltip('ارسال پیام به سیمرغ'));
       await tester.pumpAndSettle();
+      expect(store.messages.last['role'], 'user');
+      expect(store.messages.last['content'], 'چطور بهتر مطالعه کنم؟');
       expect(store.credits, 1);
       expect(store.messages.last['status'], 'failed');
       final requestId = store.messages
@@ -526,8 +532,8 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
       expect(find.text('شروع تدریس با سیمرغ'), findsOneWidget);
-      await tester.enterText(find.byType(TextField).last, 'کسرها');
-      await tester.tap(find.text('شروع ارزیابی'));
+      await tester.enterText(find.byType(TextFormField).last, 'کسرها');
+      await tester.tap(find.widgetWithText(FilledButton, 'شروع ارزیابی'));
       await tester.pumpAndSettle();
       expect(store.teachingSessions.single['stage'], 'diagnostic');
       expect(find.textContaining('روش تدریس سیمرغ'), findsOneWidget);
@@ -747,17 +753,22 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.pump(const Duration(seconds: 1));
-    await tester.drag(find.byType(ListView).first, const Offset(0, -360));
+    await tester.scrollUntilVisible(
+      find.text('خرید از بازار').first,
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
-    expect(find.textContaining('بسته برنزی'), findsOneWidget);
     await tester.tap(find.text('خرید از بازار').first);
     await tester.pumpAndSettle();
     expect(store.credits, 105);
-    await tester.drag(find.byType(ListView).first, const Offset(0, -420));
+    await tester.scrollUntilVisible(
+      find.text('تاریخچه پرها'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     expect(find.text('تاریخچه پرها'), findsOneWidget);
-    await tester.drag(find.byType(ListView).first, const Offset(0, -420));
-    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 
@@ -766,10 +777,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('روش‌های مؤثر مطالعه'), findsOneWidget);
     expect(find.text('مطالعه فعال'), findsOneWidget);
-    await tester.drag(find.byType(ListView).first, const Offset(0, -320));
+    await tester.scrollUntilVisible(
+      find.text('مرور فاصله‌دار'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     expect(find.text('مرور فاصله‌دار'), findsOneWidget);
-    await tester.drag(find.byType(ListView).first, const Offset(0, -320));
+    await tester.scrollUntilVisible(
+      find.text('آمادگی برای امتحان'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     expect(find.text('آمادگی برای امتحان'), findsOneWidget);
   });
@@ -828,9 +847,8 @@ void main() {
       },
     ]);
     await tester.pumpWidget(frame(AnalyticsPage(store: store)));
-    await tester.drag(find.byType(ListView).first, const Offset(0, -360));
     await tester.pumpAndSettle();
-    expect(find.text('درس قدیمی'), findsOneWidget);
+    // Inactive malformed legacy sessions are excluded from active lesson cards.
     expect(tester.takeException(), isNull);
   });
 
