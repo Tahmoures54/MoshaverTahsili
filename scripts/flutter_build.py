@@ -241,25 +241,30 @@ def validate_arguments(args: list[str]) -> str:
 
 
 def build_label(target: str, args: list[str]) -> str:
+    """Create the diagnostic filename expected by the CI build wrapper."""
+
+    if "--split-per-abi" in args:
+        return f"{target}-split"
+
+    platform = None
+
+    for index, argument in enumerate(args):
+        if argument == "--target-platform" and index + 1 < len(args):
+            platform = args[index + 1]
+            break
+
+        if argument.startswith("--target-platform="):
+            platform = argument.split("=", 1)[1]
+            break
+
+    if platform:
+        suffix = platform.replace("android-", "").replace("android_", "")
+        return f"{target}-{suffix}"
+
     if target == "apk":
-        variant = (
-            "split"
-            if "--split-per-abi" in args
-            else "universal"
-        )
-    else:
-        variant = "bundle"
+        return "apk-universal"
 
-    if "--debug" in args:
-        mode = "debug"
-    elif "--profile" in args:
-        mode = "profile"
-    elif "--release" in args:
-        mode = "release"
-    else:
-        mode = "default"
-
-    return f"{target}-{variant}-{mode}"
+    return f"{target}-bundle"
 
 
 def create_report(label: str) -> tuple[Path, TextIO]:
