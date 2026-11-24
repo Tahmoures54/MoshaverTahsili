@@ -224,11 +224,16 @@ def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
         )
 
     try:
-        output = completed.stdout.decode("utf-8", errors="strict")
+        stdout = completed.stdout.decode("utf-8", errors="strict")
+        stderr = completed.stderr.decode("utf-8", errors="strict")
     except UnicodeDecodeError:
         raise VerificationError(
             "apksigner returned unsupported output encoding."
         ) from None
+
+    # Android SDK builds may write certificate details to either stream.
+    # Parse both while retaining the process exit code as the trust signal.
+    output = f"{stdout}\n{stderr}"
 
     fingerprints = list(SHA256_PATTERN.finditer(output))
 
