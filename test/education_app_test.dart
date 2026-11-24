@@ -115,10 +115,10 @@ void main() {
       expect(find.text(section), findsOneWidget);
     }
     await tester.ensureVisible(find.text('گفت‌وگو با مشاور هوشمند'));
-      await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
     expect(find.text('گفت‌وگو با مشاور هوشمند'), findsOneWidget);
     await tester.ensureVisible(find.text('راهنمای انتخاب رشته'));
-      await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
     expect(find.text('راهنمای انتخاب رشته'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -317,10 +317,10 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('درود بر جوینده دانایی!'), findsOneWidget);
         await tester.ensureVisible(find.text('رد پای تلاش تو'));
-      await tester.pumpAndSettle();
+        await tester.pumpAndSettle();
         expect(find.text('رد پای تلاش تو'), findsOneWidget);
         await tester.ensureVisible(find.text('پیشنهاد امروز سیمرغ'));
-      await tester.pumpAndSettle();
+        await tester.pumpAndSettle();
         expect(find.text('پیشنهاد امروز سیمرغ'), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.tap(find.byIcon(Icons.calendar_month_outlined));
@@ -352,7 +352,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(store.tasks.single['minutes'], 45);
     await tester.ensureVisible(find.text('حل تمرین ریاضی'));
-      await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
     expect(find.text('حل تمرین ریاضی'), findsOneWidget);
 
     await tester.pumpWidget(frame(ExamsPage(store: store, changed: () {})));
@@ -800,7 +800,7 @@ void main() {
     ]);
     await tester.pumpWidget(frame(AnalyticsPage(store: store)));
     await tester.ensureVisible(find.text('درس قدیمی'));
-      await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
     expect(find.text('درس قدیمی'), findsOneWidget);
     expect(find.text('درس قدیمی'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -819,7 +819,7 @@ void main() {
     await tester.pumpWidget(frame(PlannerPage(store: store, changed: () {})));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('کار قدیمی'));
-      await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
     expect(find.text('کار قدیمی'), findsOneWidget);
     expect(
       find.textContaining('۰ دقیقه مطالعه برنامه‌ریزی کرده‌ای'),

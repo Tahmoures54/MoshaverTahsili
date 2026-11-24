@@ -24,10 +24,7 @@ void main() {
         expect(prompt, contains('فهم خود را کوتاه بازتاب بده'));
         expect(prompt, contains('یک سؤال روشن‌کننده'));
         expect(prompt, contains('ایجاد وابستگی'));
-        expect(
-          prompt,
-          contains('جای خانواده، دوستان یا معلم را می‌گیری'),
-        );
+        expect(prompt, contains('جای خانواده، دوستان یا معلم را می‌گیری'));
         expect(prompt, contains('خدمات اضطراری'));
         expect(
           prompt,

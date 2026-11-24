@@ -662,81 +662,84 @@ class _SimorghCompanionState extends State<SimorghCompanion>
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: Card(
-        margin: EdgeInsets.zero,
-        clipBehavior: Clip.antiAlias,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
-              colors: dark
-                  ? [
-                      colors.surface,
-                      Color.alphaBlend(
-                        colors.primary.withValues(alpha: 0.10),
+          margin: EdgeInsets.zero,
+          clipBehavior: Clip.antiAlias,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: dark
+                    ? [
                         colors.surface,
-                      ),
-                    ]
-                  : [
-                      Color.alphaBlend(
-                        colors.tertiary.withValues(alpha: 0.04),
-                        colors.surface,
-                      ),
-                      Color.alphaBlend(
-                        colors.primary.withValues(alpha: 0.07),
-                        colors.surface,
-                      ),
-                    ],
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final largeText =
-                    MediaQuery.textScalerOf(context).scale(14) > 19;
-                final stacked = constraints.maxWidth < 330 || largeText;
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (stacked) ...[
-                      Center(child: _buildMascot(guidance, theme)),
-                      const SizedBox(height: 10),
-                      _buildText(guidance, theme),
-                    ] else
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          _buildMascot(guidance, theme),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildText(guidance, theme)),
-                        ],
-                      ),
-                    const SizedBox(height: 14),
-                    Wrap(
-                      alignment: WrapAlignment.end,
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        TextButton.icon(
-                          onPressed: widget.onChat,
-                          icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                          label: const Text('گفت‌وگو با سیمرغ'),
+                        Color.alphaBlend(
+                          colors.primary.withValues(alpha: 0.10),
+                          colors.surface,
                         ),
-                        FilledButton.tonal(
-                          onPressed: () => widget.onAction(guidance.action),
-                          child: Text(guidance.actionLabel),
+                      ]
+                    : [
+                        Color.alphaBlend(
+                          colors.tertiary.withValues(alpha: 0.04),
+                          colors.surface,
+                        ),
+                        Color.alphaBlend(
+                          colors.primary.withValues(alpha: 0.07),
+                          colors.surface,
                         ),
                       ],
-                    ),
-                  ],
-                );
-              },
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final largeText =
+                      MediaQuery.textScalerOf(context).scale(14) > 19;
+                  final stacked = constraints.maxWidth < 330 || largeText;
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (stacked) ...[
+                        Center(child: _buildMascot(guidance, theme)),
+                        const SizedBox(height: 10),
+                        _buildText(guidance, theme),
+                      ] else
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            _buildMascot(guidance, theme),
+                            const SizedBox(width: 12),
+                            Expanded(child: _buildText(guidance, theme)),
+                          ],
+                        ),
+                      const SizedBox(height: 14),
+                      Wrap(
+                        alignment: WrapAlignment.end,
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          TextButton.icon(
+                            onPressed: widget.onChat,
+                            icon: const Icon(
+                              Icons.chat_bubble_outline,
+                              size: 18,
+                            ),
+                            label: const Text('گفت‌وگو با سیمرغ'),
+                          ),
+                          FilledButton.tonal(
+                            onPressed: () => widget.onAction(guidance.action),
+                            child: Text(guidance.actionLabel),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ),
-      ),
       ),
     );
   }
