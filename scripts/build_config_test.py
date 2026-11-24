@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import sys
 import tempfile
 import unittest
 
@@ -16,6 +17,7 @@ SCRIPT = Path(__file__).with_name("build_config.py")
 SPEC = importlib.util.spec_from_file_location("build_config", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 build_config = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = build_config
 SPEC.loader.exec_module(build_config)
 
 
