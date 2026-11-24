@@ -28,11 +28,11 @@ class CheckSignerTests(unittest.TestCase):
         self.assertEqual(check_signer.normalize_sha256("cd" * 32), "CD" * 32)
 
     def test_extracts_colon_separated_apksigner_digest(self) -> None:
-        digest = ":".join(["ef"] * 32)
+        digest = " : ".join(["ef"] * 32)
         output = (
-            "Verifies\n"
-            "Signer #1 certificate DN: CN=Android Debug, O=Android, C=US\n"
-            f"Signer #1 certificate SHA-256 digest: {digest}\n"
+            "Verifies\r\n"
+            "  Signer #1 certificate DN: CN=Android Debug, O=Android, C=US  \r\n"
+            f"  Signer #1 certificate SHA-256 digest: {digest}  \r\n"
         )
 
         with tempfile.TemporaryDirectory() as directory:
