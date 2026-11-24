@@ -44,7 +44,8 @@ VERIFY_TIMEOUT_SECONDS = 120
 SHA256_PATTERN = re.compile(
     r"^Signer #(?P<signer>[1-9][0-9]*) "
     r"certificate SHA-256 digest:[ \t]*"
-    r"(?P<fingerprint>[0-9a-fA-F]{64})[ \t]*$",
+    r"(?P<fingerprint>(?:[0-9a-fA-F]{64}|"
+    r"[0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){31}))[ \t]*$",
     re.MULTILINE,
 )
 
@@ -255,7 +256,7 @@ def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
             "Could not identify a single signer certificate DN."
         )
 
-    fingerprint = fingerprint_match.group("fingerprint").upper()
+    fingerprint = fingerprint_match.group("fingerprint").replace(":", "").upper()
     distinguished_name = distinguished_names[0].group("dn")
 
     # A DN marker is only a heuristic; pinning is the identity check.
