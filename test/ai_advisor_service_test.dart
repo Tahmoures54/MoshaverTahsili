@@ -778,20 +778,12 @@ void main() {
           'status': 'completed',
         },
       ];
-      await expectLater(
-        service.ask(
-          profile: null,
-          history: history,
-          question: 'توان را توضیح بده',
-        ),
-        throwsA(
-          isA<AiException>().having(
-            (error) => error.message,
-            'local crisis response',
-            contains('پیام تو به سرویس هوش مصنوعی ارسال نشد'),
-          ),
-        ),
+      final response = await service.ask(
+        profile: null,
+        history: history,
+        question: 'توان را توضیح بده',
       );
+      expect(response, contains('پیام تو به سرویس هوش مصنوعی ارسال نشد'));
       expect(called, isFalse);
       service.dispose();
     },
