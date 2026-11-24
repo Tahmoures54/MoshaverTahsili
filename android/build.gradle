@@ -1,183 +1,25 @@
-// ═══════════════════════════════════════════════════════════════════════
-// android/settings.gradle
-// مشاور هوشمند تحصیلی — سیمرغ
-// Groovy DSL
-//
-// مسئولیت‌ها:
-// - پیدا کردن Flutter SDK
-// - بارگذاری پلاگین‌های Flutter
-// - تعیین نسخه پلاگین‌های Android و Kotlin
-// - مدیریت مخازن وابستگی‌ها
-// - معرفی ماژول app
-// ═══════════════════════════════════════════════════════════════════════
+// Root Android Gradle configuration for Simorgh.
+// Plugin versions are declared in settings.gradle. Keep project repositories
+// here because the Flutter Gradle plugin registers its engine Maven repository.
 
-
-// ───────────────────────────────────────────────────────────────────────
-// ۱. مدیریت پلاگین‌ها
-// این بلوک باید پیش از سایر بلوک‌های اجرایی settings قرار بگیرد.
-// ───────────────────────────────────────────────────────────────────────
-
-pluginManagement {
-    def flutterSdkPath = {
-        def localPropertiesFile = file("local.properties")
-
-        if (!localPropertiesFile.isFile()) {
-            throw new GradleException(
-                "Missing android/local.properties. " +
-                "Run flutter pub get from the Flutter project root " +
-                "or configure flutter.sdk in local.properties."
-            )
-        }
-
-        def properties = new Properties()
-
-        localPropertiesFile.withInputStream { stream ->
-            properties.load(stream)
-        }
-
-        def sdkPath = properties.getProperty("flutter.sdk")?.trim()
-
-        if (!sdkPath) {
-            throw new GradleException(
-                "flutter.sdk is missing or empty in android/local.properties."
-            )
-        }
-
-        def flutterGradleDirectory =
-            new File(sdkPath, "packages/flutter_tools/gradle")
-
-        if (!flutterGradleDirectory.isDirectory()) {
-            throw new GradleException(
-                "Invalid Flutter SDK path: ${sdkPath}. " +
-                "Expected packages/flutter_tools/gradle to exist."
-            )
-        }
-
-        return sdkPath
-    }()
-
-    includeBuild(
-        "${flutterSdkPath}/packages/flutter_tools/gradle"
-    )
-
+allprojects {
     repositories {
         google()
         mavenCentral()
-        gradlePluginPortal()
+        maven { url 'https://jitpack.io' }
     }
 }
 
+rootProject.buildDir = '../build'
 
-// ───────────────────────────────────────────────────────────────────────
-// ۲. نسخه پلاگین‌ها
-//
-// فرض این پیکربندی:
-// Gradle Wrapper = 8.11.1
-// JDK = 17
-//
-// نسخه‌ها را بدون بررسی Flutter و افزونه‌ها تغییر ندهید.
-// نسخه Kotlin و AGP را دوباره در build.gradle تعریف نکنید.
-// ───────────────────────────────────────────────────────────────────────
-
-plugins {
-    id "dev.flutter.flutter-plugin-loader" version "1.0.0"
-
-    id "com.android.application" version "8.9.1" apply false
-
-    id "org.jetbrains.kotlin.android" version "2.1.0" apply false
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
 
-
-// ───────────────────────────────────────────────────────────────────────
-// ۳. مدیریت مخازن وابستگی‌ها
-// ───────────────────────────────────────────────────────────────────────
-
-dependencyResolutionManagement {
-    // مخازن این فایل بر مخازن تعریف‌شده در پروژه‌ها اولویت دارند.
-    //
-    // اگر افزونه‌ای مخزن اختصاصی اضافه کند، آن مخزن باید پس از بررسی
-    // به این بخش منتقل شود؛ در غیر این صورت dependency آن resolve نمی‌شود.
-    //
-    // FAIL_ON_PROJECT_REPOS فعلاً استفاده نشده، زیرا بعضی افزونه‌های
-    // Flutter هنوز repository را داخل فایل Gradle خود تعریف می‌کنند.
-    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
-
-    repositories {
-        google()
-        mavenCentral()
-
-        // Artifactهای Android مربوط به Flutter Engine.
-        //
-        // در حالت PREFER_SETTINGS، مخزنی که Flutter در سطح project
-        // اضافه می‌کند ممکن است کنار گذاشته شود؛ بنابراین اینجا نیز
-        // مخزن Flutter را تعریف می‌کنیم.
-        //
-        // اگر FLUTTER_STORAGE_BASE_URL تنظیم شده باشد،
-        // همان آدرس پایه برای mirror استفاده می‌شود.
-        def flutterStorageBaseUrl =
-            System.getenv("FLUTTER_STORAGE_BASE_URL")?.trim()
-
-        if (!flutterStorageBaseUrl) {
-            flutterStorageBaseUrl = "https://storage.googleapis.com"
-        }
-
-        flutterStorageBaseUrl =
-            flutterStorageBaseUrl.replaceAll('/+$', '')
-
-        maven {
-            name = "FlutterArtifacts"
-            url = uri(
-                "${flutterStorageBaseUrl}/download.flutter.io"
-            )
-
-            content {
-                includeGroup("io.flutter")
-            }
-        }
-
-        // برای وابستگی‌های منتشرشده روی JitPack، از جمله برخی
-        // نسخه‌های SDK یا افزونه پرداخت بازار.
-        //
-        // در صورت حذف تمام وابستگی‌های JitPack، این مخزن را حذف کنید.
-        maven {
-            name = "JitPack"
-            url = uri("https://jitpack.io")
-
-            // محدودسازی به مختصات رایج پروژه‌های GitHub.
-            // اگر dependency واقعی از group دیگری استفاده می‌کند،
-            // فیلتر را مطابق همان مختصات اصلاح کنید.
-            content {
-                includeGroupByRegex("com\\.github\\..*")
-            }
-        }
-
-        // مخزن mirror ناشناس یا تأییدنشده اضافه نکنید.
-        // اطلاعات احراز هویت نباید در فایل‌های commit‌شده قرار گیرد.
-    }
+subprojects {
+    project.evaluationDependsOn(':app')
 }
 
-
-// ───────────────────────────────────────────────────────────────────────
-// ۴. تنظیم Build Cache محلی
-//
-// فعال‌سازی استفاده از cache:
-// org.gradle.caching=true
-// در gradle.properties یا با گزینه --build-cache
-//
-// مسیر پیش‌فرض cache حفظ شده تا میان پروژه‌های محلی قابل استفاده باشد.
-// ───────────────────────────────────────────────────────────────────────
-
-buildCache {
-    local {
-        enabled = true
-    }
+tasks.register('clean', Delete) {
+    delete rootProject.buildDir
 }
-
-
-// ───────────────────────────────────────────────────────────────────────
-// ۵. معرفی پروژه و ماژول‌ها
-// ───────────────────────────────────────────────────────────────────────
-
-rootProject.name = "simorgh"
-
-include ":app"
