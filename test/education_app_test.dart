@@ -53,12 +53,9 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(
-        tester
-            .widget<FilledButton>(find.widgetWithText(FilledButton, 'بزن بریم'))
-            .onPressed,
-        isNull,
-      );
+      await tester.tap(find.text('بزن بریم'));
+      await tester.pumpAndSettle();
+      expect(find.text('پایه تحصیلی'), findsNothing);
       await tester.ensureVisible(find.byType(Checkbox));
       await tester.pumpAndSettle();
       await tester.tap(find.byType(Checkbox));
@@ -117,6 +114,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('دسترسی سریع'), findsOneWidget);
     expect(find.text('برنامه مطالعه'), findsOneWidget);
+    await tester.drag(homeList, const Offset(0, -420));
+    await tester.pumpAndSettle();
     await tester.drag(homeList, const Offset(0, -420));
     await tester.pumpAndSettle();
     expect(find.text('روش‌های مؤثر مطالعه'), findsOneWidget);
@@ -362,7 +361,9 @@ void main() {
     await tester.tap(find.text('افزودن'));
     await tester.pumpAndSettle();
     expect(store.tasks.single['minutes'], 45);
-    await tester.drag(find.byType(ListView).first, const Offset(0, -320));
+    await tester.drag(find.byType(ListView).first, const Offset(0, -420));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).first, const Offset(0, -420));
     await tester.pumpAndSettle();
     expect(find.text('حل تمرین ریاضی'), findsOneWidget);
 
