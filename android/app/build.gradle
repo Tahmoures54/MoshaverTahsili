@@ -1,35 +1,165 @@
+import groovy.json.JsonOutput
+
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
     id 'dev.flutter.flutter-gradle-plugin'
 }
 
+// =============================================================
+// android/app/build.gradle
+//
+// نیازمندی‌ها:
+// - JDK 17
+// - Android SDK Platform 36
+// - نسخه‌های سازگار Flutter، Android Gradle Plugin و Gradle
+//
+// حداقل نسخه قابل نصب: Android 7.0 / API 24
+// برای پشتیبانی از Android 8.0 به بعد، minSdk را به 26 تغییر دهید.
+// =============================================================
+
+// =============================================================
+// تنظیمات امضای انتشار
+//
+// مسیر فایل تنظیمات: android/key.properties
+//
+// کلیدهای لازم:
+// storePassword=...
+// keyPassword=...
+// keyAlias=...
+// storeFile=...
+//
+// مسیر نسبی storeFile نسبت به android/app محاسبه می‌شود.
+// مثال: ../upload-keystore.jks → android/upload-keystore.jks
+// =============================================================
+
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('key.properties')
-def hasReleaseSigning = keystorePropertiesFile.exists()
-if (hasReleaseSigning) {
-    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
-    ['keyAlias', 'keyPassword', 'storePassword', 'storeFile'].each { name ->
-        if (!keystoreProperties[name]?.trim()) {
-            throw new GradleException("Incomplete release signing configuration: $name")
+
+def releaseKeystoreFile = null
+def hasReleaseSigning = false
+
+if (keystorePropertiesFile.exists()) {
+    if (!keystorePropertiesFile.isFile() ||
+            !keystorePropertiesFile.canRead()) {
+        throw new GradleException(
+                'Release signing configuration is not a readable file: ' +
+                keystorePropertiesFile.absolutePath
+        )
+    }
+
+    keystorePropertiesFile.withInputStream { stream ->
+        keystoreProperties.load(stream)
+    }
+
+    ['keyAlias', 'keyPassword', 'storePassword', 'storeFile'].each { key ->
+        def value = keystoreProperties.getProperty(key)
+
+        if (value == null || value.trim().isEmpty()) {
+            throw new GradleException(
+                    "Incomplete release signing configuration: ${key}"
+            )
         }
     }
-    if (!file(keystoreProperties['storeFile']).exists()) {
-        throw new GradleException('Release keystore file is missing')
+
+    releaseKeystoreFile = file(
+            keystoreProperties.getProperty('storeFile').trim()
+    )
+
+    if (!releaseKeystoreFile.isFile() ||
+            !releaseKeystoreFile.canRead()) {
+        throw new GradleException(
+                'Release keystore is missing or unreadable: ' +
+                releaseKeystoreFile.absolutePath
+        )
+    }
+
+    hasReleaseSigning = true
+}
+
+// =============================================================
+// حالت آزمایشی CI
+//
+// فعال‌سازی:
+// ./gradlew :app:assembleRelease -PciTestBuild=true
+//
+// خروجی آزمایشی:
+// - applicationId دارای پسوند .citest
+// - versionName دارای پسوند -ci-test
+// - امضای debug، حتی در صورت وجود keystore انتشار
+//
+// این property صرفاً انتخاب صریح حالت تست است و حضور در محیط CI
+// را بررسی نمی‌کند.
+// =============================================================
+
+def ciTestBuildValue = (
+        project.findProperty('ciTestBuild') ?: 'false'
+).toString()
+
+if (!(ciTestBuildValue in ['true', 'false'])) {
+    throw new GradleException(
+            'ciTestBuild must be exactly "true" or "false".'
+    )
+}
+
+def ciTestBuild = ciTestBuildValue == 'true'
+
+// =============================================================
+// جلوگیری از ساخت release بدون تنظیمات امضا
+//
+// نبود key.properties مانع ساخت debug یا profile نمی‌شود.
+// وجود تنظیمات ناقص یا فایل keystore غیرقابل‌خواندن، خطا است.
+//
+// صحت password و alias توسط ابزار signing بررسی می‌شود.
+// =============================================================
+
+def releaseSigningAvailable = hasReleaseSigning
+def releaseTestModeEnabled = ciTestBuild
+
+def verifyReleaseSigning = tasks.register('verifyReleaseSigning') {
+    group = 'verification'
+    description = 'Prevents unsigned production release builds.'
+
+    doLast {
+        if (!releaseSigningAvailable && !releaseTestModeEnabled) {
+            throw new GradleException(
+                    'Release build blocked: configure android/key.properties ' +
+                    'with a valid release keystore. ' +
+                    'For a debug-signed test release only, use ' +
+                    '-PciTestBuild=true.'
+            )
+        }
     }
 }
-// Only CI explicitly opts into a clearly-labelled, debug-signed test build.
-def ciTestBuild = project.findProperty('ciTestBuild') == 'true'
+
+// این نام‌ها مربوط به پروژه بدون product flavor هستند.
+// در صورت اضافه‌کردن flavor، وظایف release متناظر را نیز اضافه کنید.
+tasks.configureEach { task ->
+    if (task.name in [
+            'preReleaseBuild',
+            'packageRelease',
+            'bundleRelease',
+            'signReleaseBundle'
+    ]) {
+        task.dependsOn(verifyReleaseSigning)
+    }
+}
+
+// =============================================================
+// Android
+// =============================================================
 
 android {
     namespace = 'ir.moshaver.tahsili'
+
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
+
     kotlinOptions {
         jvmTarget = '17'
         freeCompilerArgs += ['-opt-in=kotlin.RequiresOptIn']
@@ -37,24 +167,37 @@ android {
 
     defaultConfig {
         applicationId = 'ir.moshaver.tahsili'
+
         minSdk = 24
         targetSdk = 36
+
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        // Flag‌های build-time (با BuildConfig قابل دسترس در کد)
-        buildConfigField 'String', 'APP_VERSION', "\"${flutter.versionName}\""
-        buildConfigField 'int', 'VERSION_CODE', flutter.versionCode.toString()
-        buildConfigField 'boolean', 'IS_CI_TEST_BUILD', ciTestBuild.toString()
+        // نسخه پایه Flutter، بدون suffix مربوط به build type.
+        buildConfigField(
+                'String',
+                'APP_VERSION',
+                JsonOutput.toJson(flutter.versionName.toString())
+        )
+
+        buildConfigField(
+                'boolean',
+                'IS_CI_TEST_BUILD',
+                ciTestBuild.toString()
+        )
+
+        // VERSION_CODE و VERSION_NAME توسط AGP تولید می‌شوند.
+        // این فیلدها مستقیماً در Dart قابل دسترسی نیستند.
     }
 
     signingConfigs {
         release {
             if (hasReleaseSigning) {
-                keyAlias = keystoreProperties['keyAlias']
-                keyPassword = keystoreProperties['keyPassword']
-                storePassword = keystoreProperties['storePassword']
-                storeFile = file(keystoreProperties['storeFile'])
+                keyAlias = keystoreProperties.getProperty('keyAlias')
+                keyPassword = keystoreProperties.getProperty('keyPassword')
+                storePassword = keystoreProperties.getProperty('storePassword')
+                storeFile = releaseKeystoreFile
             }
         }
     }
@@ -63,59 +206,95 @@ android {
         debug {
             applicationIdSuffix = '.debug'
             versionNameSuffix = '-debug'
+
             debuggable = true
             minifyEnabled = false
             shrinkResources = false
+
             signingConfig = signingConfigs.debug
         }
+
         profile {
             applicationIdSuffix = '.profile'
             versionNameSuffix = '-profile'
+
             debuggable = false
             minifyEnabled = false
             shrinkResources = false
+
             signingConfig = signingConfigs.debug
         }
+
         release {
-            signingConfig = hasReleaseSigning ? signingConfigs.release : (ciTestBuild ? signingConfigs.debug : null)
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            ndk.debugSymbolLevel = 'FULL'
+            debuggable = false
+
+            minifyEnabled = true
+            shrinkResources = true
+
+            // فایل android/app/proguard-rules.pro باید وجود داشته باشد.
+            proguardFiles(
+                    getDefaultProguardFile('proguard-android-optimize.txt'),
+                    'proguard-rules.pro'
+            )
+
+            // نمادهای کتابخانه‌های native در صورت موجودبودن.
+            // جایگزین --split-debug-info برای Dart نیست.
+            ndk {
+                debugSymbolLevel = 'FULL'
+            }
+
+            if (ciTestBuild) {
+                applicationIdSuffix = '.citest'
+                versionNameSuffix = '-ci-test'
+
+                signingConfig = signingConfigs.debug
+            } else if (hasReleaseSigning) {
+                signingConfig = signingConfigs.release
+            } else {
+                // verifyReleaseSigning ساخت خروجی را متوقف می‌کند.
+                signingConfig = null
+            }
         }
-    }
-
-    packaging {
-        resources {
-            excludes += [
-                'META-INF/DEPENDENCIES',
-                'META-INF/LICENSE',
-                'META-INF/LICENSE.txt',
-                'META-INF/license.txt',
-                'META-INF/NOTICE',
-                'META-INF/NOTICE.txt',
-                'META-INF/notice.txt',
-                'META-INF/ASL2.0',
-                'META-INF/*.kotlin_module'
-            ]
-        }
-    }
-
-    lint {
-        abortOnError = false
-        checkReleaseBuilds = true
-        disable 'MissingTranslation', 'ExtraTranslation'
-    }
-
-    bundle {
-        abi { enableSplit = true }
-        density { enableSplit = false }
-        language { enableSplit = false }
     }
 
     buildFeatures {
         buildConfig = true
     }
+
+    packaging {
+        resources {
+            // حذف محدود؛ قواعد دیگر فقط برای conflict واقعی اضافه شوند.
+            // فایل‌های license و Kotlin metadata عمداً حذف نمی‌شوند.
+            excludes += [
+                    'META-INF/DEPENDENCIES'
+            ]
+        }
+    }
+
+    lint {
+        abortOnError = true
+        checkReleaseBuilds = true
+
+        // خطاهای ترجمه به‌صورت عمومی غیرفعال نشده‌اند.
+        // موارد پذیرفته‌شده را با baseline بازبینی‌شده مدیریت کنید.
+    }
+
+    bundle {
+        abi {
+            enableSplit = true
+        }
+
+        density {
+            enableSplit = true
+        }
+
+        language {
+            // نگهداری منابع زبان‌های مختلف برای تغییر زبان داخل برنامه.
+            enableSplit = false
+        }
+    }
 }
 
-flutter { source = '../..' }
+flutter {
+    source = '../..'
+}
