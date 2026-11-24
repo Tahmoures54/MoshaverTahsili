@@ -41,16 +41,19 @@ from pathlib import Path
 
 VERIFY_TIMEOUT_SECONDS = 120
 
+# Android Build Tools versions differ slightly in how they prefix the
+# certificate lines. Match the digest/DN labels rather than requiring the
+# literal word "certificate" or a particular indentation.
 SHA256_PATTERN = re.compile(
-    r"^[ \t]*Signer #[ \t]*(?P<signer>[1-9][0-9]*)[ \t]+"
-    r"certificate SHA-256 digest:[ \t]*"
-    r"(?P<fingerprint>[^\r\n]+?)[ \t]*$",
+    r"^[ \\t]*(?:Signer\\s*#\\s*(?P<signer>[1-9][0-9]*)[ \\t]+)?"
+    r"[^\\r\\n]*?SHA[ -]?256[^\\r\\n]*?digest\\s*:[ \\t]*"
+    r"(?P<fingerprint>[^\\r\\n]+?)[ \\t]*$",
     re.MULTILINE | re.IGNORECASE,
 )
 
 DN_PATTERN = re.compile(
-    r"^[ \t]*Signer #[ \t]*(?P<signer>[1-9][0-9]*)[ \t]+"
-    r"certificate DN:[ \t]*(?P<dn>[^\r\n]*)[ \t]*$",
+    r"^[ \\t]*(?:Signer\\s*#\\s*(?P<signer>[1-9][0-9]*)[ \\t]+)?"
+    r"[^\\r\\n]*?\\bDN\\s*:[ \\t]*(?P<dn>[^\\r\\n]*)[ \\t]*$",
     re.MULTILINE | re.IGNORECASE,
 )
 
@@ -228,6 +231,9 @@ def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
     # Parse both while retaining the process exit code as the trust signal.
     output = f"{stdout}\n{stderr}"
     output = output.replace("\r\n", "\n").replace("\r", "\n")
+    output = output.replace("\u00a0", " ")
+    # Some wrapped tool environments may add terminal styling to output.
+    output = re.sub(r"\x1b\\[[0-?]*[ -/]*[@-~]", "", output)
 
     # Parse only normalized hexadecimal fingerprints. Ignore unrelated
     # certificate digest lines (for example SHA-1 and MD5).
@@ -237,7 +243,7 @@ def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
             normalized = normalize_sha256(match.group("fingerprint"))
         except ConfigurationError:
             continue
-        fingerprints.append((match.group("signer"), normalized))
+        fingerprints.append((match.group("signer") or "1", normalized))
 
     # Repeated identical records are harmless; different signers or
     # fingerprints require a separate explicit multi-signer policy.
@@ -256,7 +262,7 @@ def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
 
     distinguished_names = list(DN_PATTERN.finditer(output))
     unique_names = {
-        (match.group("signer"), match.group("dn"))
+        (match.group("signer") or "1", match.group("dn"))
         for match in distinguished_names
     }
     if len(unique_names) != 1:
