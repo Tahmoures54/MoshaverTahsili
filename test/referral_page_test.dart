@@ -38,7 +38,7 @@ void main() {
       await tester.drag(find.byType(ListView).first, const Offset(0, -650));
       await tester.pumpAndSettle();
       await tester.pumpAndSettle();
-      await tester.tap(find.text('کپی متن و لینک'));
+      await tester.tap(find.text('کپی متن معرفی و لینک'));
       await tester.pump();
 
       expect(clipboardCalls, hasLength(1));
