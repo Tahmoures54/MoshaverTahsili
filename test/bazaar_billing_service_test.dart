@@ -296,11 +296,12 @@ void main() {
       expect(service.isBusy, isTrue);
       expect(store.credits, 5);
       gateway.purchaseGate!.complete();
-      await Future<void>.delayed(Duration.zero);
-      await Future<void>.delayed(Duration.zero);
-      expect(service.isBusy, isFalse);
-
+      await Future<void>.delayed(const Duration(milliseconds: 100));
       gateway.purchaseGate = null;
+
+      // A timed-out native purchase must be reconciled before another charge.
+      await service.restorePurchases();
+      expect(service.isBusy, isFalse);
       final retry = await service.buy('credit_10');
       expect(retry.credited, 1);
       expect(store.credits, 105);
