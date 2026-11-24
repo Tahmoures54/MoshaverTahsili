@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Simorgh launcher icon: vector adaptation of the canonical brand mark. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="640" android:viewportHeight="640">
+    <path android:fillColor="#1D4770"
+        android:pathData="M88,0H552A88,88 0 0 1 640,88V552A88,88 0 0 1 552,640H88A88,88 0 0 1 0,552V88A88,88 0 0 1 88,0Z" />
+
+    <group android:translateY="60">
+        <path android:fillColor="#00000000" android:strokeColor="#29F2BE58" android:strokeWidth="2"
+            android:pathData="M480,222a160,160 0 1 1 -320,0a160,160 0 1 1 320,0" />
+        <path android:fillColor="#F2BE58"
+            android:pathData="M304,225C224,48 82,63 70,145c39,-12 72,23 95,69 -43,-27 -91,-8 -82,42 61,-27 111,-2 160,44Z" />
+        <path android:fillColor="#20B8AE"
+            android:pathData="M336,225C416,48 558,63 570,145c-39,-12 -72,23 -95,69 43,-27 91,-8 82,42 -61,-27 -111,-2 -160,44Z" />
+        <path android:fillColor="#FFF0C8"
+            android:pathData="M305,184c-28,54 -17,143 27,211 4,-63 84,-98 70,-174 -9,-49 -58,-70 -97,-37Z" />
+        <path android:fillColor="#F2BE58"
+            android:pathData="M316,180c-2,-56 34,-91 80,-75 30,11 34,53 3,82l-47,39Z" />
+        <path android:fillColor="#20B8AE"
+            android:pathData="M391,116l88,31 -87,31Z" />
+        <path android:fillColor="#142D4E"
+            android:pathData="M384,119a6,6 0 1 1 -12,0a6,6 0 1 1 12,0Z" />
+        <path android:fillColor="#00000000" android:strokeColor="#20B8AE" android:strokeWidth="9"
+            android:strokeLineCap="round"
+            android:pathData="M255,373c-43,31 -78,55 -122,64 57,12 106,-4 154,-38 M385,374c43,31 78,55 122,64 -57,12 -106,-4 -154,-38" />
+    </group>
+</vector>
