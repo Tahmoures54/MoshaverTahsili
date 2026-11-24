@@ -1,48 +1,95 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  لوگوی «سیمرغ» — نسخه‌ی بهینه‌شده.
-  - اندازه: 48dp × 48dp (viewport 48 × 48)
-  - پالت:
-      طلایی:      #F2BE58  (بال چپ، سر)
-      فیروزه‌ای:  #20B8AE  (بال راست، منقار)
-      کرم:        #FFF0C8  (بدنه و دم)
-      سرمه‌ای:    #142D4E  (چشم)
-  - سازگار با theme از طریق ?colorPrimaryVariant (در صورت استفاده از tint در کد).
-  مسیر جایگزین برای: android/app/src/main/res/drawable/simorgh_logo.xml
+    لوگوی چندرنگ «سیمرغ».
+
+    Resource:
+        @drawable/ic_education
+
+    اندازه ذاتی:
+        48dp × 48dp
+
+    فضای طراحی:
+        48 × 48
+
+    پالت:
+        طلایی:     #F2BE58
+        فیروزه‌ای: #20B8AE
+        کرم:       #FFF0C8
+        سرمه‌ای:   #142D4E
+
+    نکات:
+        - پس‌زمینه شفاف است.
+        - رنگ‌ها ثابت‌اند و به theme وابسته نیستند.
+        - برای حفظ پالت اصلی، در کامپوننت میزبان tint اعمال نکنید.
+        - در RTL آینه نمی‌شود.
+        - ترتیب pathها برای هم‌پوشانی صحیح اجزا مهم است.
+        - این resource به‌تنهایی adaptive launcher icon نیست.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="48dp"
     android:height="48dp"
     android:viewportWidth="48"
-    android:viewportHeight="48">
+    android:viewportHeight="48"
+    android:autoMirrored="false">
 
-    <!-- بال چپ (طلایی) -->
+    <!-- بال چپ: طلایی -->
     <path
         android:fillColor="#F2BE58"
-        android:pathData="M23,22 C18,8 6,6 4,12 C8,12 10,17 12,21 C8,18 4,21 6,26 C12,23 17,26 22,31 Z" />
+        android:pathData="
+            M23,22
+            C18,8 6,6 4,12
+            C8,12 10,17 12,21
+            C8,18 4,21 6,26
+            C12,23 17,26 22,31
+            Z" />
 
-    <!-- بال راست (فیروزه‌ای) — آینه‌ی بال چپ -->
+    <!-- بال راست: فیروزه‌ای؛ بازتاب هندسی بال چپ حول x=24 -->
     <path
         android:fillColor="#20B8AE"
-        android:pathData="M25,22 C30,8 42,6 44,12 C40,12 38,17 36,21 C40,18 44,21 42,26 C36,23 31,26 26,31 Z" />
+        android:pathData="
+            M25,22
+            C30,8 42,6 44,12
+            C40,12 38,17 36,21
+            C40,18 44,21 42,26
+            C36,23 31,26 26,31
+            Z" />
 
-    <!-- بدنه و دم (کرم) -->
+    <!-- بدنه و دم: کرم؛ روی ریشه بال‌ها قرار می‌گیرد -->
     <path
         android:fillColor="#FFF0C8"
-        android:pathData="M23,18 C19,23 20,34 26,42 C26,35 34,31 32,23 C31,18 26,15 23,18 Z" />
+        android:pathData="
+            M23,18
+            C19,23 20,34 26,42
+            C26,35 34,31 32,23
+            C31,18 26,15 23,18
+            Z" />
 
-    <!-- سر (طلایی) -->
+    <!-- سر: طلایی -->
     <path
         android:fillColor="#F2BE58"
-        android:pathData="M27,17 C26,11 30,7 35,9 C38,11 37,16 33,19 L29,24 Z" />
+        android:pathData="
+            M27,17
+            C26,11 30,7 35,9
+            C38,11 37,16 33,19
+            L29,24
+            Z" />
 
-    <!-- منقار (فیروزه‌ای) — مثلث کوچک سمت راست -->
+    <!-- منقار: فیروزه‌ای -->
     <path
         android:fillColor="#20B8AE"
-        android:pathData="M36,12 L44,15 L36,18 Z" />
+        android:pathData="
+            M36,12
+            L44,15
+            L36,18
+            Z" />
 
-    <!-- چشم (سرمه‌ای) — مستطیل 2×2 -->
+    <!-- چشم: سرمه‌ای؛ دایره با مرکز (33,12) و شعاع 1 -->
     <path
         android:fillColor="#142D4E"
-        android:pathData="M32,11 L34,11 L34,13 L32,13 Z" />
+        android:pathData="
+            M32,12
+            A1,1 0,1 0,34 12
+            A1,1 0,1 0,32 12
+            Z" />
+
 </vector>
