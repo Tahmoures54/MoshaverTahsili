@@ -750,9 +750,9 @@ void main() {
       expect(prompts[2], contains('پرسش شماره 3 از 3'));
       expect(prompts[3], contains('مرحله فعلی تمرین هدایت‌شده'));
       expect(prompts[4], contains('مرحله فعلی بازآموزی'));
-      expect(prompts[0], contains('calculation یعنی خطای محاسبات عددی'));
-      expect(prompts[0], contains('شواهد پاسخ'));
-      expect(prompts[0], contains('partial وقتی'));
+      expect(prompts[0], contains('calculation یعنی خطای عددی'));
+      expect(prompts[0], contains('حدس را جای شواهد نگذار'));
+      expect(prompts[0], contains('partial برای مسیر درست اما ناقص'));
       final assistantMessages = store.messages
           .where((message) => message['role'] == 'assistant')
           .toList();
