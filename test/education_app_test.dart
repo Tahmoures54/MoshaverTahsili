@@ -748,8 +748,8 @@ void main() {
       expect(prompts[0], contains('پرسش شماره 1 از 3'));
       expect(prompts[1], contains('پرسش شماره 2 از 3'));
       expect(prompts[2], contains('پرسش شماره 3 از 3'));
-      expect(prompts[3], contains('روش سقراطی'));
-      expect(prompts[4], contains('روش توضیح متفاوت'));
+      expect(prompts[3], contains('مرحله فعلی تمرین هدایت‌شده'));
+      expect(prompts[4], contains('مرحله فعلی بازآموزی'));
       expect(prompts[0], contains('calculation یعنی خطای محاسبات عددی'));
       expect(prompts[0], contains('شواهد پاسخ'));
       expect(prompts[0], contains('partial وقتی'));
