@@ -1734,10 +1734,10 @@ class _AdvisorPageState extends State<AdvisorPage> {
           itemCount: _messages.length + (_busy ? 1 : 0),
           itemBuilder: (context, index) {
             if (index == _messages.length) {
-              return const Semantics(
+              return Semantics(
                 liveRegion: true,
                 child: Padding(
-                  padding: EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(12),
                   child: Row(
                     children: [
                       SizedBox(
@@ -1745,8 +1745,8 @@ class _AdvisorPageState extends State<AdvisorPage> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
-                      SizedBox(width: 12),
-                      Expanded(
+                      const SizedBox(width: 12),
+                      const Expanded(
                         child: Text('سیمرغ دارد پاسخ را آماده و ثبت می‌کند…'),
                       ),
                     ],
