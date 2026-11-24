@@ -34,8 +34,11 @@ SIGNING_SECRETS = (
     "RELEASE_KEY_PASSWORD",
 )
 
-REQUIRED_SECRETS = SIGNING_SECRETS + (
+# The certificate fingerprint is public configuration, not a private secret.
+# It is required to pin the signer identity used for production APKs.
+REQUIRED_CONFIGURATION_VALUES = SIGNING_SECRETS + (
     "BAZAAR_RSA_PUBLIC_KEY",
+    "EXPECTED_RELEASE_CERT_SHA256",
 )
 
 AI_SECRET_NAMES = (
@@ -266,13 +269,13 @@ def inspect_configuration() -> Configuration:
 
     present_required = tuple(
         name
-        for name in REQUIRED_SECRETS
+        for name in REQUIRED_CONFIGURATION_VALUES
         if environment_value(name)
     )
 
     missing_required = tuple(
         name
-        for name in REQUIRED_SECRETS
+        for name in REQUIRED_CONFIGURATION_VALUES
         if name not in present_required
     )
 
@@ -308,11 +311,11 @@ def generate_summary(config: Configuration) -> str:
         "- Production configuration inputs complete: "
         f"**{boolean_text(config.configuration_inputs_complete)}**",
         "",
-        "### Signing and Bazaar configuration",
+        "### Signing, certificate pin and Bazaar configuration",
         "",
     ]
 
-    for name in REQUIRED_SECRETS:
+    for name in REQUIRED_CONFIGURATION_VALUES:
         status = (
             "present"
             if name in config.present_required
@@ -375,7 +378,8 @@ def generate_summary(config: Configuration) -> str:
         "- No secret values are included in this report.",
         "- Presence means a nonempty value after trimming whitespace.",
         "- Presence does not validate credentials, keystore data, aliases, "
-        "public keys, API connectivity, or payment behavior.",
+        "certificate fingerprint correctness, public keys, API connectivity, "
+        "or payment behavior.",
         "- Catalog confirmation is an environment declaration, "
         "not an independent catalog verification.",
         "- `production_ready` is a compatibility output meaning only "
