@@ -718,20 +718,17 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.textContaining('بسته برنزی').first,
-      300,
-    );
+    await tester.ensureVisible(find.textContaining('بسته برنزی').first);
+    await tester.pumpAndSettle();
     expect(find.textContaining('بسته برنزی'), findsOneWidget);
     await tester.tap(find.text('خرید از بازار').first);
     await tester.pumpAndSettle();
     expect(store.credits, 105);
-    await tester.scrollUntilVisible(find.text('تاریخچه پرها'), 300);
+    await tester.ensureVisible(find.text('تاریخچه پرها'));
     await tester.pumpAndSettle();
     expect(find.text('تاریخچه پرها'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.textContaining('بسته برنزی').last,
-      300,
-    );
+    await tester.ensureVisible(find.textContaining('بسته برنزی').last);
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 
@@ -740,13 +737,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('روش‌های مؤثر مطالعه'), findsOneWidget);
     expect(find.text('مطالعه فعال'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('مرور فاصله‌دار'));
-      await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('مرور فاصله‌دار'));
     await tester.pumpAndSettle();
     expect(find.text('مرور فاصله‌دار'), findsOneWidget);
     await tester.ensureVisible(find.text('آمادگی برای امتحان'));
-      await tester.pumpAndSettle();
     await tester.pumpAndSettle();
     expect(find.text('آمادگی برای امتحان'), findsOneWidget);
   });
