@@ -722,7 +722,7 @@ class EducationStore extends ChangeNotifier {
     }
   }
 
-  int _requestAttempt(Map request) {
+  int _requestAttempt(Map<dynamic, dynamic> request) {
     return (request['attempt'] as int?) ?? 1;
   }
 
@@ -735,7 +735,7 @@ class EducationStore extends ChangeNotifier {
   /// Returns false for a callback belonging to an older attempt.
   ///
   /// Null preserves the legacy API. New callers should always pass attempt.
-  bool _matchesAttempt(Map request, int? attempt) {
+  bool _matchesAttempt(Map<dynamic, dynamic> request, int? attempt) {
     return attempt == null || _requestAttempt(request) == attempt;
   }
 
@@ -1580,7 +1580,7 @@ class EducationStore extends ChangeNotifier {
 
     final history = task['planHistory'] is List
         ? (task['planHistory'] as List)
-              .whereType<Map>()
+              .whereType<Map<dynamic, dynamic>>()
               .map((entry) => Map<String, dynamic>.from(entry))
               .toList()
         : <Map<String, dynamic>>[];
