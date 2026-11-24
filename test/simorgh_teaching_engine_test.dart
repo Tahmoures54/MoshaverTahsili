@@ -1,6 +1,67 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moshaver_tahsili/education/simorgh_teaching_engine.dart';
 
+import 'package:flutter_test/flutter_test.dart';
+import 'package:moshaver_tahsili/education/simorgh_teaching_engine.dart';
+
+SimorghTeachingSession _diagnosedSession(
+  String topic, {
+  String grade = '',
+  required int correctAnswers,
+}) {
+  var session = SimorghTeachingEngine.start(topic: topic, grade: grade);
+
+  for (var index = 0;
+      index < SimorghTeachingEngine.diagnosticQuestionLimit;
+      index++) {
+    session = SimorghTeachingEngine.recordDiagnostic(
+      session,
+      index < correctAnswers
+          ? SimorghAnswerOutcome.correct
+          : SimorghAnswerOutcome.incorrect,
+    );
+  }
+
+  return session;
+}
+
+SimorghTeachingSession _explanationSession(String topic) {
+  return _diagnosedSession(topic, correctAnswers: 0);
+}
+
+SimorghTeachingSession _guidedPracticeSession(
+  String topic, {
+  String grade = '',
+}) {
+  return _diagnosedSession(
+    topic,
+    grade: grade,
+    correctAnswers: SimorghTeachingEngine.diagnosticQuestionLimit,
+  );
+}
+
+SimorghTeachingSession _reteachSession(
+  String topic, {
+  String grade = '',
+  SimorghErrorKind error = SimorghErrorKind.unknown,
+}) {
+  return SimorghTeachingEngine.recordPractice(
+    session: _guidedPracticeSession(topic, grade: grade),
+    outcome: SimorghAnswerOutcome.incorrect,
+    error: error,
+  );
+}
+
+SimorghTeachingSession _masteryCheckSession(
+  String topic, {
+  String grade = '',
+}) {
+  return SimorghTeachingEngine.recordPractice(
+    session: _guidedPracticeSession(topic, grade: grade),
+    outcome: SimorghAnswerOutcome.correct,
+  );
+}
+
 void main() {
   group('Simorgh teaching engine', () {
     test('requires a topic and starts with a short diagnostic', () {
@@ -15,7 +76,7 @@ void main() {
       expect(session.stage, SimorghTeachingStage.diagnostic);
       expect(
         SimorghTeachingEngine.instructionFor(session),
-        contains('حداکثر در سه گام'),
+        contains('پرسش شماره 1 از 3'),
       );
       expect(
         () => SimorghTeachingEngine.start(
@@ -73,8 +134,7 @@ void main() {
     });
 
     test('changes explanation after a wrong practice answer', () {
-      var session = SimorghTeachingEngine.start(topic: 'توان');
-      session = session.copyWith(stage: SimorghTeachingStage.guidedPractice);
+      var session = _guidedPracticeSession('توان');
       session = SimorghTeachingEngine.recordPractice(
         session: session,
         outcome: SimorghAnswerOutcome.incorrect,
@@ -94,9 +154,7 @@ void main() {
     test(
       'repeats a different explanation when the explanation check is still wrong',
       () {
-        var session = SimorghTeachingEngine.start(
-          topic: 'کسرها',
-        ).copyWith(stage: SimorghTeachingStage.explanation);
+        var session = _explanationSession('کسرها');
         session = SimorghTeachingEngine.recordExplanationCheck(
           session,
           SimorghAnswerOutcome.incorrect,
@@ -104,11 +162,7 @@ void main() {
         expect(session.stage, SimorghTeachingStage.explanation);
         expect(session.explanationVariant, 1);
         final firstInstruction = SimorghTeachingEngine.instructionFor(
-          SimorghTeachingSession(
-            topic: 'کسرها',
-            grade: '',
-            stage: SimorghTeachingStage.explanation,
-          ),
+          _explanationSession('کسرها'),
         );
         final alternateInstruction = SimorghTeachingEngine.instructionFor(
           session,
@@ -124,11 +178,7 @@ void main() {
     );
 
     test('keeps reteaching until the learner answers the simpler check', () {
-      var session = SimorghTeachingSession(
-        topic: 'تابع',
-        grade: '',
-        stage: SimorghTeachingStage.reteach,
-      );
+      var session = _reteachSession('تابع', error: SimorghErrorKind.conceptual);
       session = SimorghTeachingEngine.recordReteachCheck(
         session: session,
         outcome: SimorghAnswerOutcome.incorrect,
@@ -144,11 +194,7 @@ void main() {
     });
 
     test('requires transfer evidence before marking learning complete', () {
-      var session = SimorghTeachingSession(
-        topic: 'تابع',
-        grade: 'یازدهم',
-        stage: SimorghTeachingStage.masteryCheck,
-      );
+      var session = _masteryCheckSession('تابع', grade: 'یازدهم');
       session = SimorghTeachingEngine.recordMasteryCheck(
         session: session,
         outcome: SimorghAnswerOutcome.correct,
@@ -166,11 +212,7 @@ void main() {
     });
 
     test('returns to reteaching if transfer check is not passed', () {
-      var session = SimorghTeachingSession(
-        topic: 'تابع',
-        grade: '',
-        stage: SimorghTeachingStage.masteryCheck,
-      );
+      var session = _masteryCheckSession('تابع');
       for (var i = 0; i < 3; i++) {
         session = SimorghTeachingEngine.recordMasteryCheck(
           session: session,
@@ -229,11 +271,7 @@ void main() {
     test(
       'routes a partially correct practice answer to targeted reteaching',
       () {
-        final session = SimorghTeachingSession(
-          topic: 'معادله',
-          grade: 'هشتم',
-          stage: SimorghTeachingStage.guidedPractice,
-        );
+        final session = _guidedPracticeSession('معادله', grade: 'هشتم');
         final updated = SimorghTeachingEngine.recordPractice(
           session: session,
           outcome: SimorghAnswerOutcome.partial,
@@ -249,11 +287,7 @@ void main() {
     test(
       'does not count partial mastery evidence as a fully correct answer',
       () {
-        var session = SimorghTeachingSession(
-          topic: 'تابع',
-          grade: 'دهم',
-          stage: SimorghTeachingStage.masteryCheck,
-        );
+        var session = _masteryCheckSession('تابع', grade: 'دهم');
         session = SimorghTeachingEngine.recordMasteryCheck(
           session: session,
           outcome: SimorghAnswerOutcome.correct,
@@ -389,11 +423,10 @@ void main() {
     });
 
     test('uses Persian wording for reteaching error categories', () {
-      final session = SimorghTeachingSession(
-        topic: 'معادله',
+      final session = _reteachSession(
+        'معادله',
         grade: 'هشتم',
-        stage: SimorghTeachingStage.reteach,
-        lastError: SimorghErrorKind.prerequisite,
+        error: SimorghErrorKind.prerequisite,
       );
       final prompt = SimorghTeachingEngine.instructionFor(session);
       expect(prompt, contains('ضعف در پیش‌نیاز'));
@@ -420,9 +453,7 @@ void main() {
       diagnostic,
     );
 
-    final explanation = diagnostic.copyWith(
-      stage: SimorghTeachingStage.explanation,
-    );
+    final explanation = _explanationSession('کسرها');
     expect(
       SimorghTeachingEngine.recordExplanationCheck(
         explanation,
@@ -431,9 +462,7 @@ void main() {
       explanation,
     );
 
-    final practice = diagnostic.copyWith(
-      stage: SimorghTeachingStage.guidedPractice,
-    );
+    final practice = _guidedPracticeSession('کسرها');
     expect(
       SimorghTeachingEngine.recordPractice(
         session: practice,
@@ -442,7 +471,7 @@ void main() {
       practice,
     );
 
-    final reteach = diagnostic.copyWith(stage: SimorghTeachingStage.reteach);
+    final reteach = _reteachSession('کسرها');
     expect(
       SimorghTeachingEngine.recordReteachCheck(
         session: reteach,
