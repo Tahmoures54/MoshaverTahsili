@@ -64,6 +64,7 @@ class AiSafetyPolicy {
   /// Emergency numbers should be supplied by a separate, verified,
   /// location-aware application feature.
   static const String _urgentResponse =
+      'پیام تو به سرویس هوش مصنوعی ارسال نشد. '
       'ممنونم که این موضوع را مطرح کردی. '
       'اگر این موضوع درباره خودت یا کسی نزدیک توست، '
       'لازم نیست با این وضعیت تنها بمانی.\n\n'
