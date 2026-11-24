@@ -355,8 +355,6 @@ jobs:
           python3 scripts/write_build_config.py "$config_file"
           chmod 600 "$config_file"
 
-          signing=(-PciTestBuild=true)
-
           signing_count=0
           for name in \
             RELEASE_KEYSTORE_BASE64 \
@@ -424,7 +422,11 @@ jobs:
             fi
 
             chmod 600 "$properties"
-            signing=()
+            unset ORG_GRADLE_PROJECT_ciTestBuild || true
+          else
+            # Gradle project properties are passed through the environment;
+            # Flutter's CLI does not accept arbitrary -P options.
+            export ORG_GRADLE_PROJECT_ciTestBuild=true
           fi
 
           build_with_retry() {
@@ -466,8 +468,7 @@ jobs:
           build_with_retry apk-arm64 apk \
             --release \
             --target-platform android-arm64 \
-            --dart-define-from-file="$config_file" \
-            "${signing[@]}"
+            --dart-define-from-file="$config_file"
 
           source_apk="build/app/outputs/flutter-apk/app-release.apk"
           target_apk="build/installable/MoshaverTahsili-${VERSION}-arm64.apk"
