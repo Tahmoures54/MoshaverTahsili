@@ -168,7 +168,8 @@ jobs:
         run: python3 scripts/security_check.py
 
       - name: Check Dart formatting
-        run: dart format --output=none --set-exit-if-changed .
+        # Format only maintained Dart source trees; generated and tool files are excluded.
+        run: dart format --output=none --set-exit-if-changed lib test integration_test
 
       - name: Static analysis
         run: |
