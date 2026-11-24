@@ -233,7 +233,7 @@ def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
     output = output.replace("\r\n", "\n").replace("\r", "\n")
     output = output.replace("\u00a0", " ")
     # Some wrapped tool environments may add terminal styling to output.
-    output = re.sub(r"\x1b\\[[0-?]*[ -/]*[@-~]", "", output)
+    output = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", output)
 
     # Parse only normalized hexadecimal fingerprints. Ignore unrelated
     # certificate digest lines (for example SHA-1 and MD5).
