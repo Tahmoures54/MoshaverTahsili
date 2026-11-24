@@ -675,8 +675,7 @@ void main() {
         await tester.pump();
         final sendButton = find.byWidgetPredicate(
           (widget) =>
-              widget is IconButton &&
-              widget.tooltip == 'ارسال پیام به سیمرغ',
+              widget is IconButton && widget.tooltip == 'ارسال پیام به سیمرغ',
         );
         expect(sendButton, findsOneWidget);
         final sendAction = tester.widget<IconButton>(sendButton).onPressed;
