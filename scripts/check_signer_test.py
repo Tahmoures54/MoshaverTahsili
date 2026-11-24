@@ -52,5 +52,30 @@ class CheckSignerTests(unittest.TestCase):
         self.assertTrue(is_debug)
 
 
+    def test_accepts_alternate_build_tools_certificate_labels(self) -> None:
+        digest = "12" * 32
+        output = (
+            "Verifies\\n"
+            "  Signer #1 DN: CN=CI Validation,O=Temporary Build,C=US\\n"
+            f"  Signer #1 SHA-256 digest: {digest}\\n"
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            apk = Path(directory) / "candidate.apk"
+            apk.write_bytes(b"test apk")
+            completed = subprocess.CompletedProcess(
+                args=["apksigner", "verify"],
+                returncode=0,
+                stdout=output.encode(),
+                stderr=b"",
+            )
+
+            with patch.object(check_signer.subprocess, "run", return_value=completed):
+                fingerprint, is_debug = check_signer.verify_apk(apk, "apksigner")
+
+        self.assertEqual(fingerprint, digest.upper())
+        self.assertFalse(is_debug)
+
+
 if __name__ == "__main__":
     unittest.main()
