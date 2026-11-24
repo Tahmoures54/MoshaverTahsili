@@ -291,8 +291,14 @@ void main() {
           ),
         ),
       );
-      expect(service.isBusy, isFalse);
+      // Future.timeout does not cancel the native purchase. Keep the
+      // gateway lock until the original operation has actually settled.
+      expect(service.isBusy, isTrue);
       expect(store.credits, 5);
+      gateway.purchaseGate!.complete();
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      expect(service.isBusy, isFalse);
 
       gateway.purchaseGate = null;
       final retry = await service.buy('credit_10');
