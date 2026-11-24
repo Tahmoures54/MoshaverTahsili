@@ -102,19 +102,18 @@ void main() {
   );
 
   test(
-    'task toggle safely normalizes malformed imported completion flags',
+    'rejects malformed imported completion flags without persisting them',
     () async {
       final store = await EducationStore.open();
-      await store.addTask({
-        'id': 'legacy-task',
-        'title': 'کار واردشده',
-        'done': 'true',
-      });
-
-      await store.toggleTask('legacy-task');
-      expect(store.tasks.single['done'], isTrue);
-      await store.toggleTask('legacy-task');
-      expect(store.tasks.single['done'], isFalse);
+      await expectLater(
+        store.addTask({
+          'id': 'legacy-task',
+          'title': 'کار واردشده',
+          'done': 'true',
+        }),
+        throwsA(isA<LocalDataException>()),
+      );
+      expect(store.tasks, isEmpty);
     },
   );
 
