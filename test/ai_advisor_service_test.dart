@@ -490,7 +490,7 @@ void main() {
       );
       final systemPrompt =
           Map<String, dynamic>.from(messages.first as Map)['content'] as String;
-      expect(systemPrompt, contains('هر نوبت یک گام آموزشی اصلی ارائه کن'));
+      expect(systemPrompt, contains('پاسخ را به اندازه نیاز مسئله بنویس'));
       expect(systemPrompt, contains('یک سؤال روشن‌کننده بپرس'));
       expect(systemPrompt, contains('عدم قطعیت'));
       expect(systemPrompt, contains('کلیشه جنسیتی'));
