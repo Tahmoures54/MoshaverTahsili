@@ -1,18 +1,56 @@
 pluginManagement {
     def flutterSdkPath = {
         def properties = new Properties()
-        def localProperties = new File(rootDir, 'local.properties')
-        if (localProperties.exists()) {
-            localProperties.withInputStream { properties.load(it) }
-            def path = properties.getProperty('flutter.sdk')
-            if (path != null) return path
+        def localPropertiesFile = new File(settingsDir, 'local.properties')
+
+        if (localPropertiesFile.isFile()) {
+            localPropertiesFile.withInputStream { stream ->
+                properties.load(stream)
+            }
         }
-        // Fallback to environment variables for CI/CD environments
-        def envPath = System.getenv('FLUTTER_ROOT') ?: System.getenv('FLUTTER_HOME')
-        if (envPath != null) return envPath
-        throw new GradleException('flutter.sdk or FLUTTER_ROOT must be configured')
+
+        // Prefer local.properties; fall back to environment variables for CI.
+        def sdkPath = [
+            properties.getProperty('flutter.sdk'),
+            System.getenv('FLUTTER_ROOT'),
+            System.getenv('FLUTTER_HOME')
+        ].find { value ->
+            value != null && !value.trim().isEmpty()
+        }
+
+        if (sdkPath == null) {
+            throw new GradleException(
+                'Flutter SDK path is not configured. ' +
+                'Set flutter.sdk in android/local.properties, ' +
+                'or define FLUTTER_ROOT / FLUTTER_HOME.'
+            )
+        }
+
+        sdkPath = sdkPath.trim()
+
+        def sdkDirectory = new File(sdkPath)
+
+        if (!sdkDirectory.isAbsolute()) {
+            sdkDirectory = new File(settingsDir, sdkPath)
+        }
+
+        def flutterGradleDirectory = new File(
+            sdkDirectory,
+            'packages/flutter_tools/gradle'
+        )
+
+        if (!flutterGradleDirectory.isDirectory()) {
+            throw new GradleException(
+                "Invalid Flutter SDK path: ${sdkDirectory.absolutePath}\n" +
+                'Expected packages/flutter_tools/gradle inside the Flutter SDK.'
+            )
+        }
+
+        return sdkDirectory.absolutePath
     }()
+
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+
     repositories {
         google()
         mavenCentral()
@@ -22,9 +60,10 @@ pluginManagement {
 
 plugins {
     id 'dev.flutter.flutter-plugin-loader' version '1.0.0'
-    // Upgraded to the latest stable AGP and KGP as of November 2026
-    id 'com.android.application' version '9.5.2' apply false
-    id 'org.jetbrains.kotlin.android' version '2.2.10' apply false
+
+    // Compatible with Gradle 8.11.1; AGP requires JDK 17 or newer.
+    id 'com.android.application' version '8.9.1' apply false
+    id 'org.jetbrains.kotlin.android' version '2.1.0' apply false
 }
 
 include ':app'
