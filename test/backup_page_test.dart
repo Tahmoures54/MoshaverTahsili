@@ -77,16 +77,20 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(home: BackupPage(store: store)));
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(ListView).first, const Offset(0, -700));
-    await tester.pumpAndSettle();
-    await tester.pumpAndSettle();
-    await tester.drag(find.byType(ListView).first, const Offset(0, -700));
+    await tester.scrollUntilVisible(
+      find.text('انتخاب و بررسی فایل پشتیبان'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('انتخاب و بررسی فایل پشتیبان'));
     await tester.pumpAndSettle();
 
     expect(
-      find.text('فایل پشتیبان خوانده شد؛ برای تأیید و بازیابی اقدام کن.'),
+      find.text(
+        'فایل خوانده شد و بررسی ساختار انجام شد. '
+        'برای جایگزینی اطلاعات، دکمه بازیابی را بزن.',
+      ),
       findsOneWidget,
     );
     final field = tester.widget<TextField>(find.byType(TextField));
