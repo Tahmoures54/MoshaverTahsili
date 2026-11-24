@@ -80,9 +80,9 @@ class CheckSignerTests(unittest.TestCase):
     def test_strips_terminal_formatting_and_nonbreaking_spaces(self) -> None:
         digest = "34" * 32
         output = (
-            "\\x1b[32mVerifies\\x1b[0m\\r\\n"
-            f"\\x1b[32mSigner #1 certificate DN:\\x1b[0m CN=Release\\u00a0\\r\\n"
-            f"Signer #1 certificate SHA-256 digest: {digest}\\r\\n"
+            "\x1b[32mVerifies\x1b[0m\r\n"
+            f"\x1b[32mSigner #1 certificate DN:\x1b[0m CN=Release\u00a0\r\n"
+            f"Signer #1 certificate SHA-256 digest: {digest}\r\n"
         )
         with tempfile.TemporaryDirectory() as directory:
             apk = Path(directory) / "candidate.apk"
