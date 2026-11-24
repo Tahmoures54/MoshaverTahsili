@@ -68,11 +68,9 @@ void main() {
       await tester.enterText(find.byType(TextFormField).first, 'سارا احمدی');
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pumpAndSettle();
-      await tester.ensureVisible(
-        find.widgetWithText(FilledButton, 'ذخیره پروفایل'),
-      );
+      await tester.ensureVisible(find.text('ذخیره پروفایل'));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'ذخیره پروفایل'));
+      await tester.tap(find.text('ذخیره پروفایل'));
       // The dashboard contains an intentionally repeating companion animation;
       // pump a bounded frame instead of waiting for all tickers to settle.
       await tester.pump();
@@ -332,6 +330,12 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(find.text('خلاصه مسیر یادگیری'), findsOneWidget);
+        await tester.scrollUntilVisible(
+          find.text('پیشنهاد امروز سیمرغ'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
         expect(find.text('پیشنهاد امروز سیمرغ'), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.tap(find.byIcon(Icons.calendar_month_outlined));
@@ -437,7 +441,10 @@ void main() {
       expect(composer, findsOneWidget);
       await tester.enterText(composer, 'چطور بهتر مطالعه کنم؟');
       await tester.pump();
-      final sendButton = find.byTooltip('ارسال پیام به سیمرغ');
+      final sendButton = find.ancestor(
+        of: find.byTooltip('ارسال پیام به سیمرغ'),
+        matching: find.byType(IconButton),
+      );
       expect(tester.widget<IconButton>(sendButton).onPressed, isNotNull);
       tester.widget<IconButton>(sendButton).onPressed!.call();
       await tester.pump();
@@ -555,7 +562,7 @@ void main() {
       expect(find.textContaining('روش تدریس سیمرغ'), findsOneWidget);
       await tester.enterText(find.byType(TextField).last, 'یک دوم');
       final sendButton = find.ancestor(
-        of: find.byTooltip('فراخواندن سیمرغ · مصرف یک پر'),
+        of: find.byTooltip('ارسال پیام به سیمرغ'),
         matching: find.byType(IconButton),
       );
       tester.widget<IconButton>(sendButton).onPressed!.call();
