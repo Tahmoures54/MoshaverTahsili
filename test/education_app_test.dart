@@ -464,7 +464,7 @@ void main() {
       expect(failedWallet['requests'][requestId]['status'], 'refunded');
       expect(find.text('تلاش دوباره همین درخواست'), findsNWidgets(2));
       final retryButton = find.byKey(ValueKey('advisor-retry-$requestId'));
-      await tester.ensureVisible(find.text('تلاش دوباره همین درخواست'));
+      await tester.ensureVisible(find.text('تلاش دوباره همین درخواست').last);
       await tester.pumpAndSettle();
       await tester.pumpAndSettle();
       expect(retryButton, findsOneWidget);
