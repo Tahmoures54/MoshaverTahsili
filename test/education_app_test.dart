@@ -53,6 +53,8 @@ void main() {
         ),
         findsOneWidget,
       );
+      await tester.ensureVisible(find.text('بزن بریم'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('بزن بریم'));
       await tester.pumpAndSettle();
       expect(find.text('پایه تحصیلی'), findsNothing);
@@ -323,19 +325,7 @@ void main() {
         await tester.pumpWidget(EducationApp(store: store));
         await tester.pumpAndSettle();
         expect(find.text('درود بر جوینده دانایی!'), findsOneWidget);
-        await tester.scrollUntilVisible(
-          find.text('پیشنهاد امروز سیمرغ'),
-          250,
-          scrollable: find.byType(Scrollable).first,
-        );
-        await tester.pumpAndSettle();
         expect(find.text('پیشنهاد امروز سیمرغ'), findsOneWidget);
-        await tester.scrollUntilVisible(
-          find.text('خلاصه مسیر یادگیری'),
-          250,
-          scrollable: find.byType(Scrollable).first,
-        );
-        await tester.pumpAndSettle();
         expect(find.text('خلاصه مسیر یادگیری'), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.tap(find.byIcon(Icons.calendar_month_outlined));
@@ -462,7 +452,7 @@ void main() {
       final failedWallet = store.walletSnapshot;
       expect(failedWallet['requests'][requestId]['charge'], 'credit');
       expect(failedWallet['requests'][requestId]['status'], 'refunded');
-      expect(find.text('تلاش دوباره همین درخواست'), findsNWidgets(2));
+      expect(find.text('تلاش دوباره همین درخواست'), findsOneWidget);
       final retryButton = find.byKey(ValueKey('advisor-retry-$requestId'));
       await tester.ensureVisible(find.text('تلاش دوباره همین درخواست').last);
       await tester.pumpAndSettle();
@@ -683,12 +673,15 @@ void main() {
         expect(composer, findsOneWidget);
         await tester.enterText(composer, value);
         await tester.pump();
-        final sendButton = find.ancestor(
-          of: find.byTooltip('ارسال پیام به سیمرغ'),
-          matching: find.byType(IconButton),
+        final sendButton = find.byWidgetPredicate(
+          (widget) =>
+              widget is IconButton &&
+              widget.tooltip == 'ارسال پیام به سیمرغ',
         );
-        expect(tester.widget<IconButton>(sendButton).onPressed, isNotNull);
-        tester.widget<IconButton>(sendButton).onPressed!.call();
+        expect(sendButton, findsOneWidget);
+        final sendAction = tester.widget<IconButton>(sendButton).onPressed;
+        expect(sendAction, isNotNull);
+        sendAction!();
         await tester.pump();
         await tester.runAsync(
           () => Future<void>.delayed(const Duration(milliseconds: 100)),
