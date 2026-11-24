@@ -45,15 +45,15 @@ VERIFY_TIMEOUT_SECONDS = 120
 # certificate lines. Match the digest/DN labels rather than requiring the
 # literal word "certificate" or a particular indentation.
 SHA256_PATTERN = re.compile(
-    r"^[ \\t]*(?:Signer\\s*#\\s*(?P<signer>[1-9][0-9]*)[ \\t]+)?"
-    r"[^\\r\\n]*?SHA[ -]?256[^\\r\\n]*?digest\\s*:[ \\t]*"
-    r"(?P<fingerprint>[^\\r\\n]+?)[ \\t]*$",
+    r"^[ \t]*(?:Signer\s*#\s*(?P<signer>[1-9][0-9]*)[ \t]+)?"
+    r"[^\r\n]*?SHA[ -]?256[^\r\n]*?digest\s*:[ \t]*"
+    r"(?P<fingerprint>[^\r\n]+?)[ \t]*$",
     re.MULTILINE | re.IGNORECASE,
 )
 
 DN_PATTERN = re.compile(
-    r"^[ \\t]*(?:Signer\\s*#\\s*(?P<signer>[1-9][0-9]*)[ \\t]+)?"
-    r"[^\\r\\n]*?\\bDN\\s*:[ \\t]*(?P<dn>[^\\r\\n]*)[ \\t]*$",
+    r"^[ \t]*(?:Signer\s*#\s*(?P<signer>[1-9][0-9]*)[ \t]+)?"
+    r"[^\r\n]*?\bDN\s*:[ \t]*(?P<dn>[^\r\n]*)[ \t]*$",
     re.MULTILINE | re.IGNORECASE,
 )
 
