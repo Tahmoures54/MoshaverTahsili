@@ -44,7 +44,7 @@ void main() {
         now: DateTime(2026, 11, 18, 12),
       );
       expect(report, contains('ریاضی'));
-      expect(report, contains('تکمیل‌شده: 1'));
+      expect(report, contains('تکمیل‌شده: ۱'));
       expect(report, contains('فلش‌کارت‌های سررسیدشده: 1'));
       expect(report, contains('فیزیک'));
       expect(report, contains('گفت‌وگوهای خصوصی'));
@@ -64,7 +64,7 @@ void main() {
         deadlines: const [],
         now: DateTime(2026, 11, 18),
       );
-      expect(report, contains('هنوز نمره معتبری ثبت نشده است.'));
+      expect(report, contains('هنوز نمره معتبر و قابل محاسبه‌ای ثبت نشده است.'));
       expect(report, contains('معادل میزان یادگیری نیست'));
     },
   );
