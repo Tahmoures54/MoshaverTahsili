@@ -57,31 +57,21 @@ void main() {
       };
 
       // خطاهای مدیریت‌نشده‌ای که به Flutter engine می‌رسند.
-      PlatformDispatcher.instance.onError = (
-        Object error,
-        StackTrace stackTrace,
-      ) {
-        _reportError(
-          error,
-          stackTrace,
-          source: 'Platform dispatcher',
-        );
+      PlatformDispatcher.instance.onError =
+          (Object error, StackTrace stackTrace) {
+            _reportError(error, stackTrace, source: 'Platform dispatcher');
 
-        // جلوگیری از گزارش fallback موتور.
-        // این مقدار به معنای بازیابی برنامه پس از خطا نیست.
-        return true;
-      };
+            // جلوگیری از گزارش fallback موتور.
+            // این مقدار به معنای بازیابی برنامه پس از خطا نیست.
+            return true;
+          };
 
       runApp(const EducationApp());
     },
 
     // خطاهای مدیریت‌نشده در Zone برنامه.
     (Object error, StackTrace stackTrace) {
-      _reportError(
-        error,
-        stackTrace,
-        source: 'Application zone',
-      );
+      _reportError(error, stackTrace, source: 'Application zone');
     },
   );
 }

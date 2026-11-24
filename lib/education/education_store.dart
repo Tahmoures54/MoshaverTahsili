@@ -7,70 +7,45 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'learning_engine.dart';
 
 abstract interface class SecureLocalCipher {
-  Future<String> encrypt(
-    String plaintext, {
-    required String key,
-  });
+  Future<String> encrypt(String plaintext, {required String key});
 
-  Future<String> decrypt(
-    String ciphertext, {
-    required String key,
-  });
+  Future<String> decrypt(String ciphertext, {required String key});
 }
 
 class AndroidKeystoreCipher implements SecureLocalCipher {
   const AndroidKeystoreCipher();
 
-  static const _channel = MethodChannel(
-    'ir.moshaver.tahsili/secure_storage',
-  );
+  static const _channel = MethodChannel('ir.moshaver.tahsili/secure_storage');
 
   @override
-  Future<String> encrypt(
-    String plaintext, {
-    required String key,
-  }) async {
-    final value = await _channel.invokeMethod<String>(
-      'encrypt',
-      {
-        'plaintext': plaintext,
-        'key': key,
-      },
-    );
+  Future<String> encrypt(String plaintext, {required String key}) async {
+    final value = await _channel.invokeMethod<String>('encrypt', {
+      'plaintext': plaintext,
+      'key': key,
+    });
 
-    if (value == null ||
-        !value.startsWith(EducationStore.encryptedPrefix)) {
-      throw const LocalDataException(
-        'رمزنگاری اطلاعات محلی پاسخ معتبر نداد.',
-      );
+    if (value == null || !value.startsWith(EducationStore.encryptedPrefix)) {
+      throw const LocalDataException('رمزنگاری اطلاعات محلی پاسخ معتبر نداد.');
     }
 
     return value;
   }
 
   @override
-  Future<String> decrypt(
-    String ciphertext, {
-    required String key,
-  }) async {
+  Future<String> decrypt(String ciphertext, {required String key}) async {
     if (!ciphertext.startsWith(EducationStore.encryptedPrefix)) {
       throw const LocalDataException(
         'نسخه رمزنگاری اطلاعات محلی پشتیبانی نمی‌شود.',
       );
     }
 
-    final value = await _channel.invokeMethod<String>(
-      'decrypt',
-      {
-        'ciphertext': ciphertext,
-        'key': key,
-      },
-    );
+    final value = await _channel.invokeMethod<String>('decrypt', {
+      'ciphertext': ciphertext,
+      'key': key,
+    });
 
     if (value == null) {
-      throw const LocalDataException(
-        'رمزگشایی اطلاعات محلی ناموفق بود.',
-      );
+      throw const LocalDataException('رمزگشایی اطلاعات محلی ناموفق بود.');
     }
 
     return value;
@@ -120,10 +95,9 @@ class EducationStore extends ChangeNotifier {
   EducationStore(
     this.prefs, {
     required this.cipher,
-    @visibleForTesting
-    Future<bool> Function(String key)? removePreference,
-  })  : _wallet = _emptyWallet(),
-        _removePreference = removePreference ?? prefs.remove;
+    @visibleForTesting Future<bool> Function(String key)? removePreference,
+  }) : _wallet = _emptyWallet(),
+       _removePreference = removePreference ?? prefs.remove;
 
   final SharedPreferences prefs;
   final SecureLocalCipher cipher;
@@ -191,13 +165,11 @@ class EducationStore extends ChangeNotifier {
   static Future<EducationStore> open({
     SharedPreferences? preferences,
     SecureLocalCipher? cipher,
-    @visibleForTesting
-    Future<bool> Function(String key)? removePreference,
+    @visibleForTesting Future<bool> Function(String key)? removePreference,
   }) async {
     final store = EducationStore(
       preferences ?? await SharedPreferences.getInstance(),
-      cipher:
-          cipher ?? secureCipherOverride ?? const AndroidKeystoreCipher(),
+      cipher: cipher ?? secureCipherOverride ?? const AndroidKeystoreCipher(),
       removePreference: removePreference,
     );
 
@@ -300,8 +272,7 @@ class EducationStore extends ChangeNotifier {
 
       // Only a genuinely absent wallet receives the first-install grant.
       // containsKey also prevents replacing a value of an unexpected type.
-      if (_secureData[walletKey] == null &&
-          !prefs.containsKey(walletKey)) {
+      if (_secureData[walletKey] == null && !prefs.containsKey(walletKey)) {
         await _writeSecure(walletKey, jsonEncode(_wallet));
       }
     } on Object {
@@ -314,16 +285,11 @@ class EducationStore extends ChangeNotifier {
 
   void _ensureKnownStorageKey(String key) {
     if (key != walletKey && !workspaceKeys.contains(key)) {
-      throw const LocalDataException(
-        'کلید ذخیره‌سازی ناشناخته است.',
-      );
+      throw const LocalDataException('کلید ذخیره‌سازی ناشناخته است.');
     }
   }
 
-  void _validateWorkspacePayload(
-    String key,
-    String plaintext,
-  ) {
+  void _validateWorkspacePayload(String key, String plaintext) {
     _ensureKnownStorageKey(key);
 
     if (key == walletKey) return;
@@ -332,10 +298,7 @@ class EducationStore extends ChangeNotifier {
       final value = jsonDecode(plaintext);
 
       // Keep workspace validation aligned with the backup schema.
-      WorkspaceBackup.encode(
-        {key: value},
-        DateTime.now(),
-      );
+      WorkspaceBackup.encode({key: value}, DateTime.now());
     } on BackupFormatException catch (error) {
       throw LocalDataException(error.message);
     } on FormatException {
@@ -345,10 +308,7 @@ class EducationStore extends ChangeNotifier {
     }
   }
 
-  Future<void> _writeSecure(
-    String key,
-    String plaintext,
-  ) async {
+  Future<void> _writeSecure(String key, String plaintext) async {
     _ensureKnownStorageKey(key);
 
     if (_dataErrors.containsKey(key)) {
@@ -365,10 +325,7 @@ class EducationStore extends ChangeNotifier {
       _validateWorkspacePayload(key, plaintext);
     }
 
-    final encrypted = await cipher.encrypt(
-      plaintext,
-      key: key,
-    );
+    final encrypted = await cipher.encrypt(plaintext, key: key);
 
     if (await cipher.decrypt(encrypted, key: key) != plaintext) {
       throw const LocalDataException(
@@ -387,16 +344,11 @@ class EducationStore extends ChangeNotifier {
     _secureData[key] = plaintext;
   }
 
-  Future<T> _serialized<T>(
-    Future<T> Function() action,
-  ) {
+  Future<T> _serialized<T>(Future<T> Function() action) {
     final result = _tail.then((_) => action());
 
     // A failed operation must not poison the queue.
-    _tail = result.then<void>(
-      (_) {},
-      onError: (Object _, StackTrace __) {},
-    );
+    _tail = result.then<void>((_) {}, onError: (Object _, StackTrace __) {});
 
     return result;
   }
@@ -422,19 +374,14 @@ class EducationStore extends ChangeNotifier {
   }
 
   static int _nonNegativeInt(Object? value) {
-    if (value is! int ||
-        value < 0 ||
-        value > maxCounterValue) {
+    if (value is! int || value < 0 || value > maxCounterValue) {
       throw const FormatException('Invalid counter');
     }
 
     return value;
   }
 
-  static String _string(
-    Object? value,
-    int limit,
-  ) {
+  static String _string(Object? value, int limit) {
     if (value is! String || value.length > limit) {
       throw const FormatException('Invalid string');
     }
@@ -460,10 +407,7 @@ class EducationStore extends ChangeNotifier {
     return value.contains(RegExp(r'[\x00-\x1F\x7F]'));
   }
 
-  static String _storedId(
-    Object? value, {
-    int limit = 160,
-  }) {
+  static String _storedId(Object? value, {int limit = 160}) {
     final id = _string(value, limit);
 
     if (id.trim().isEmpty || _hasInvalidIdCharacters(id)) {
@@ -489,16 +433,13 @@ class EducationStore extends ChangeNotifier {
     final version = _nonNegativeInt(source['version'] ?? 1);
 
     if (version < 1 || version > currentWalletVersion) {
-      throw const FormatException(
-        'Unsupported wallet version',
-      );
+      throw const FormatException('Unsupported wallet version');
     }
 
     final result = <String, dynamic>{
       'version': version,
       'credits': _nonNegativeInt(source['credits'] ?? 0),
-      'successful_uses':
-          _nonNegativeInt(source['successful_uses'] ?? 0),
+      'successful_uses': _nonNegativeInt(source['successful_uses'] ?? 0),
     };
 
     final tokens = <String, dynamic>{};
@@ -508,10 +449,7 @@ class EducationStore extends ChangeNotifier {
       for (final token in oldTokens) {
         final id = _storedId(token, limit: 512);
 
-        tokens[id] = {
-          'productId': 'legacy',
-          'credits': 0,
-        };
+        tokens[id] = {'productId': 'legacy', 'credits': 0};
       }
     } else if (oldTokens != null) {
       final tokenMap = _map(oldTokens);
@@ -521,10 +459,7 @@ class EducationStore extends ChangeNotifier {
         final item = _map(entry.value);
 
         tokens[id] = {
-          'productId': _storedId(
-            item['productId'],
-            limit: 100,
-          ),
+          'productId': _storedId(item['productId'], limit: 100),
           'credits': _nonNegativeInt(item['credits']),
           if (item['createdAt'] != null)
             'createdAt': _string(item['createdAt'], 40),
@@ -546,23 +481,15 @@ class EducationStore extends ChangeNotifier {
         final status = _string(item['status'], 20);
         final charge = _string(item['charge'], 20);
 
-        if (!{'pending', 'completed', 'refunded'}
-                .contains(status) ||
+        if (!{'pending', 'completed', 'refunded'}.contains(status) ||
             !{'free', 'credit'}.contains(charge)) {
-          throw const FormatException(
-            'Invalid request state',
-          );
+          throw const FormatException('Invalid request state');
         }
 
-        final question = _string(
-          item['question'],
-          maxQuestionLength,
-        );
+        final question = _string(item['question'], maxQuestionLength);
 
         if (question.trim().isEmpty) {
-          throw const FormatException(
-            'Empty stored question',
-          );
+          throw const FormatException('Empty stored question');
         }
 
         final request = <String, dynamic>{
@@ -573,31 +500,20 @@ class EducationStore extends ChangeNotifier {
           if (item['attempt'] != null)
             'attempt': _nonNegativeInt(item['attempt']),
           if (item['transactionId'] != null)
-            'transactionId': _storedId(
-              item['transactionId'],
-              limit: 512,
-            ),
+            'transactionId': _storedId(item['transactionId'], limit: 512),
           if (item['answer'] != null)
-            'answer': _string(
-              item['answer'],
-              maxAnswerLength,
-            ),
+            'answer': _string(item['answer'], maxAnswerLength),
         };
 
-        if (request['attempt'] != null &&
-            (request['attempt'] as int) < 1) {
-          throw const FormatException(
-            'Invalid request attempt',
-          );
+        if (request['attempt'] != null && (request['attempt'] as int) < 1) {
+          throw const FormatException('Invalid request attempt');
         }
 
         if (status == 'completed') {
           final answer = request['answer'];
 
           if (answer is! String || answer.trim().isEmpty) {
-            throw const FormatException(
-              'Missing saved answer',
-            );
+            throw const FormatException('Missing saved answer');
           }
         }
 
@@ -621,13 +537,9 @@ class EducationStore extends ChangeNotifier {
         final kind = _string(item['kind'], 20);
         final status = _string(item['status'], 20);
 
-        if (!{'purchase', 'ai', 'refund', 'bonus'}
-                .contains(kind) ||
-            !{'pending', 'completed', 'refunded'}
-                .contains(status)) {
-          throw const FormatException(
-            'Invalid transaction',
-          );
+        if (!{'purchase', 'ai', 'refund', 'bonus'}.contains(kind) ||
+            !{'pending', 'completed', 'refunded'}.contains(status)) {
+          throw const FormatException('Invalid transaction');
         }
 
         transactions.add({
@@ -668,13 +580,11 @@ class EducationStore extends ChangeNotifier {
   }
 
   int get freeAiUsesRemaining {
-    if (_walletError != null ||
-        (_wallet['version'] as int? ?? 1) >= 3) {
+    if (_walletError != null || (_wallet['version'] as int? ?? 1) >= 3) {
       return 0;
     }
 
-    final pendingFree = (_wallet['requests'] as Map)
-        .values
+    final pendingFree = (_wallet['requests'] as Map).values
         .where(
           (Object? item) =>
               item is Map &&
@@ -692,20 +602,17 @@ class EducationStore extends ChangeNotifier {
 
   bool get canUseAi {
     return _walletError == null &&
-        (freeAiUsesRemaining > 0 ||
-            credits >= questionFeatherCost);
+        (freeAiUsesRemaining > 0 || credits >= questionFeatherCost);
   }
 
   String? savedAiAnswer(String id) {
     if (_walletError != null) return null;
 
-    final request =
-        (_wallet['requests'] as Map)[id] as Map?;
+    final request = (_wallet['requests'] as Map)[id] as Map?;
 
     final answer = request?['answer'];
 
-    if (request?['status'] == 'completed' &&
-        answer is String) {
+    if (request?['status'] == 'completed' && answer is String) {
       return answer;
     }
 
@@ -716,13 +623,9 @@ class EducationStore extends ChangeNotifier {
   List<Map<String, dynamic>> get creditHistory {
     if (_walletError != null) return const [];
 
-    return (_wallet['transactions'] as List)
-        .reversed
+    return (_wallet['transactions'] as List).reversed
         .take(maxHistoryEntries)
-        .map(
-          (Object? item) =>
-              Map<String, dynamic>.from(item as Map),
-        )
+        .map((Object? item) => Map<String, dynamic>.from(item as Map))
         .toList(growable: false);
   }
 
@@ -774,25 +677,17 @@ class EducationStore extends ChangeNotifier {
     });
 
     if (history.length > maxHistoryEntries) {
-      history.removeRange(
-        0,
-        history.length - maxHistoryEntries,
-      );
+      history.removeRange(0, history.length - maxHistoryEntries);
     }
   }
 
-  void _markTransaction(
-    Map<String, dynamic> wallet,
-    String id,
-    String status,
-  ) {
+  void _markTransaction(Map<String, dynamic> wallet, String id, String status) {
     final history = wallet['transactions'] as List;
 
     for (var index = history.length - 1; index >= 0; index--) {
       final transaction = history[index] as Map;
 
-      if (transaction['id'] == id &&
-          transaction['kind'] == 'ai') {
+      if (transaction['id'] == id && transaction['kind'] == 'ai') {
         transaction['status'] = status;
         return;
       }
@@ -800,8 +695,7 @@ class EducationStore extends ChangeNotifier {
   }
 
   void _trimRequests(Map<String, dynamic> wallet) {
-    final requests =
-        wallet['requests'] as Map<String, dynamic>;
+    final requests = wallet['requests'] as Map<String, dynamic>;
 
     if (requests.length <= maxStoredRequests) return;
 
@@ -833,11 +727,8 @@ class EducationStore extends ChangeNotifier {
   }
 
   void _validateAttempt(int? attempt) {
-    if (attempt != null &&
-        (attempt < 1 || attempt > maxCounterValue)) {
-      throw const LocalDataException(
-        'شماره تلاش درخواست معتبر نیست.',
-      );
+    if (attempt != null && (attempt < 1 || attempt > maxCounterValue)) {
+      throw const LocalDataException('شماره تلاش درخواست معتبر نیست.');
     }
   }
 
@@ -845,18 +736,13 @@ class EducationStore extends ChangeNotifier {
   ///
   /// Null preserves the legacy API. New callers should always pass attempt.
   bool _matchesAttempt(Map request, int? attempt) {
-    return attempt == null ||
-        _requestAttempt(request) == attempt;
+    return attempt == null || _requestAttempt(request) == attempt;
   }
 
-  void _addRefundCredits(
-    Map<String, dynamic> wallet,
-    int amount,
-  ) {
+  void _addRefundCredits(Map<String, dynamic> wallet, int amount) {
     final balance = wallet['credits'] as int;
 
-    if (amount < 0 ||
-        balance > maxCounterValue - amount) {
+    if (amount < 0 || balance > maxCounterValue - amount) {
       throw const LocalDataException(
         'بازگشت پر از سقف مجاز کیف پول عبور می‌کند.',
       );
@@ -872,140 +758,123 @@ class EducationStore extends ChangeNotifier {
   Future<AiReservation> prepareAiRequest({
     required String id,
     required String question,
-  }) =>
-      _serialized(() async {
-        _validateId(id);
+  }) => _serialized(() async {
+    _validateId(id);
 
-        if (question.trim().isEmpty ||
-            question.length > maxQuestionLength) {
-          throw const LocalDataException(
-            'متن درخواست باید بین ۱ تا ۴۰۰۰ نویسه باشد.',
-          );
-        }
+    if (question.trim().isEmpty || question.length > maxQuestionLength) {
+      throw const LocalDataException(
+        'متن درخواست باید بین ۱ تا ۴۰۰۰ نویسه باشد.',
+      );
+    }
 
-        if (_activeRequests.contains(id)) {
-          throw const LocalDataException(
-            'این درخواست در حال انجام است. '
-            'صبر کن تا پاسخ برسد.',
-          );
-        }
+    if (_activeRequests.contains(id)) {
+      throw const LocalDataException(
+        'این درخواست در حال انجام است. '
+        'صبر کن تا پاسخ برسد.',
+      );
+    }
 
-        final wallet = _copyWallet();
-        final requests =
-            wallet['requests'] as Map<String, dynamic>;
+    final wallet = _copyWallet();
+    final requests = wallet['requests'] as Map<String, dynamic>;
 
-        final previous =
-            requests[id] as Map<String, dynamic>?;
+    final previous = requests[id] as Map<String, dynamic>?;
 
-        if (previous != null &&
-            previous['question'] != question) {
-          throw const LocalDataException(
-            'شناسه درخواست برای متن دیگری ثبت شده است.',
-          );
-        }
+    if (previous != null && previous['question'] != question) {
+      throw const LocalDataException(
+        'شناسه درخواست برای متن دیگری ثبت شده است.',
+      );
+    }
 
-        if (previous?['status'] == 'pending') {
-          throw const LocalDataException(
-            'این درخواست قبلاً رزرو شده و '
-            'هنوز تعیین‌تکلیف نشده است.',
-          );
-        }
+    if (previous?['status'] == 'pending') {
+      throw const LocalDataException(
+        'این درخواست قبلاً رزرو شده و '
+        'هنوز تعیین‌تکلیف نشده است.',
+      );
+    }
 
-        if (previous?['status'] == 'completed') {
-          return AiReservation(
-            cachedAnswer: previous!['answer'] as String,
-            usesFreeUse: previous['charge'] == 'free',
-            attempt: _requestAttempt(previous),
-          );
-        }
+    if (previous?['status'] == 'completed') {
+      return AiReservation(
+        cachedAnswer: previous!['answer'] as String,
+        usesFreeUse: previous['charge'] == 'free',
+        attempt: _requestAttempt(previous),
+      );
+    }
 
-        var charge = previous?['charge'] ??
-            (freeAiUsesRemaining > 0 ? 'free' : 'credit');
+    var charge =
+        previous?['charge'] ?? (freeAiUsesRemaining > 0 ? 'free' : 'credit');
 
-        if (charge == 'free' &&
-            previous?['status'] == 'refunded' &&
-            freeAiUsesRemaining == 0) {
-          charge = 'credit';
-        }
+    if (charge == 'free' &&
+        previous?['status'] == 'refunded' &&
+        freeAiUsesRemaining == 0) {
+      charge = 'credit';
+    }
 
-        if (charge == 'credit' &&
-            (wallet['credits'] as int) <
-                questionFeatherCost) {
-          throw const LocalDataException(
-            'پر سیمرغ کافی نداری. '
-            'برای ادامه، یک بسته پر تهیه کن.',
-          );
-        }
+    if (charge == 'credit' &&
+        (wallet['credits'] as int) < questionFeatherCost) {
+      throw const LocalDataException(
+        'پر سیمرغ کافی نداری. '
+        'برای ادامه، یک بسته پر تهیه کن.',
+      );
+    }
 
-        final previousAttempt =
-            previous == null ? 0 : _requestAttempt(previous);
+    final previousAttempt = previous == null ? 0 : _requestAttempt(previous);
 
-        if (previousAttempt >= maxCounterValue) {
-          throw const LocalDataException(
-            'تعداد تلاش‌های این درخواست '
-            'از سقف مجاز عبور کرده است.',
-          );
-        }
+    if (previousAttempt >= maxCounterValue) {
+      throw const LocalDataException(
+        'تعداد تلاش‌های این درخواست '
+        'از سقف مجاز عبور کرده است.',
+      );
+    }
 
-        final attempt = previousAttempt + 1;
-        final transactionId = '$id-attempt-$attempt';
+    final attempt = previousAttempt + 1;
+    final transactionId = '$id-attempt-$attempt';
 
-        if (charge == 'credit') {
-          wallet['credits'] =
-              (wallet['credits'] as int) -
-                  questionFeatherCost;
-        }
+    if (charge == 'credit') {
+      wallet['credits'] = (wallet['credits'] as int) - questionFeatherCost;
+    }
 
-        requests[id] = {
-          'question': question,
-          'status': 'pending',
-          'charge': charge,
-          'createdAt': previous?['createdAt'] ?? _now(),
-          'attempt': attempt,
-          'transactionId': transactionId,
-        };
+    requests[id] = {
+      'question': question,
+      'status': 'pending',
+      'charge': charge,
+      'createdAt': previous?['createdAt'] ?? _now(),
+      'attempt': attempt,
+      'transactionId': transactionId,
+    };
 
-        _transaction(
-          wallet,
-          transactionId,
-          'ai',
-          charge == 'credit' ? questionFeatherCost : 0,
-          charge == 'credit'
-              ? 'فراخوان سیمرغ · یک پر'
-              : 'فراخوان سیمرغ · استفاده رایگان',
-          'pending',
-        );
+    _transaction(
+      wallet,
+      transactionId,
+      'ai',
+      charge == 'credit' ? questionFeatherCost : 0,
+      charge == 'credit'
+          ? 'فراخوان سیمرغ · یک پر'
+          : 'فراخوان سیمرغ · استفاده رایگان',
+      'pending',
+    );
 
-        _trimRequests(wallet);
+    _trimRequests(wallet);
 
-        await _saveWallet(
-          wallet,
-          afterCommit: () {
-            _activeRequests.add(id);
-          },
-        );
+    await _saveWallet(
+      wallet,
+      afterCommit: () {
+        _activeRequests.add(id);
+      },
+    );
 
-        return AiReservation(
-          usesFreeUse: charge == 'free',
-          attempt: attempt,
-        );
-      });
+    return AiReservation(usesFreeUse: charge == 'free', attempt: attempt);
+  });
 
   /// Pass the reservation's attempt for stale-callback protection.
   ///
   /// A mismatched attempt is ignored and cannot complete a newer request.
-  Future<void> completeAiRequest(
-    String id,
-    String answer, {
-    int? attempt,
-  }) =>
+  Future<void> completeAiRequest(String id, String answer, {int? attempt}) =>
       _serialized(() async {
         _validateId(id);
         _validateAttempt(attempt);
 
         final wallet = _copyWallet();
-        final request =
-            (wallet['requests'] as Map)[id] as Map?;
+        final request = (wallet['requests'] as Map)[id] as Map?;
 
         if (request == null) {
           throw const LocalDataException(
@@ -1058,17 +927,13 @@ class EducationStore extends ChangeNotifier {
   /// Idempotently refunds a pending request.
   ///
   /// Pass the reservation's attempt for stale-callback protection.
-  Future<void> refundAiRequest(
-    String id, {
-    int? attempt,
-  }) =>
+  Future<void> refundAiRequest(String id, {int? attempt}) =>
       _serialized(() async {
         _validateId(id);
         _validateAttempt(attempt);
 
         final wallet = _copyWallet();
-        final request =
-            (wallet['requests'] as Map)[id] as Map?;
+        final request = (wallet['requests'] as Map)[id] as Map?;
 
         if (request == null ||
             !_matchesAttempt(request, attempt) ||
@@ -1078,22 +943,15 @@ class EducationStore extends ChangeNotifier {
 
         request['status'] = 'refunded';
 
-        final amount = request['charge'] == 'credit'
-            ? questionFeatherCost
-            : 0;
+        final amount = request['charge'] == 'credit' ? questionFeatherCost : 0;
 
         if (amount > 0) {
           _addRefundCredits(wallet, amount);
         }
 
-        final transactionId =
-            (request['transactionId'] as String?) ?? id;
+        final transactionId = (request['transactionId'] as String?) ?? id;
 
-        _markTransaction(
-          wallet,
-          transactionId,
-          'refunded',
-        );
+        _markTransaction(wallet, transactionId, 'refunded');
 
         _transaction(
           wallet,
@@ -1116,20 +974,15 @@ class EducationStore extends ChangeNotifier {
   ///
   /// Idempotent. Pass the reservation's attempt to avoid refunding a newer
   /// completed attempt after an older response fails validation.
-  Future<void> refundInvalidAiResponse(
-    String id, {
-    int? attempt,
-  }) =>
+  Future<void> refundInvalidAiResponse(String id, {int? attempt}) =>
       _serialized(() async {
         _validateId(id);
         _validateAttempt(attempt);
 
         final wallet = _copyWallet();
-        final requests =
-            wallet['requests'] as Map<String, dynamic>;
+        final requests = wallet['requests'] as Map<String, dynamic>;
 
-        final request =
-            requests[id] as Map<String, dynamic>?;
+        final request = requests[id] as Map<String, dynamic>?;
 
         if (request == null ||
             !_matchesAttempt(request, attempt) ||
@@ -1140,27 +993,19 @@ class EducationStore extends ChangeNotifier {
         request['status'] = 'refunded';
         request.remove('answer');
 
-        final amount = request['charge'] == 'credit'
-            ? questionFeatherCost
-            : 0;
+        final amount = request['charge'] == 'credit' ? questionFeatherCost : 0;
 
         if (amount > 0) {
           _addRefundCredits(wallet, amount);
         } else if (request['charge'] == 'free') {
-          wallet['successful_uses'] =
-              ((wallet['successful_uses'] as int) - 1)
-                  .clamp(0, maxCounterValue)
-                  .toInt();
+          wallet['successful_uses'] = ((wallet['successful_uses'] as int) - 1)
+              .clamp(0, maxCounterValue)
+              .toInt();
         }
 
-        final transactionId =
-            (request['transactionId'] as String?) ?? id;
+        final transactionId = (request['transactionId'] as String?) ?? id;
 
-        _markTransaction(
-          wallet,
-          transactionId,
-          'refunded',
-        );
+        _markTransaction(wallet, transactionId, 'refunded');
 
         _transaction(
           wallet,
@@ -1183,131 +1028,112 @@ class EducationStore extends ChangeNotifier {
   ///
   /// Safe to invoke again while other requests are active: their IDs are
   /// excluded from startup recovery.
-  Future<void> refundInterruptedRequests() =>
-      _serialized(() async {
-        if (_walletError != null) return;
+  Future<void> refundInterruptedRequests() => _serialized(() async {
+    if (_walletError != null) return;
 
-        final pending = (_wallet['requests'] as Map)
-            .entries
-            .where(
-              (entry) =>
-                  entry.value['status'] == 'pending' &&
-                  !_activeRequests.contains(entry.key),
-            )
-            .map((entry) => entry.key.toString())
-            .toList(growable: false);
+    final pending = (_wallet['requests'] as Map).entries
+        .where(
+          (entry) =>
+              entry.value['status'] == 'pending' &&
+              !_activeRequests.contains(entry.key),
+        )
+        .map((entry) => entry.key.toString())
+        .toList(growable: false);
 
-        if (pending.isEmpty) return;
+    if (pending.isEmpty) return;
 
-        final wallet = _copyWallet();
+    final wallet = _copyWallet();
 
-        for (final id in pending) {
-          final request =
-              (wallet['requests'] as Map)[id] as Map;
+    for (final id in pending) {
+      final request = (wallet['requests'] as Map)[id] as Map;
 
-          request['status'] = 'refunded';
+      request['status'] = 'refunded';
 
-          final amount = request['charge'] == 'credit'
-              ? questionFeatherCost
-              : 0;
+      final amount = request['charge'] == 'credit' ? questionFeatherCost : 0;
 
-          if (amount > 0) {
-            // Accumulate against the working copy.
-            _addRefundCredits(wallet, amount);
-          }
+      if (amount > 0) {
+        // Accumulate against the working copy.
+        _addRefundCredits(wallet, amount);
+      }
 
-          final transactionId =
-              (request['transactionId'] as String?) ?? id;
+      final transactionId = (request['transactionId'] as String?) ?? id;
 
-          _markTransaction(
-            wallet,
-            transactionId,
-            'refunded',
-          );
+      _markTransaction(wallet, transactionId, 'refunded');
 
-          _transaction(
-            wallet,
-            '$transactionId-refund',
-            'refund',
-            amount,
-            'بازگشت پر سیمرغ پس از بسته شدن برنامه',
-            'completed',
-          );
-        }
+      _transaction(
+        wallet,
+        '$transactionId-refund',
+        'refund',
+        amount,
+        'بازگشت پر سیمرغ پس از بسته شدن برنامه',
+        'completed',
+      );
+    }
 
-        _trimRequests(wallet);
+    _trimRequests(wallet);
 
-        await _saveWallet(wallet);
-      });
+    await _saveWallet(wallet);
+  });
 
   /// Compatibility entry point.
   /// New integrations should use the reservation API.
-  Future<bool> recordSuccessfulAiUse({
-    String? requestId,
-  }) =>
-      _serialized(() async {
-        final id = requestId ??
-            'legacy-${DateTime.now().microsecondsSinceEpoch}';
+  Future<bool> recordSuccessfulAiUse({String? requestId}) => _serialized(
+    () async {
+      final id = requestId ?? 'legacy-${DateTime.now().microsecondsSinceEpoch}';
 
-        _validateId(id);
+      _validateId(id);
 
-        final wallet = _copyWallet();
-        final requests =
-            wallet['requests'] as Map<String, dynamic>;
+      final wallet = _copyWallet();
+      final requests = wallet['requests'] as Map<String, dynamic>;
 
-        if (requests.containsKey(id)) return false;
+      if (requests.containsKey(id)) return false;
 
-        final free = freeAiUsesRemaining > 0;
+      final free = freeAiUsesRemaining > 0;
 
-        if (!free &&
-            (wallet['credits'] as int) <
-                questionFeatherCost) {
-          return false;
+      if (!free && (wallet['credits'] as int) < questionFeatherCost) {
+        return false;
+      }
+
+      if (free) {
+        final uses = wallet['successful_uses'] as int;
+
+        if (uses >= maxCounterValue) {
+          throw const LocalDataException(
+            'شمارنده استفاده از سقف مجاز عبور کرده است.',
+          );
         }
 
-        if (free) {
-          final uses = wallet['successful_uses'] as int;
+        wallet['successful_uses'] = uses + 1;
+      } else {
+        wallet['credits'] = (wallet['credits'] as int) - questionFeatherCost;
+      }
 
-          if (uses >= maxCounterValue) {
-            throw const LocalDataException(
-              'شمارنده استفاده از سقف مجاز عبور کرده است.',
-            );
-          }
+      requests[id] = {
+        'question': 'درخواست ثبت‌شده',
+        'status': 'completed',
+        'charge': free ? 'free' : 'credit',
+        'createdAt': _now(),
+        'attempt': 1,
+        'transactionId': id,
+        'answer': 'پاسخ دریافت شده',
+      };
 
-          wallet['successful_uses'] = uses + 1;
-        } else {
-          wallet['credits'] =
-              (wallet['credits'] as int) -
-                  questionFeatherCost;
-        }
+      _transaction(
+        wallet,
+        id,
+        'ai',
+        free ? 0 : questionFeatherCost,
+        free ? 'فراخوان سیمرغ · استفاده رایگان' : 'فراخوان سیمرغ · یک پر',
+        'completed',
+      );
 
-        requests[id] = {
-          'question': 'درخواست ثبت‌شده',
-          'status': 'completed',
-          'charge': free ? 'free' : 'credit',
-          'createdAt': _now(),
-          'attempt': 1,
-          'transactionId': id,
-          'answer': 'پاسخ دریافت شده',
-        };
+      _trimRequests(wallet);
 
-        _transaction(
-          wallet,
-          id,
-          'ai',
-          free ? 0 : questionFeatherCost,
-          free
-              ? 'فراخوان سیمرغ · استفاده رایگان'
-              : 'فراخوان سیمرغ · یک پر',
-          'completed',
-        );
+      await _saveWallet(wallet);
 
-        _trimRequests(wallet);
-
-        await _saveWallet(wallet);
-
-        return true;
-      });
+      return true;
+    },
+  );
 
   /// Records a purchase already verified by the billing layer.
   ///
@@ -1320,88 +1146,77 @@ class EducationStore extends ChangeNotifier {
     required String productId,
     required String purchaseToken,
     required int creditsToAdd,
-  }) =>
-      _serialized(() async {
-        _validateId(purchaseToken, limit: 512);
+  }) => _serialized(() async {
+    _validateId(purchaseToken, limit: 512);
 
-        final product = CreditCatalog.byId(productId);
+    final product = CreditCatalog.byId(productId);
 
-        if (product == null ||
-            product.credits <= 0 ||
-            product.credits != creditsToAdd) {
-          throw const LocalDataException(
-            'بسته پر یا تعداد پر آن معتبر نیست.',
-          );
-        }
+    if (product == null ||
+        product.credits <= 0 ||
+        product.credits != creditsToAdd) {
+      throw const LocalDataException('بسته پر یا تعداد پر آن معتبر نیست.');
+    }
 
-        final wallet = _copyWallet();
-        final tokens =
-            wallet['purchase_tokens'] as Map<String, dynamic>;
+    final wallet = _copyWallet();
+    final tokens = wallet['purchase_tokens'] as Map<String, dynamic>;
 
-        final previous = tokens[purchaseToken];
+    final previous = tokens[purchaseToken];
 
-        if (previous != null) {
-          final existing = _map(previous);
+    if (previous != null) {
+      final existing = _map(previous);
 
-          // Legacy wallets retained token IDs without purchase details.
-          if (existing['productId'] == 'legacy') {
-            return false;
-          }
+      // Legacy wallets retained token IDs without purchase details.
+      if (existing['productId'] == 'legacy') {
+        return false;
+      }
 
-          if (existing['productId'] != productId ||
-              existing['credits'] != creditsToAdd) {
-            throw const LocalDataException(
-              'این شناسه خرید قبلاً با بسته دیگری '
-              'ثبت شده است؛ برای جلوگیری از تغییر '
-              'نادرست موجودی، خرید نهایی نشد.',
-            );
-          }
-
-          return false;
-        }
-
-        final balance = wallet['credits'] as int;
-
-        if (balance > maxCounterValue - creditsToAdd) {
-          throw const LocalDataException(
-            'موجودی کیف پول از سقف مجاز عبور می‌کند.',
-          );
-        }
-
-        tokens[purchaseToken] = {
-          'productId': productId,
-          'credits': creditsToAdd,
-          'createdAt': _now(),
-        };
-
-        wallet['credits'] = balance + creditsToAdd;
-
-        _transaction(
-          wallet,
-          'purchase-${tokens.length}',
-          'purchase',
-          creditsToAdd,
-          product.title,
-          'completed',
+      if (existing['productId'] != productId ||
+          existing['credits'] != creditsToAdd) {
+        throw const LocalDataException(
+          'این شناسه خرید قبلاً با بسته دیگری '
+          'ثبت شده است؛ برای جلوگیری از تغییر '
+          'نادرست موجودی، خرید نهایی نشد.',
         );
+      }
 
-        // Tokens are deliberately never pruned with display history.
-        // If the complete wallet exceeds its size limit, fail closed.
-        await _saveWallet(wallet);
+      return false;
+    }
 
-        return true;
-      });
+    final balance = wallet['credits'] as int;
 
-  static void _validateId(
-    String value, {
-    int limit = 160,
-  }) {
+    if (balance > maxCounterValue - creditsToAdd) {
+      throw const LocalDataException('موجودی کیف پول از سقف مجاز عبور می‌کند.');
+    }
+
+    tokens[purchaseToken] = {
+      'productId': productId,
+      'credits': creditsToAdd,
+      'createdAt': _now(),
+    };
+
+    wallet['credits'] = balance + creditsToAdd;
+
+    _transaction(
+      wallet,
+      'purchase-${tokens.length}',
+      'purchase',
+      creditsToAdd,
+      product.title,
+      'completed',
+    );
+
+    // Tokens are deliberately never pruned with display history.
+    // If the complete wallet exceeds its size limit, fail closed.
+    await _saveWallet(wallet);
+
+    return true;
+  });
+
+  static void _validateId(String value, {int limit = 160}) {
     if (value.trim().isEmpty ||
         value.length > limit ||
         _hasInvalidIdCharacters(value)) {
-      throw const LocalDataException(
-        'شناسه محلی معتبر نیست.',
-      );
+      throw const LocalDataException('شناسه محلی معتبر نیست.');
     }
   }
 
@@ -1439,10 +1254,7 @@ class EducationStore extends ChangeNotifier {
     return _writeMap('edu.profile', value);
   }
 
-  Future<void> _writeMap(
-    String key,
-    Map<String, dynamic> value,
-  ) {
+  Future<void> _writeMap(String key, Map<String, dynamic> value) {
     // Capture caller-owned mutable data before joining the async queue.
     final raw = jsonEncode(value);
 
@@ -1499,10 +1311,7 @@ class EducationStore extends ChangeNotifier {
     }
   }
 
-  Future<void> writeList(
-    String key,
-    List<Map<String, dynamic>> value,
-  ) {
+  Future<void> writeList(String key, List<Map<String, dynamic>> value) {
     final raw = jsonEncode(value);
 
     return _serialized(() async {
@@ -1527,41 +1336,36 @@ class EducationStore extends ChangeNotifier {
 
   Future<void> _mutateList(
     String key,
-    List<Map<String, dynamic>> Function(
-      List<Map<String, dynamic>>,
-    ) update,
-  ) =>
-      _serialized(() async {
-        _ensureKnownStorageKey(key);
+    List<Map<String, dynamic>> Function(List<Map<String, dynamic>>) update,
+  ) => _serialized(() async {
+    _ensureKnownStorageKey(key);
 
-        if (!WorkspaceBackup.listKeys.contains(key)) {
-          throw const LocalDataException(
-            'این بخش برای تغییر به‌صورت فهرست '
-            'تعریف نشده است.',
-          );
-        }
+    if (!WorkspaceBackup.listKeys.contains(key)) {
+      throw const LocalDataException(
+        'این بخش برای تغییر به‌صورت فهرست '
+        'تعریف نشده است.',
+      );
+    }
 
-        if (_dataErrors.containsKey(key)) {
-          throw LocalDataException(_dataErrors[key]!);
-        }
+    if (_dataErrors.containsKey(key)) {
+      throw LocalDataException(_dataErrors[key]!);
+    }
 
-        final current = readList(key);
+    final current = readList(key);
 
-        // Reading may discover a previously unknown schema error.
-        if (_dataErrors.containsKey(key)) {
-          throw LocalDataException(_dataErrors[key]!);
-        }
+    // Reading may discover a previously unknown schema error.
+    if (_dataErrors.containsKey(key)) {
+      throw LocalDataException(_dataErrors[key]!);
+    }
 
-        final next = update(current);
+    final next = update(current);
 
-        await _writeSecure(key, jsonEncode(next));
+    await _writeSecure(key, jsonEncode(next));
 
-        _emitChange();
-      });
+    _emitChange();
+  });
 
-  Map<String, dynamic> _detachedMap(
-    Map<String, dynamic> value,
-  ) {
+  Map<String, dynamic> _detachedMap(Map<String, dynamic> value) {
     return _map(jsonDecode(jsonEncode(value)));
   }
 
@@ -1572,10 +1376,7 @@ class EducationStore extends ChangeNotifier {
   Future<void> addTask(Map<String, dynamic> value) {
     final snapshot = _detachedMap(value);
 
-    return _mutateList(
-      'edu.tasks',
-      (all) => [snapshot, ...all],
-    );
+    return _mutateList('edu.tasks', (all) => [snapshot, ...all]);
   }
 
   Future<void> toggleTask(String id) {
@@ -1614,10 +1415,7 @@ class EducationStore extends ChangeNotifier {
   Future<void> addExam(Map<String, dynamic> value) {
     final snapshot = _detachedMap(value);
 
-    return _mutateList(
-      'edu.exams',
-      (all) => [snapshot, ...all],
-    );
+    return _mutateList('edu.exams', (all) => [snapshot, ...all]);
   }
 
   Future<void> deleteExam(String id) {
@@ -1634,19 +1432,14 @@ class EducationStore extends ChangeNotifier {
   Future<void> addCard(Map<String, dynamic> value) {
     final snapshot = _detachedMap(value);
 
-    return _mutateList(
-      'edu.cards',
-      (all) => [snapshot, ...all],
-    );
+    return _mutateList('edu.cards', (all) => [snapshot, ...all]);
   }
 
   Future<void> updateCard(Map<String, dynamic> value) {
     final snapshot = _detachedMap(value);
 
     return _mutateList('edu.cards', (all) {
-      final index = all.indexWhere(
-        (item) => item['id'] == snapshot['id'],
-      );
+      final index = all.indexWhere((item) => item['id'] == snapshot['id']);
 
       if (index >= 0) {
         all[index] = snapshot;
@@ -1667,14 +1460,10 @@ class EducationStore extends ChangeNotifier {
     return readList('edu.teaching.sessions');
   }
 
-  Future<void> saveTeachingSessions(
-    List<Map<String, dynamic>> value,
-  ) {
+  Future<void> saveTeachingSessions(List<Map<String, dynamic>> value) {
     return writeList(
       'edu.teaching.sessions',
-      value.length <= 30
-          ? value
-          : value.sublist(value.length - 30),
+      value.length <= 30 ? value : value.sublist(value.length - 30),
     );
   }
 
@@ -1682,14 +1471,10 @@ class EducationStore extends ChangeNotifier {
     return readList('edu.messages');
   }
 
-  Future<void> saveMessages(
-    List<Map<String, dynamic>> value,
-  ) {
+  Future<void> saveMessages(List<Map<String, dynamic>> value) {
     return writeList(
       'edu.messages',
-      value.length <= 80
-          ? value
-          : value.sublist(value.length - 80),
+      value.length <= 80 ? value : value.sublist(value.length - 80),
     );
   }
 
@@ -1717,9 +1502,7 @@ class EducationStore extends ChangeNotifier {
     return _readObject('edu.career.draft');
   }
 
-  Future<void> saveCareerDraft(
-    Map<String, dynamic> value,
-  ) {
+  Future<void> saveCareerDraft(Map<String, dynamic> value) {
     return _writeMap('edu.career.draft', value);
   }
 
@@ -1730,10 +1513,7 @@ class EducationStore extends ChangeNotifier {
   Future<void> addDeadline(Map<String, dynamic> value) {
     final snapshot = _detachedMap(value);
 
-    return _mutateList(
-      'edu.deadlines',
-      (all) => [snapshot, ...all],
-    );
+    return _mutateList('edu.deadlines', (all) => [snapshot, ...all]);
   }
 
   Future<void> deleteDeadline(String id) {
@@ -1744,27 +1524,15 @@ class EducationStore extends ChangeNotifier {
   }
 
   /// Applies SM-2 scoring and saves the resulting card.
-  Future<void> reviewCard(
-    String id,
-    int quality,
-    DateTime now,
-  ) =>
+  Future<void> reviewCard(String id, int quality, DateTime now) =>
       _mutateList('edu.cards', (all) {
-        final index = all.indexWhere(
-          (card) => card['id'] == id,
-        );
+        final index = all.indexWhere((card) => card['id'] == id);
 
         if (index < 0) {
-          throw const LocalDataException(
-            'فلش‌کارت پیدا نشد.',
-          );
+          throw const LocalDataException('فلش‌کارت پیدا نشد.');
         }
 
-        all[index] = applyCardReview(
-          all[index],
-          quality,
-          now,
-        );
+        all[index] = applyCardReview(all[index], quality, now);
 
         return all;
       });
@@ -1775,24 +1543,19 @@ class EducationStore extends ChangeNotifier {
     List<PlanChange> changes = const [],
     DateTime? now,
   }) {
-    final assignmentSnapshot =
-        Map<String, String>.from(assignments);
+    final assignmentSnapshot = Map<String, String>.from(assignments);
 
     // Capture only the immutable values needed by the queued operation.
     final reasonsById = <String, String>{
-      for (final change in changes)
-        change.taskId: change.reason,
+      for (final change in changes) change.taskId: change.reason,
     };
 
-    final changedAt =
-        (now ?? DateTime.now()).toIso8601String();
+    final changedAt = (now ?? DateTime.now()).toIso8601String();
 
     return _mutateList('edu.tasks', (all) {
       return [
         for (final task in all)
-          if (assignmentSnapshot.containsKey(
-            task['id'].toString(),
-          ))
+          if (assignmentSnapshot.containsKey(task['id'].toString()))
             _applyPlanDate(
               task,
               assignmentSnapshot[task['id'].toString()]!,
@@ -1812,19 +1575,14 @@ class EducationStore extends ChangeNotifier {
     String changedAt,
   ) {
     if (reason == null) {
-      return {
-        ...task,
-        'dueDate': newDate,
-      };
+      return {...task, 'dueDate': newDate};
     }
 
     final history = task['planHistory'] is List
         ? (task['planHistory'] as List)
-            .whereType<Map>()
-            .map(
-              (entry) => Map<String, dynamic>.from(entry),
-            )
-            .toList()
+              .whereType<Map>()
+              .map((entry) => Map<String, dynamic>.from(entry))
+              .toList()
         : <Map<String, dynamic>>[];
 
     history.add({
@@ -1838,79 +1596,64 @@ class EducationStore extends ChangeNotifier {
       history.removeRange(0, history.length - 100);
     }
 
-    return {
-      ...task,
-      'dueDate': newDate,
-      'planHistory': history,
-    };
+    return {...task, 'dueDate': newDate, 'planHistory': history};
   }
 
   /// Exports plaintext study data. Never includes wallet data.
   ///
   /// Callers must handle the exported file as sensitive student information.
-  Future<String> exportBackup() =>
-      _serialized(() async {
-        final damaged = _dataErrors.keys
-            .where(workspaceKeys.contains)
-            .toList(growable: false);
+  Future<String> exportBackup() => _serialized(() async {
+    final damaged = _dataErrors.keys
+        .where(workspaceKeys.contains)
+        .toList(growable: false);
 
-        if (damaged.isNotEmpty) {
-          throw const LocalDataException(
-            'بخشی از اطلاعات قابل خواندن نیست؛ '
-            'برای جلوگیری از ساخت پشتیبان ناقص، '
-            'ابتدا بازیابی یا پاک‌سازی امن را انجام بده.',
-          );
-        }
+    if (damaged.isNotEmpty) {
+      throw const LocalDataException(
+        'بخشی از اطلاعات قابل خواندن نیست؛ '
+        'برای جلوگیری از ساخت پشتیبان ناقص، '
+        'ابتدا بازیابی یا پاک‌سازی امن را انجام بده.',
+      );
+    }
 
-        final data = <String, Object?>{};
+    final data = <String, Object?>{};
 
-        for (final key in workspaceKeys) {
-          final raw = _secureData[key];
+    for (final key in workspaceKeys) {
+      final raw = _secureData[key];
 
-          if (raw == null) continue;
+      if (raw == null) continue;
 
-          try {
-            _validateWorkspacePayload(key, raw);
-            data[key] = jsonDecode(raw);
-          } on Object {
-            _dataErrors[key] =
-                'این بخش برای ساخت پشتیبان '
-                'قابل خواندن نیست.';
+      try {
+        _validateWorkspacePayload(key, raw);
+        data[key] = jsonDecode(raw);
+      } on Object {
+        _dataErrors[key] =
+            'این بخش برای ساخت پشتیبان '
+            'قابل خواندن نیست.';
 
-            _emitChange();
+        _emitChange();
 
-            throw LocalDataException(
-              'بخش «$key» خوانده نمی‌شود؛ '
-              'پشتیبان ناقص ساخته نشد.',
-            );
-          }
-        }
-
-        return WorkspaceBackup.encode(
-          data,
-          DateTime.now(),
+        throw LocalDataException(
+          'بخش «$key» خوانده نمی‌شود؛ '
+          'پشتیبان ناقص ساخته نشد.',
         );
-      });
+      }
+    }
+
+    return WorkspaceBackup.encode(data, DateTime.now());
+  });
 
   Map<String, String?> _snapshotStoredWorkspace() {
-    return {
-      for (final key in workspaceKeys)
-        key: prefs.getString(key),
-    };
+    return {for (final key in workspaceKeys) key: prefs.getString(key)};
   }
 
   Map<String, String?> _snapshotSecureWorkspace() {
-    return {
-      for (final key in workspaceKeys)
-        key: _secureData[key],
-    };
+    return {for (final key in workspaceKeys) key: _secureData[key]};
   }
 
   Map<String, String> _snapshotWorkspaceErrors() {
     return {
       for (final entry in _dataErrors.entries)
-        if (workspaceKeys.contains(entry.key))
-          entry.key: entry.value,
+        if (workspaceKeys.contains(entry.key)) entry.key: entry.value,
     };
   }
 
@@ -1949,9 +1692,7 @@ class EducationStore extends ChangeNotifier {
       }
     }
 
-    _dataErrors.removeWhere(
-      (key, _) => workspaceKeys.contains(key),
-    );
+    _dataErrors.removeWhere((key, _) => workspaceKeys.contains(key));
 
     _dataErrors.addAll(previousErrors);
 
@@ -1967,121 +1708,110 @@ class EducationStore extends ChangeNotifier {
   ///
   /// Wallet data is never touched. Caught failures trigger best-effort
   /// rollback; process death midway is not an atomic transaction.
-  Future<int> importBackup(String raw) =>
-      _serialized(() async {
-        final data = WorkspaceBackup.decode(raw);
+  Future<int> importBackup(String raw) => _serialized(() async {
+    final data = WorkspaceBackup.decode(raw);
 
-        final previousStored = _snapshotStoredWorkspace();
-        final previousSecure = _snapshotSecureWorkspace();
-        final previousErrors = _snapshotWorkspaceErrors();
+    final previousStored = _snapshotStoredWorkspace();
+    final previousSecure = _snapshotSecureWorkspace();
+    final previousErrors = _snapshotWorkspaceErrors();
 
-        _dataErrors.removeWhere(
-          (key, _) => workspaceKeys.contains(key),
-        );
+    _dataErrors.removeWhere((key, _) => workspaceKeys.contains(key));
 
-        try {
-          for (final key in workspaceKeys) {
-            final value = data[key];
+    try {
+      for (final key in workspaceKeys) {
+        final value = data[key];
 
-            if (value == null) {
-              if (!await _removePreference(key)) {
-                throw const LocalDataException(
-                  'بازیابی انجام نشد.',
-                );
-              }
-
-              _secureData.remove(key);
-            } else {
-              await _writeSecure(
-                key,
-                jsonEncode(value),
-              );
-            }
-          }
-        } on Object {
-          final rollbackFailures = await _rollbackWorkspace(
-            previousStored: previousStored,
-            previousSecure: previousSecure,
-            previousErrors: previousErrors,
-            failureMessage:
-                'بازگردانی این بخش پس از خطای '
-                'واردسازی کامل نشد.',
-          );
-
-          if (rollbackFailures.isNotEmpty) {
-            _emitChange();
-
-            throw const LocalDataException(
-              'بازیابی ناموفق بود و بازگردانی کامل '
-              'داده‌های قبلی تأیید نشد. '
-              'از پاک‌سازی یا بازنویسی دوباره خودداری کن '
-              'و برای بررسی داده‌های محلی اقدام کن.',
-            );
+        if (value == null) {
+          if (!await _removePreference(key)) {
+            throw const LocalDataException('بازیابی انجام نشد.');
           }
 
-          rethrow;
+          _secureData.remove(key);
+        } else {
+          await _writeSecure(key, jsonEncode(value));
         }
+      }
+    } on Object {
+      final rollbackFailures = await _rollbackWorkspace(
+        previousStored: previousStored,
+        previousSecure: previousSecure,
+        previousErrors: previousErrors,
+        failureMessage:
+            'بازگردانی این بخش پس از خطای '
+            'واردسازی کامل نشد.',
+      );
 
-        _dataErrors.removeWhere(
-          (key, _) => workspaceKeys.contains(key),
-        );
-
+      if (rollbackFailures.isNotEmpty) {
         _emitChange();
 
-        return data.length;
-      });
+        throw const LocalDataException(
+          'بازیابی ناموفق بود و بازگردانی کامل '
+          'داده‌های قبلی تأیید نشد. '
+          'از پاک‌سازی یا بازنویسی دوباره خودداری کن '
+          'و برای بررسی داده‌های محلی اقدام کن.',
+        );
+      }
+
+      rethrow;
+    }
+
+    _dataErrors.removeWhere((key, _) => workspaceKeys.contains(key));
+
+    _emitChange();
+
+    return data.length;
+  });
 
   /// Deletes only the study workspace.
   ///
   /// Wallet balance, purchase tokens and financial history are not deleted.
   /// Caught failures trigger best-effort rollback of all workspace keys.
-  Future<void> clear() =>
-      _serialized(() async {
-        final previousStored = _snapshotStoredWorkspace();
-        final previousSecure = _snapshotSecureWorkspace();
-        final previousErrors = _snapshotWorkspaceErrors();
+  Future<void> clear() => _serialized(() async {
+    final previousStored = _snapshotStoredWorkspace();
+    final previousSecure = _snapshotSecureWorkspace();
+    final previousErrors = _snapshotWorkspaceErrors();
 
-        try {
-          for (final key in workspaceKeys) {
-            if (!await _removePreference(key)) {
-              throw const LocalDataException(
-                'حذف کامل اطلاعات انجام نشد. '
-                'بازگردانی داده‌های قبلی انجام می‌شود؛ '
-                'دوباره تلاش کن.',
-              );
-            }
-          }
-        } on Object {
-          final rollbackFailures = await _rollbackWorkspace(
-            previousStored: previousStored,
-            previousSecure: previousSecure,
-            previousErrors: previousErrors,
-            failureMessage:
-                'بازگردانی این بخش پس از خطای '
-                'حذف کامل نشد.',
+    try {
+      for (final key in workspaceKeys) {
+        if (!await _removePreference(key)) {
+          throw const LocalDataException(
+            'حذف کامل اطلاعات انجام نشد. '
+            'بازگردانی داده‌های قبلی انجام می‌شود؛ '
+            'دوباره تلاش کن.',
           );
-
-          if (rollbackFailures.isNotEmpty) {
-            _emitChange();
-
-            throw const LocalDataException(
-              'حذف اطلاعات ناموفق بود و بازگردانی کامل '
-              'داده‌های قبلی تأیید نشد. '
-              'از پاک‌سازی یا بازنویسی دوباره خودداری کن '
-              'و برای بررسی داده‌های محلی اقدام کن.',
-            );
-          }
-
-          rethrow;
         }
+      }
+    } on Object {
+      final rollbackFailures = await _rollbackWorkspace(
+        previousStored: previousStored,
+        previousSecure: previousSecure,
+        previousErrors: previousErrors,
+        failureMessage:
+            'بازگردانی این بخش پس از خطای '
+            'حذف کامل نشد.',
+      );
 
-        for (final key in workspaceKeys) {
-          _secureData.remove(key);
-          _dataErrors.remove(key);
-        }
-
+      if (rollbackFailures.isNotEmpty) {
         _emitChange();
-      });
+
+        throw const LocalDataException(
+          'حذف اطلاعات ناموفق بود و بازگردانی کامل '
+          'داده‌های قبلی تأیید نشد. '
+          'از پاک‌سازی یا بازنویسی دوباره خودداری کن '
+          'و برای بررسی داده‌های محلی اقدام کن.',
+        );
+      }
+
+      rethrow;
+    }
+
+    for (final key in workspaceKeys) {
+      _secureData.remove(key);
+      _dataErrors.remove(key);
+    }
+
+    _emitChange();
+  });
 }
 
 class CreditProduct {

@@ -20,22 +20,15 @@
 ///   signals before assessment.
 /// - Providing human-support and emergency-help entry points.
 
-enum AiSafetyDisposition {
-  allow,
-  urgentHumanSupport,
-}
+enum AiSafetyDisposition { allow, urgentHumanSupport }
 
 class AiSafetyResult {
-  const AiSafetyResult(
-    this.disposition, {
-    this.localResponse,
-  });
+  const AiSafetyResult(this.disposition, {this.localResponse});
 
   final AiSafetyDisposition disposition;
   final String? localResponse;
 
-  bool get shouldBlockRemoteAi =>
-      disposition != AiSafetyDisposition.allow;
+  bool get shouldBlockRemoteAi => disposition != AiSafetyDisposition.allow;
 
   bool get requiresHumanSupport =>
       disposition == AiSafetyDisposition.urgentHumanSupport;
@@ -110,13 +103,9 @@ class AiSafetyPolicy {
 
   /// Zero-width separators become spaces so ordinary Persian half-space
   /// forms match patterns such as "می\s*خواهم".
-  static final RegExp _zeroWidthSeparators = RegExp(
-    r'[\u200B-\u200D]',
-  );
+  static final RegExp _zeroWidthSeparators = RegExp(r'[\u200B-\u200D]');
 
-  static final RegExp _digits = RegExp(
-    r'[۰-۹٠-٩]',
-  );
+  static final RegExp _digits = RegExp(r'[۰-۹٠-٩]');
 
   static final RegExp _punctuation = RegExp(
     r'''[،؛؟!.,:;?…«»"“”()\[\]{}<>/\\|_ـ\-–—]+''',
@@ -176,7 +165,6 @@ class AiSafetyPolicy {
     r'اقدام\s*به\s*خود\s*کشی|'
     r'خودم\s*(?:را|رو)\s*بکشم|'
     r'خودمو\s*بکشم|'
-
     // Explicit first-person self-injury statements.
     r'به\s*خودم\s*(?:آسیب|اسیب|صدمه)\s*'
     r'(?:بزنم|می\s*زنم|زدم|وارد\s*(?:کنم|می\s*کنم|کردم))|'
@@ -184,7 +172,6 @@ class AiSafetyPolicy {
     r'خودم\s*(?:را|رو)\s*'
     r'(?:زخمی\s*(?:کنم|کردم|می\s*کنم)|'
     r'آزار\s*(?:بدهم|بدم|می\s*دهم|می\s*دم))|'
-
     // Explicit wishes not to remain alive.
     r'(?:دیگه\s*|دیگر\s*)?'
     r'نمی\s*(?:خوام|خواهم)\s*زنده\s*باشم|'
@@ -196,13 +183,11 @@ class AiSafetyPolicy {
     r'کاش\s*می\s*مردم|'
     r'کاش\s*(?:دیگه\s*|دیگر\s*)?زنده\s*نبودم|'
     r'کاش\s*زنده\s*نباشم|'
-
     // Explicit suicide thoughts.
     r'فکر\s*خود\s*کشی\s*(?:دارم|می\s*کنم)|'
     r'افکار\s*خود\s*کشی\s*دارم|'
     r'به\s*خود\s*کشی\s*فکر\s*می\s*کنم|'
     r'دارم\s*به\s*خود\s*کشی\s*فکر\s*می\s*کنم|'
-
     // Difficulty stopping self-injury.
     r'نمی\s*(?:توانم|تونم)'
     r'\s*جلوی\s*(?:خودم|خود\s*زنی)'
@@ -272,23 +257,18 @@ class AiSafetyPolicy {
         .replaceAll('ي', 'ی')
         .replaceAll('ى', 'ی')
         .replaceAll('ك', 'ک')
-
         // Common apostrophe variants -> ASCII apostrophe.
         .replaceAll('’', "'")
         .replaceAll('‘', "'")
         .replaceAll('ʼ', "'")
         .replaceAll('＇', "'")
-
         // Remove tatweel and combining marks.
         .replaceAll('ـ', '')
         .replaceAll(_arabicDiacritics, '')
-
         // Formatting marks do not carry lexical meaning.
         .replaceAll(_directionAndFormattingMarks, '')
-
         // Preserve ordinary word boundaries around half-spaces.
         .replaceAll(_zeroWidthSeparators, ' ')
-
         // Normalize Persian and Arabic digits.
         .replaceAllMapped(_digits, (match) {
           final code = match.group(0)!.codeUnitAt(0);
@@ -303,7 +283,6 @@ class AiSafetyPolicy {
 
           return match.group(0)!;
         })
-
         // Preserve apostrophes for English contractions.
         .replaceAll(_punctuation, ' ')
         .replaceAll(_whitespace, ' ')
@@ -369,8 +348,7 @@ class AiSafetyPolicy {
     var inspected = 0;
 
     for (final message in history.reversed) {
-      if (maxPriorUserMessages > 0 &&
-          inspected >= maxPriorUserMessages) {
+      if (maxPriorUserMessages > 0 && inspected >= maxPriorUserMessages) {
         break;
       }
 

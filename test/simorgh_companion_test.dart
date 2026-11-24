@@ -8,38 +8,79 @@ void main() {
 
   group('resolveSimorghChatState', () {
     test('shows listening before a student starts chatting', () {
-      expect(resolveSimorghChatState(busy: false, messages: const []),
-          SimorghChatState.listening);
+      expect(
+        resolveSimorghChatState(busy: false, messages: const []),
+        SimorghChatState.listening,
+      );
     });
 
     test('shows thinking while a request is in progress', () {
-      expect(resolveSimorghChatState(busy: true, messages: const [
-        {'role': 'user', 'content': 'سلام'},
-      ]), SimorghChatState.thinking);
+      expect(
+        resolveSimorghChatState(
+          busy: true,
+          messages: const [
+            {'role': 'user', 'content': 'سلام'},
+          ],
+        ),
+        SimorghChatState.thinking,
+      );
     });
 
-    test('shows empathy for an explicitly expressed difficulty without diagnosing', () {
-      expect(resolveSimorghChatState(busy: false, messages: const [
-        {'role': 'user', 'content': 'برای امتحان خیلی نگرانم'},
-      ]), SimorghChatState.empathetic);
-    });
+    test(
+      'shows empathy for an explicitly expressed difficulty without diagnosing',
+      () {
+        expect(
+          resolveSimorghChatState(
+            busy: false,
+            messages: const [
+              {'role': 'user', 'content': 'برای امتحان خیلی نگرانم'},
+            ],
+          ),
+          SimorghChatState.empathetic,
+        );
+      },
+    );
 
     test('shows a listening state for a neutral student message', () {
-      expect(resolveSimorghChatState(busy: false, messages: const [
-        {'role': 'user', 'content': 'معادله درجه دوم را توضیح بده'},
-      ]), SimorghChatState.listening);
+      expect(
+        resolveSimorghChatState(
+          busy: false,
+          messages: const [
+            {'role': 'user', 'content': 'معادله درجه دوم را توضیح بده'},
+          ],
+        ),
+        SimorghChatState.listening,
+      );
     });
 
     test('shows a happy state only after an explicitly encouraging answer', () {
-      expect(resolveSimorghChatState(busy: false, messages: const [
-        {'role': 'assistant', 'content': 'آفرین، امروز یک قدم مهم برداشتی.'},
-      ]), SimorghChatState.happy);
+      expect(
+        resolveSimorghChatState(
+          busy: false,
+          messages: const [
+            {
+              'role': 'assistant',
+              'content': 'آفرین، امروز یک قدم مهم برداشتی.',
+            },
+          ],
+        ),
+        SimorghChatState.happy,
+      );
     });
 
     test('shows guiding after a regular assistant answer', () {
-      expect(resolveSimorghChatState(busy: false, messages: const [
-        {'role': 'assistant', 'content': 'بیایید مسئله را مرحله‌به‌مرحله حل کنیم.'},
-      ]), SimorghChatState.guiding);
+      expect(
+        resolveSimorghChatState(
+          busy: false,
+          messages: const [
+            {
+              'role': 'assistant',
+              'content': 'بیایید مسئله را مرحله‌به‌مرحله حل کنیم.',
+            },
+          ],
+        ),
+        SimorghChatState.guiding,
+      );
     });
   });
 
@@ -52,23 +93,26 @@ void main() {
       expect(result.message, contains('یک هدف کوچک'));
     });
 
-    test('prioritizes overdue tasks and suggests rescheduling without blame', () {
-      final result = buildSimorghGuidance(
-        tasks: [
-          {'id': 'late', 'done': false, 'dueDate': '2026-11-17'},
-          {'id': 'today', 'done': false, 'dueDate': '2026-11-18'},
-        ],
-        cards: [
-          {'id': 'due-card', 'dueAt': '2026-11-18T08:00:00'},
-        ],
-        now: now,
-      );
+    test(
+      'prioritizes overdue tasks and suggests rescheduling without blame',
+      () {
+        final result = buildSimorghGuidance(
+          tasks: [
+            {'id': 'late', 'done': false, 'dueDate': '2026-11-17'},
+            {'id': 'today', 'done': false, 'dueDate': '2026-11-18'},
+          ],
+          cards: [
+            {'id': 'due-card', 'dueAt': '2026-11-18T08:00:00'},
+          ],
+          now: now,
+        );
 
-      expect(result.mood, SimorghMood.gentle);
-      expect(result.action, SimorghAction.planner);
-      expect(result.title, contains('یک‌جا'));
-      expect(result.message, contains('۱ کار'));
-    });
+        expect(result.mood, SimorghMood.gentle);
+        expect(result.action, SimorghAction.planner);
+        expect(result.title, contains('یک‌جا'));
+        expect(result.message, contains('۱ کار'));
+      },
+    );
 
     test('recommends review when flashcards are due', () {
       final result = buildSimorghGuidance(
@@ -144,7 +188,9 @@ void main() {
     });
   });
 
-  testWidgets('chat avatar renders all five states with accessible labels', (tester) async {
+  testWidgets('chat avatar renders all five states with accessible labels', (
+    tester,
+  ) async {
     for (final state in SimorghChatState.values) {
       await tester.pumpWidget(
         MaterialApp(
@@ -166,7 +212,9 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('companion renders, animates, and routes its actions', (tester) async {
+  testWidgets('companion renders, animates, and routes its actions', (
+    tester,
+  ) async {
     SimorghAction? selectedAction;
     var chatOpened = false;
 
@@ -191,7 +239,10 @@ void main() {
 
     expect(find.text('همراه تو، سیمرغ'), findsOneWidget);
     expect(find.text('سفر یادگیری از یک قدم آغاز می‌شود'), findsOneWidget);
-    expect(find.byKey(const ValueKey('simorgh-character-painter')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('simorgh-character-painter')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('ساخت اولین برنامه'));
@@ -202,12 +253,12 @@ void main() {
     await tester.pump();
     expect(chatOpened, isTrue);
 
-    await tester.pumpWidget(
-      const SizedBox(),
-    );
+    await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('companion pauses its ticker when the home tab is inactive', (tester) async {
+  testWidgets('companion pauses its ticker when the home tab is inactive', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -224,17 +275,19 @@ void main() {
     );
 
     expect(
-      tester.widget<TickerMode>(
-        find.byKey(const ValueKey('simorgh-animation-ticker')),
-      ).enabled,
+      tester
+          .widget<TickerMode>(
+            find.byKey(const ValueKey('simorgh-animation-ticker')),
+          )
+          .enabled,
       isFalse,
     );
-    await tester.pumpWidget(
-      const SizedBox(),
-    );
+    await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('companion respects the system reduce-motion preference', (tester) async {
+  testWidgets('companion respects the system reduce-motion preference', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: MediaQuery(
@@ -254,17 +307,19 @@ void main() {
     );
 
     expect(
-      tester.widget<TickerMode>(
-        find.byKey(const ValueKey('simorgh-animation-ticker')),
-      ).enabled,
+      tester
+          .widget<TickerMode>(
+            find.byKey(const ValueKey('simorgh-animation-ticker')),
+          )
+          .enabled,
       isFalse,
     );
-    await tester.pumpWidget(
-      const SizedBox(),
-    );
+    await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('companion remains usable on a compact phone width', (tester) async {
+  testWidgets('companion remains usable on a compact phone width', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(320, 568);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -293,8 +348,6 @@ void main() {
 
     expect(find.text('قدم بعدی را خودت انتخاب کن'), findsOneWidget);
     expect(tester.takeException(), isNull);
-    await tester.pumpWidget(
-      const SizedBox(),
-    );
+    await tester.pumpWidget(const SizedBox());
   });
 }

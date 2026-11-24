@@ -4,49 +4,28 @@ import 'package:flutter/material.dart';
 
 import 'ui.dart';
 
-enum SimorghMood {
-  welcome,
-  thinking,
-  encouraging,
-  celebrating,
-  gentle,
-}
+enum SimorghMood { welcome, thinking, encouraging, celebrating, gentle }
 
-enum SimorghAction {
-  planner,
-  review,
-  advisor,
-}
+enum SimorghAction { planner, review, advisor }
 
-enum SimorghChatState {
-  listening,
-  empathetic,
-  thinking,
-  happy,
-  guiding,
-}
+enum SimorghChatState { listening, empathetic, thinking, happy, guiding }
 
 extension SimorghChatStatePresentation on SimorghChatState {
   String get label => switch (this) {
-        SimorghChatState.listening =>
-          'شنونده · با دقت همراهت هستم',
-        SimorghChatState.empathetic =>
-          'همدل · با هم مسئله را روشن کنیم',
-        SimorghChatState.thinking =>
-          'متفکر · دارم پاسخ را آماده می‌کنم',
-        SimorghChatState.happy =>
-          'خوشحال · پیشرفتت ارزشمند است',
-        SimorghChatState.guiding =>
-          'راهنما · قدم بعدی را پیدا کنیم',
-      };
+    SimorghChatState.listening => 'شنونده · با دقت همراهت هستم',
+    SimorghChatState.empathetic => 'همدل · با هم مسئله را روشن کنیم',
+    SimorghChatState.thinking => 'متفکر · دارم پاسخ را آماده می‌کنم',
+    SimorghChatState.happy => 'خوشحال · پیشرفتت ارزشمند است',
+    SimorghChatState.guiding => 'راهنما · قدم بعدی را پیدا کنیم',
+  };
 
   SimorghMood get visualMood => switch (this) {
-        SimorghChatState.listening => SimorghMood.welcome,
-        SimorghChatState.empathetic => SimorghMood.gentle,
-        SimorghChatState.thinking => SimorghMood.thinking,
-        SimorghChatState.happy => SimorghMood.celebrating,
-        SimorghChatState.guiding => SimorghMood.encouraging,
-      };
+    SimorghChatState.listening => SimorghMood.welcome,
+    SimorghChatState.empathetic => SimorghMood.gentle,
+    SimorghChatState.thinking => SimorghMood.thinking,
+    SimorghChatState.happy => SimorghMood.celebrating,
+    SimorghChatState.guiding => SimorghMood.encouraging,
+  };
 }
 
 // Compiled once, rather than on every call.
@@ -56,9 +35,7 @@ final RegExp _directionalControls = RegExp(
   r'[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF]',
 );
 
-final RegExp _calendarPrefix = RegExp(
-  r'^(\d{4})-(\d{2})-(\d{2})(?:$|[Tt ])',
-);
+final RegExp _calendarPrefix = RegExp(r'^(\d{4})-(\d{2})-(\d{2})(?:$|[Tt ])');
 
 final RegExp _empatheticLanguage = RegExp(
   r'نگران|می\s*ترسم|خسته|استرس|ناامید|نا\s+امید|'
@@ -97,9 +74,7 @@ String _normalizeDateDigits(String value) {
   var result = value.trim();
 
   for (var i = 0; i < 10; i++) {
-    result = result
-        .replaceAll(persian[i], '$i')
-        .replaceAll(arabic[i], '$i');
+    result = result.replaceAll(persian[i], '$i').replaceAll(arabic[i], '$i');
   }
 
   return result;
@@ -118,8 +93,7 @@ SimorghChatState resolveSimorghChatState({
   // Ignore system/tool messages and empty or malformed content.
   for (var i = messages.length - 1; i >= 0; i--) {
     final message = messages[i];
-    final role =
-        _normalizePersianText(message['role']).toLowerCase();
+    final role = _normalizePersianText(message['role']).toLowerCase();
 
     if (role != 'assistant' && role != 'user') continue;
 
@@ -169,19 +143,13 @@ DateTime? _calendarDayFromText(String text) {
   final month = int.parse(match.group(2)!);
   final day = int.parse(match.group(3)!);
 
-  if (year < 1 ||
-      month < 1 ||
-      month > 12 ||
-      day < 1 ||
-      day > 31) {
+  if (year < 1 || month < 1 || month > 12 || day < 1 || day > 31) {
     return null;
   }
 
   final result = DateTime.utc(year, month, day);
 
-  if (result.year != year ||
-      result.month != month ||
-      result.day != day) {
+  if (result.year != year || result.month != month || result.day != day) {
     return null;
   }
 
@@ -245,8 +213,7 @@ DateTime? _parseInstant(Object? value) {
     final offsetMinute = timeMatch.group(5);
 
     if (offsetHour != null &&
-        (int.parse(offsetHour) > 23 ||
-            int.parse(offsetMinute ?? '0') > 59)) {
+        (int.parse(offsetHour) > 23 || int.parse(offsetMinute ?? '0') > 59)) {
       return null;
     }
   }
@@ -296,11 +263,7 @@ SimorghGuidance buildSimorghGuidance({
   final localToday = reference.toLocal();
 
   // UTC is used here only as a stable calendar-date comparison key.
-  final day = DateTime.utc(
-    localToday.year,
-    localToday.month,
-    localToday.day,
-  );
+  final day = DateTime.utc(localToday.year, localToday.month, localToday.day);
 
   var overdueTasks = 0;
   var completedToday = 0;
@@ -359,14 +322,14 @@ SimorghGuidance buildSimorghGuidance({
       title: 'لازم نیست همه‌چیز را یک‌جا حل کنی',
       message: isPrimary
           ? '${faNumber(overdueTasks)} کار از زمان برنامه‌ات گذشته. '
-              'بیا یکی را انتخاب کنیم و قدم‌به‌قدم پیش برویم.'
+                'بیا یکی را انتخاب کنیم و قدم‌به‌قدم پیش برویم.'
           : isOlderStudent
-              ? '${faNumber(overdueTasks)} کار از برنامه عقب مانده است. '
-                  'یکی را اولویت‌بندی کن یا زمان‌بندی را '
-                  'واقع‌بینانه‌تر تنظیم کن.'
-              : '${faNumber(overdueTasks)} کار از زمان برنامه‌ریزی‌شده '
-                  'گذشته. یکی را انتخاب کن و اگر لازم بود، '
-                  'برنامه را واقع‌بینانه‌تر بچین.',
+          ? '${faNumber(overdueTasks)} کار از برنامه عقب مانده است. '
+                'یکی را اولویت‌بندی کن یا زمان‌بندی را '
+                'واقع‌بینانه‌تر تنظیم کن.'
+          : '${faNumber(overdueTasks)} کار از زمان برنامه‌ریزی‌شده '
+                'گذشته. یکی را انتخاب کن و اگر لازم بود، '
+                'برنامه را واقع‌بینانه‌تر بچین.',
       actionLabel: 'مرتب‌کردن برنامه',
       action: SimorghAction.planner,
       mood: SimorghMood.gentle,
@@ -378,9 +341,9 @@ SimorghGuidance buildSimorghGuidance({
       title: 'وقت یک مرور کوتاه است',
       message: isPrimary
           ? '${faNumber(dueCards)} کارت برای مرور آماده است. '
-              'بیا چندتایشان را یادآوری کنیم.'
+                'بیا چندتایشان را یادآوری کنیم.'
           : '${faNumber(dueCards)} فلش‌کارت برای مرور آماده است. '
-              'پیش از دیدن پاسخ، تلاش کن آن را از حافظه بازیابی کنی.',
+                'پیش از دیدن پاسخ، تلاش کن آن را از حافظه بازیابی کنی.',
       actionLabel: 'شروع مرور',
       action: SimorghAction.review,
       mood: SimorghMood.thinking,
@@ -392,10 +355,10 @@ SimorghGuidance buildSimorghGuidance({
       title: 'یک قدم واقعی برداشتی!',
       message: isPrimary
           ? 'آفرین! امروز ${faNumber(completedToday)} کار را تمام کردی. '
-              'هر قدم کوچک ارزشمند است؛ استراحت هم یادت نرود.'
+                'هر قدم کوچک ارزشمند است؛ استراحت هم یادت نرود.'
           : 'امروز ${faNumber(completedToday)} کار را به پایان رساندی. '
-              'این پیشرفت ارزشمند است؛ برای قدم بعدی یا '
-              'یک استراحت کوتاه تصمیم بگیر.',
+                'این پیشرفت ارزشمند است؛ برای قدم بعدی یا '
+                'یک استراحت کوتاه تصمیم بگیر.',
       actionLabel: 'دیدن برنامه',
       action: SimorghAction.planner,
       mood: SimorghMood.celebrating,
@@ -409,13 +372,13 @@ SimorghGuidance buildSimorghGuidance({
           : 'سفر یادگیری از یک قدم آغاز می‌شود',
       message: isPrimary
           ? 'هنوز برنامه‌ای ثبت نکرده‌ای. '
-              'یک کار کوچک و دوست‌داشتنی برای شروع انتخاب کن.'
+                'یک کار کوچک و دوست‌داشتنی برای شروع انتخاب کن.'
           : isOlderStudent
-              ? 'هنوز برنامه یا فلش‌کارتی ثبت نکرده‌ای. '
-                  'یک هدف کوچک، مشخص و قابل‌اندازه‌گیری تعیین کن.'
-              : 'هنوز برنامه یا فلش‌کارتی ثبت نکرده‌ای. '
-                  'یک هدف کوچک و شدنی انتخاب کن؛ '
-                  'لازم نیست همه‌چیز از اول کامل باشد.',
+          ? 'هنوز برنامه یا فلش‌کارتی ثبت نکرده‌ای. '
+                'یک هدف کوچک، مشخص و قابل‌اندازه‌گیری تعیین کن.'
+          : 'هنوز برنامه یا فلش‌کارتی ثبت نکرده‌ای. '
+                'یک هدف کوچک و شدنی انتخاب کن؛ '
+                'لازم نیست همه‌چیز از اول کامل باشد.',
       actionLabel: 'ساخت اولین برنامه',
       action: SimorghAction.planner,
       mood: SimorghMood.welcome,
@@ -427,13 +390,13 @@ SimorghGuidance buildSimorghGuidance({
       title: 'قدم بعدی را خودت انتخاب کن',
       message: isPrimary
           ? '${faNumber(pendingTasks)} کار در برنامه‌ات مانده. '
-              'اگر زمان انجامش رسیده، از یک کار کوتاه شروع کن.'
+                'اگر زمان انجامش رسیده، از یک کار کوتاه شروع کن.'
           : isOlderStudent
-              ? '${faNumber(pendingTasks)} کار باز داری؛ '
-                  'قدم بعدی را بر اساس موعد، اهمیت و زمان لازم انتخاب کن.'
-              : '${faNumber(pendingTasks)} کار ناتمام در برنامه‌ات داری. '
-                  'موعدشان را بررسی کن و یک قدم کوتاه '
-                  'یا مهم برای ادامه انتخاب کن.',
+          ? '${faNumber(pendingTasks)} کار باز داری؛ '
+                'قدم بعدی را بر اساس موعد، اهمیت و زمان لازم انتخاب کن.'
+          : '${faNumber(pendingTasks)} کار ناتمام در برنامه‌ات داری. '
+                'موعدشان را بررسی کن و یک قدم کوتاه '
+                'یا مهم برای ادامه انتخاب کن.',
       actionLabel: 'رفتن به برنامه',
       action: SimorghAction.planner,
       mood: SimorghMood.encouraging,
@@ -444,10 +407,10 @@ SimorghGuidance buildSimorghGuidance({
     title: 'برای ادامه عجله لازم نیست',
     message: cards.isNotEmpty
         ? 'فعلاً کارت آمادهٔ مرور و کار ناتمامی در برنامه دیده نمی‌شود. '
-            'می‌توانی استراحت کنی یا برای هدف بعدی برنامه بریزی.'
+              'می‌توانی استراحت کنی یا برای هدف بعدی برنامه بریزی.'
         : 'برنامه فعلی‌ات کار ناتمامی ندارد. '
-            'اگر زمان و انرژی داری، یک هدف تازه و واقع‌بینانه انتخاب کن؛ '
-            'استراحت هم بخشی از مسیر است.',
+              'اگر زمان و انرژی داری، یک هدف تازه و واقع‌بینانه انتخاب کن؛ '
+              'استراحت هم بخشی از مسیر است.',
     actionLabel: 'دیدن برنامه',
     action: SimorghAction.planner,
     mood: SimorghMood.encouraging,
@@ -456,10 +419,7 @@ SimorghGuidance buildSimorghGuidance({
 
 /// Compact static mascot for the chat header.
 class SimorghChatAvatar extends StatelessWidget {
-  const SimorghChatAvatar({
-    super.key,
-    required this.state,
-  });
+  const SimorghChatAvatar({super.key, required this.state});
 
   final SimorghChatState state;
 
@@ -552,8 +512,7 @@ class SimorghCompanion extends StatefulWidget {
   final bool active;
 
   @override
-  State<SimorghCompanion> createState() =>
-      _SimorghCompanionState();
+  State<SimorghCompanion> createState() => _SimorghCompanionState();
 }
 
 class _SimorghCompanionState extends State<SimorghCompanion>
@@ -568,8 +527,7 @@ class _SimorghCompanionState extends State<SimorghCompanion>
     super.initState();
 
     final lifecycle = WidgetsBinding.instance.lifecycleState;
-    _foreground =
-        lifecycle == null || lifecycle == AppLifecycleState.resumed;
+    _foreground = lifecycle == null || lifecycle == AppLifecycleState.resumed;
 
     _animation = AnimationController(
       vsync: this,
@@ -608,10 +566,8 @@ class _SimorghCompanionState extends State<SimorghCompanion>
     final media = MediaQuery.maybeOf(context);
     final reduceMotion = media?.disableAnimations ?? false;
 
-    _motionEnabled = widget.active &&
-        _foreground &&
-        !reduceMotion &&
-        TickerMode.of(context);
+    _motionEnabled =
+        widget.active && _foreground && !reduceMotion && TickerMode.of(context);
 
     if (_motionEnabled) {
       if (!_animation.isAnimating) {
@@ -629,10 +585,7 @@ class _SimorghCompanionState extends State<SimorghCompanion>
     super.dispose();
   }
 
-  Widget _buildMascot(
-    SimorghGuidance guidance,
-    ThemeData theme,
-  ) {
+  Widget _buildMascot(SimorghGuidance guidance, ThemeData theme) {
     return Semantics(
       image: true,
       label: 'سیمرغ، همراه مسیر یادگیری',
@@ -656,10 +609,7 @@ class _SimorghCompanionState extends State<SimorghCompanion>
     );
   }
 
-  Widget _buildText(
-    SimorghGuidance guidance,
-    ThemeData theme,
-  ) {
+  Widget _buildText(SimorghGuidance guidance, ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -742,16 +692,13 @@ class _SimorghCompanionState extends State<SimorghCompanion>
               builder: (context, constraints) {
                 final largeText =
                     MediaQuery.textScalerOf(context).scale(14) > 19;
-                final stacked =
-                    constraints.maxWidth < 330 || largeText;
+                final stacked = constraints.maxWidth < 330 || largeText;
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (stacked) ...[
-                      Center(
-                        child: _buildMascot(guidance, theme),
-                      ),
+                      Center(child: _buildMascot(guidance, theme)),
                       const SizedBox(height: 10),
                       _buildText(guidance, theme),
                     ] else
@@ -760,9 +707,7 @@ class _SimorghCompanionState extends State<SimorghCompanion>
                         children: [
                           _buildMascot(guidance, theme),
                           const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildText(guidance, theme),
-                          ),
+                          Expanded(child: _buildText(guidance, theme)),
                         ],
                       ),
                     const SizedBox(height: 14),
@@ -773,15 +718,11 @@ class _SimorghCompanionState extends State<SimorghCompanion>
                       children: [
                         TextButton.icon(
                           onPressed: widget.onChat,
-                          icon: const Icon(
-                            Icons.chat_bubble_outline,
-                            size: 18,
-                          ),
+                          icon: const Icon(Icons.chat_bubble_outline, size: 18),
                           label: const Text('گفت‌وگو با سیمرغ'),
                         ),
                         FilledButton.tonal(
-                          onPressed: () =>
-                              widget.onAction(guidance.action),
+                          onPressed: () => widget.onAction(guidance.action),
                           child: Text(guidance.actionLabel),
                         ),
                       ],
@@ -823,12 +764,7 @@ class _SimorghCompanionPainter extends CustomPainter {
   static const Color _gold = Color(0xFFF2BE58);
   static const Color _cream = Color(0xFFFFF1D0);
 
-  void _shape(
-    Canvas canvas,
-    Path path,
-    Color color, {
-    bool outlined = false,
-  }) {
+  void _shape(Canvas canvas, Path path, Color color, {bool outlined = false}) {
     canvas.drawPath(path, Paint()..color = color);
 
     if (outlined) {
@@ -843,13 +779,7 @@ class _SimorghCompanionPainter extends CustomPainter {
   }
 
   void _drawTail(Canvas canvas, double wave) {
-    const colors = [
-      _blue,
-      _deepTeal,
-      _gold,
-      _teal,
-      _blue,
-    ];
+    const colors = [_blue, _deepTeal, _gold, _teal, _blue];
 
     for (var i = 0; i < colors.length; i++) {
       final x = (i - 2) * 7.0;
@@ -857,22 +787,8 @@ class _SimorghCompanionPainter extends CustomPainter {
 
       final feather = Path()
         ..moveTo(x * 0.2 - 4, 17)
-        ..cubicTo(
-          x - 8 + sway,
-          32,
-          x + 10 + sway,
-          43,
-          x + sway,
-          53,
-        )
-        ..cubicTo(
-          x - 7 + sway,
-          43,
-          x - 8 + sway,
-          31,
-          x * 0.2 + 1,
-          18,
-        )
+        ..cubicTo(x - 8 + sway, 32, x + 10 + sway, 43, x + sway, 53)
+        ..cubicTo(x - 7 + sway, 43, x - 8 + sway, 31, x * 0.2 + 1, 18)
         ..close();
 
       _shape(canvas, feather, colors[i]);
@@ -887,23 +803,11 @@ class _SimorghCompanionPainter extends CustomPainter {
       );
     }
 
-    canvas.drawCircle(
-      const Offset(0, 46),
-      3.4,
-      Paint()..color = _gold,
-    );
-    canvas.drawCircle(
-      const Offset(0, 46),
-      1.7,
-      Paint()..color = _teal,
-    );
+    canvas.drawCircle(const Offset(0, 46), 3.4, Paint()..color = _gold);
+    canvas.drawCircle(const Offset(0, 46), 1.7, Paint()..color = _teal);
   }
 
-  void _drawWing(
-    Canvas canvas, {
-    required bool near,
-    required double lift,
-  }) {
+  void _drawWing(Canvas canvas, {required bool near, required double lift}) {
     canvas.save();
 
     if (!near) {
@@ -912,14 +816,7 @@ class _SimorghCompanionPainter extends CustomPainter {
 
     final wing = Path()
       ..moveTo(5, -7)
-      ..cubicTo(
-        20,
-        -24 - lift,
-        35,
-        -46 - lift,
-        47,
-        -40 - lift * 0.6,
-      )
+      ..cubicTo(20, -24 - lift, 35, -46 - lift, 47, -40 - lift * 0.6)
       ..cubicTo(49, -28, 40, -14, 29, -7)
       ..cubicTo(39, -10, 39, 1, 28, 8)
       ..cubicTo(34, 8, 31, 17, 19, 18)
@@ -941,22 +838,13 @@ class _SimorghCompanionPainter extends CustomPainter {
           x - 1,
           -40 - lift * 0.55,
         )
-        ..cubicTo(
-          x - 9,
-          -26 - lift * 0.4,
-          x - 6,
-          -12,
-          7 - i * 0.8,
-          8,
-        )
+        ..cubicTo(x - 9, -26 - lift * 0.4, x - 6, -12, 7 - i * 0.8, 8)
         ..close();
 
       _shape(
         canvas,
         feather,
-        near
-            ? (i.isEven ? _gold : _teal)
-            : (i.isEven ? _blue : _teal),
+        near ? (i.isEven ? _gold : _teal) : (i.isEven ? _blue : _teal),
         outlined: true,
       );
     }
@@ -973,11 +861,7 @@ class _SimorghCompanionPainter extends CustomPainter {
             ..quadraticBezierTo(x + 4, y + 5, x - 2, y)
             ..close();
 
-          _shape(
-            canvas,
-            covert,
-            row == 0 ? _cream : _gold,
-          );
+          _shape(canvas, covert, row == 0 ? _cream : _gold);
         }
       }
     }
@@ -1018,11 +902,7 @@ class _SimorghCompanionPainter extends CustomPainter {
     const head = Offset(20, -34);
 
     canvas.drawCircle(head, 8.1, Paint()..color = _cream);
-    canvas.drawCircle(
-      head.translate(-1.4, 1.2),
-      6.6,
-      Paint()..color = _gold,
-    );
+    canvas.drawCircle(head.translate(-1.4, 1.2), 6.6, Paint()..color = _gold);
 
     final beak = Path()
       ..moveTo(26, -36)
@@ -1046,8 +926,7 @@ class _SimorghCompanionPainter extends CustomPainter {
       ..strokeWidth = 1.2
       ..strokeCap = StrokeCap.round;
 
-    if (mood == SimorghMood.celebrating ||
-        mood == SimorghMood.gentle) {
+    if (mood == SimorghMood.celebrating || mood == SimorghMood.gentle) {
       final eye = Path()
         ..moveTo(21.5, -35)
         ..quadraticBezierTo(
@@ -1061,16 +940,9 @@ class _SimorghCompanionPainter extends CustomPainter {
     } else {
       final eyeY = mood == SimorghMood.thinking ? -36.5 : -35.0;
 
+      canvas.drawCircle(Offset(23, eyeY), 2, Paint()..color = Colors.white);
       canvas.drawCircle(
-        Offset(23, eyeY),
-        2,
-        Paint()..color = Colors.white,
-      );
-      canvas.drawCircle(
-        Offset(
-          mood == SimorghMood.thinking ? 23.1 : 23.7,
-          eyeY,
-        ),
+        Offset(mood == SimorghMood.thinking ? 23.1 : 23.7, eyeY),
         1.15,
         Paint()..color = _navy,
       );
@@ -1099,12 +971,7 @@ class _SimorghCompanionPainter extends CustomPainter {
         ..cubicTo(x + 1, -51, x + 6, -47, x + 3, -40)
         ..close();
 
-      _shape(
-        canvas,
-        crest,
-        crestColors[i],
-        outlined: true,
-      );
+      _shape(canvas, crest, crestColors[i], outlined: true);
     }
   }
 
@@ -1116,30 +983,21 @@ class _SimorghCompanionPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     for (final x in const [-4.0, 6.0]) {
-      canvas.drawLine(
-        Offset(x, 23),
-        Offset(x + 1, 29),
-        paint,
-      );
+      canvas.drawLine(Offset(x, 23), Offset(x + 1, 29), paint);
 
       final claw = Path()
         ..moveTo(x + 1, 29)
         ..quadraticBezierTo(x - 2, 32, x - 5, 30);
 
       canvas.drawPath(claw, paint);
-      canvas.drawLine(
-        Offset(x + 1, 29),
-        Offset(x + 4, 31),
-        paint,
-      );
+      canvas.drawLine(Offset(x + 1, 29), Offset(x + 4, 31), paint);
     }
   }
 
   void _drawSparks(Canvas canvas, double wave) {
     if (mood != SimorghMood.celebrating) return;
 
-    final paint = Paint()
-      ..color = _gold.withValues(alpha: 0.85);
+    final paint = Paint()..color = _gold.withValues(alpha: 0.85);
 
     for (final point in const [
       Offset(-38, -26),
@@ -1164,9 +1022,7 @@ class _SimorghCompanionPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (size.isEmpty ||
-        !size.width.isFinite ||
-        !size.height.isFinite) {
+    if (size.isEmpty || !size.width.isFinite || !size.height.isFinite) {
       return;
     }
 
@@ -1174,12 +1030,10 @@ class _SimorghCompanionPainter extends CustomPainter {
     final safePhase = rawPhase.isFinite ? rawPhase : 0.5;
     final wave = math.sin(safePhase * math.pi * 2);
 
-    final scale = math.min(
-      size.width / 100,
-      size.height / 124,
-    );
+    final scale = math.min(size.width / 100, size.height / 124);
 
-    final lift = wave * 2.5 +
+    final lift =
+        wave * 2.5 +
         switch (mood) {
           SimorghMood.celebrating => -2.0,
           SimorghMood.thinking => 1.0,
@@ -1193,10 +1047,7 @@ class _SimorghCompanionPainter extends CustomPainter {
     );
     canvas.scale(scale);
 
-    final haloRect = Rect.fromCircle(
-      center: Offset.zero,
-      radius: 46,
-    );
+    final haloRect = Rect.fromCircle(center: Offset.zero, radius: 46);
 
     canvas.drawCircle(
       Offset.zero,
@@ -1212,10 +1063,7 @@ class _SimorghCompanionPainter extends CustomPainter {
     );
 
     canvas.drawArc(
-      Rect.fromCircle(
-        center: Offset.zero,
-        radius: 43,
-      ),
+      Rect.fromCircle(center: Offset.zero, radius: 43),
       math.pi * 1.08,
       math.pi * 0.84,
       false,
@@ -1237,9 +1085,7 @@ class _SimorghCompanionPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(
-    covariant _SimorghCompanionPainter oldDelegate,
-  ) {
+  bool shouldRepaint(covariant _SimorghCompanionPainter oldDelegate) {
     return oldDelegate.phase != phase ||
         oldDelegate.mood != mood ||
         oldDelegate.dark != dark ||

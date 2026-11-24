@@ -50,15 +50,10 @@ String digitsToEnglish(String value) {
       .replaceAll('٬', '')
       .replaceAll('،', ',')
       .replaceAll('−', '-')
-      .replaceAll(
-        RegExp(r'[\s\u00A0\u202F\u200E\u200F\u061C]'),
-        '',
-      );
+      .replaceAll(RegExp(r'[\s\u00A0\u202F\u200E\u200F\u061C]'), '');
 
   // Supports grouped integers and grouped numbers with a decimal part.
-  final grouped = RegExp(
-    r'^[-+]?\d{1,3}(,\d{3})+(\.\d+)?$',
-  );
+  final grouped = RegExp(r'^[-+]?\d{1,3}(,\d{3})+(\.\d+)?$');
 
   if (grouped.hasMatch(result)) {
     return result.replaceAll(',', '');
@@ -66,8 +61,7 @@ String digitsToEnglish(String value) {
 
   // One comma without a dot may be a decimal separator.
   // Leave malformed input unchanged so numeric parsers can reject it.
-  if (!result.contains('.') &&
-      ','.allMatches(result).length == 1) {
+  if (!result.contains('.') && ','.allMatches(result).length == 1) {
     return result.replaceAll(',', '.');
   }
 
@@ -103,11 +97,7 @@ void showMessage(BuildContext context, String message) {
     ..hideCurrentSnackBar()
     ..showSnackBar(
       SnackBar(
-        content: Text(
-          text,
-          maxLines: 4,
-          overflow: TextOverflow.ellipsis,
-        ),
+        content: Text(text, maxLines: 4, overflow: TextOverflow.ellipsis),
         behavior: SnackBarBehavior.floating,
         showCloseIcon: true,
       ),
@@ -155,16 +145,12 @@ ThemeData buildAppTheme() {
     ),
     bodyLarge: fontTheme.bodyLarge?.copyWith(height: 1.8),
     bodyMedium: fontTheme.bodyMedium?.copyWith(height: 1.75),
-    labelLarge: fontTheme.labelLarge?.copyWith(
-      fontWeight: FontWeight.w700,
-    ),
+    labelLarge: fontTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
   );
 
   return base.copyWith(
     textTheme: textTheme,
-    primaryTextTheme: base.primaryTextTheme.apply(
-      fontFamily: 'Vazirmatn',
-    ),
+    primaryTextTheme: base.primaryTextTheme.apply(fontFamily: 'Vazirmatn'),
     appBarTheme: const AppBarTheme(
       backgroundColor: pale,
       foregroundColor: navy,
@@ -185,49 +171,32 @@ ThemeData buildAppTheme() {
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(
-          color: Color(0xFFE3EAF2),
-        ),
+        side: const BorderSide(color: Color(0xFFE3EAF2)),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 15,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(
-          color: Color(0xFFD8E2ED),
-        ),
+        borderSide: const BorderSide(color: Color(0xFFD8E2ED)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(
-          color: Color(0xFFD8E2ED),
-        ),
+        borderSide: const BorderSide(color: Color(0xFFD8E2ED)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(
-          color: teal,
-          width: 1.7,
-        ),
+        borderSide: const BorderSide(color: teal, width: 1.7),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(
-          color: Color(0xFFB3261E),
-        ),
+        borderSide: const BorderSide(color: Color(0xFFB3261E)),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(
-          color: Color(0xFFB3261E),
-          width: 1.7,
-        ),
+        borderSide: const BorderSide(color: Color(0xFFB3261E), width: 1.7),
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
@@ -235,9 +204,7 @@ ThemeData buildAppTheme() {
       elevation: 0,
       indicatorColor: teal.withValues(alpha: .16),
       labelTextStyle: WidgetStatePropertyAll<TextStyle?>(
-        textTheme.labelSmall?.copyWith(
-          fontWeight: FontWeight.w700,
-        ),
+        textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
@@ -245,37 +212,25 @@ ThemeData buildAppTheme() {
         backgroundColor: teal,
         foregroundColor: navy,
         minimumSize: const Size(48, 48),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 12,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         textStyle: const TextStyle(
           fontFamily: 'Vazirmatn',
           fontWeight: FontWeight.w700,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: navy,
         minimumSize: const Size(48, 48),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         textStyle: const TextStyle(
           fontFamily: 'Vazirmatn',
           fontWeight: FontWeight.w700,
         ),
-        side: const BorderSide(
-          color: Color(0xFFD5E0EA),
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
+        side: const BorderSide(color: Color(0xFFD5E0EA)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
@@ -305,12 +260,8 @@ ThemeData buildAppTheme() {
       space: 1,
     ),
     chipTheme: base.chipTheme.copyWith(
-      labelStyle: textTheme.labelMedium?.copyWith(
-        fontWeight: FontWeight.w600,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(13),
-      ),
+      labelStyle: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
     ),
     progressIndicatorTheme: const ProgressIndicatorThemeData(
       color: teal,
@@ -338,18 +289,14 @@ class SimorghHomeHero extends StatelessWidget {
     final name = nickname.trim();
     final grade = gradeLine.trim();
 
-    final greeting = name.isEmpty
-        ? 'درود بر جوینده دانایی!'
-        : 'درود، $name!';
+    final greeting = name.isEmpty ? 'درود بر جوینده دانایی!' : 'درود، $name!';
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 360;
-        final textScale =
-            MediaQuery.textScalerOf(context).scale(14) / 14;
+        final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
 
-        final stacked =
-            constraints.maxWidth < 280 || textScale > 1.5;
+        final stacked = constraints.maxWidth < 280 || textScale > 1.5;
 
         final markSize = compact ? 62.0 : 76.0;
 
@@ -396,16 +343,10 @@ class SimorghHomeHero extends StatelessWidget {
             gradient: const LinearGradient(
               begin: Alignment.topRight,
               end: Alignment.bottomLeft,
-              colors: [
-                Color(0xFF1D4770),
-                Color(0xFF142D4E),
-                Color(0xFF10233F),
-              ],
+              colors: [Color(0xFF1D4770), Color(0xFF142D4E), Color(0xFF10233F)],
             ),
             borderRadius: BorderRadius.circular(26),
-            border: Border.all(
-              color: simorghGold.withValues(alpha: .42),
-            ),
+            border: Border.all(color: simorghGold.withValues(alpha: .42)),
             boxShadow: [
               BoxShadow(
                 color: navy.withValues(alpha: .12),
@@ -421,10 +362,7 @@ class SimorghHomeHero extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SimorghMark(
-                      size: markSize,
-                      compact: true,
-                    ),
+                    SimorghMark(size: markSize, compact: true),
                     const SizedBox(height: 12),
                     introduction,
                   ],
@@ -433,10 +371,7 @@ class SimorghHomeHero extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    SimorghMark(
-                      size: markSize,
-                      compact: true,
-                    ),
+                    SimorghMark(size: markSize, compact: true),
                     SizedBox(width: compact ? 10 : 14),
                     Expanded(child: introduction),
                   ],
@@ -456,10 +391,7 @@ class SimorghHomeHero extends StatelessWidget {
                 alignment: AlignmentDirectional.centerStart,
                 child: FilledButton.icon(
                   onPressed: onChat,
-                  icon: const Icon(
-                    Icons.chat_bubble_outline,
-                    size: 18,
-                  ),
+                  icon: const Icon(Icons.chat_bubble_outline, size: 18),
                   label: const Text('گفت‌وگو با سیمرغ'),
                   style: FilledButton.styleFrom(
                     backgroundColor: simorghGold,
@@ -477,11 +409,7 @@ class SimorghHomeHero extends StatelessWidget {
 }
 
 class SimorghSectionTitle extends StatelessWidget {
-  const SimorghSectionTitle({
-    super.key,
-    required this.title,
-    this.subtitle,
-  });
+  const SimorghSectionTitle({super.key, required this.title, this.subtitle});
 
   final String title;
   final String? subtitle;
@@ -511,13 +439,10 @@ class SimorghSectionTitle extends StatelessWidget {
                   header: true,
                   child: Text(
                     title,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(
-                          color: navy,
-                          fontWeight: FontWeight.w800,
-                        ),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: navy,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ),
@@ -526,18 +451,13 @@ class SimorghSectionTitle extends StatelessWidget {
           if (description.isNotEmpty) ...[
             const SizedBox(height: 4),
             Padding(
-              padding: const EdgeInsetsDirectional.only(
-                start: 13,
-              ),
+              padding: const EdgeInsetsDirectional.only(start: 13),
               child: Text(
                 description,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(
-                      color: const Color(0xFF617387),
-                      height: 1.6,
-                    ),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFF617387),
+                  height: 1.6,
+                ),
               ),
             ),
           ],
@@ -565,16 +485,12 @@ class NoticeCard extends StatelessWidget {
         ? const Color(0xFFFFF5E5)
         : const Color(0xFFEAF6F4);
 
-    final foreground = warning
-        ? const Color(0xFF8A4B12)
-        : navy;
+    final foreground = warning ? const Color(0xFF8A4B12) : navy;
 
     return Card(
       color: background,
       margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(17),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17)),
       child: Padding(
         padding: const EdgeInsets.all(15),
         child: Row(
@@ -586,20 +502,14 @@ class NoticeCard extends StatelessWidget {
                     ? Icons.warning_amber_rounded
                     : icon,
                 size: 21,
-                color: warning
-                    ? const Color(0xFFB65D19)
-                    : teal,
+                color: warning ? const Color(0xFFB65D19) : teal,
               ),
             ),
             const SizedBox(width: 11),
             Expanded(
               child: Text(
                 text,
-                style: TextStyle(
-                  color: foreground,
-                  height: 1.8,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: foreground, height: 1.8, fontSize: 13),
               ),
             ),
           ],
@@ -610,27 +520,23 @@ class NoticeCard extends StatelessWidget {
 }
 
 class SimorghFeatherMark extends StatelessWidget {
-  const SimorghFeatherMark({
-    super.key,
-    this.size = 28,
-  }) : assert(size > 0 && size < double.infinity);
+  const SimorghFeatherMark({super.key, this.size = 28})
+    : assert(size > 0 && size < double.infinity);
 
   final double size;
 
   @override
   Widget build(BuildContext context) => Semantics(
-        image: true,
-        label: 'پر سیمرغ',
-        child: ExcludeSemantics(
-          child: SizedBox(
-            width: size,
-            height: size * 1.15,
-            child: CustomPaint(
-              painter: _SimorghFeatherPainter(),
-            ),
-          ),
-        ),
-      );
+    image: true,
+    label: 'پر سیمرغ',
+    child: ExcludeSemantics(
+      child: SizedBox(
+        width: size,
+        height: size * 1.15,
+        child: CustomPaint(painter: _SimorghFeatherPainter()),
+      ),
+    ),
+  );
 }
 
 class _SimorghFeatherPainter extends CustomPainter {
@@ -658,10 +564,7 @@ class _SimorghFeatherPainter extends CustomPainter {
       )
       ..close();
 
-    canvas.drawPath(
-      feather,
-      Paint()..color = simorghGold,
-    );
+    canvas.drawPath(feather, Paint()..color = simorghGold);
 
     final shaft = Paint()
       ..color = navy.withValues(alpha: .72)
@@ -682,152 +585,122 @@ class _SimorghFeatherPainter extends CustomPainter {
 
       canvas.drawLine(
         Offset(x, y),
-        Offset(
-          x - size.width * .13,
-          y + size.height * .035,
-        ),
+        Offset(x - size.width * .13, y + size.height * .035),
         shaft,
       );
 
       canvas.drawLine(
         Offset(x, y),
-        Offset(
-          x + size.width * .08,
-          y + size.height * .025,
-        ),
+        Offset(x + size.width * .08, y + size.height * .025),
         shaft,
       );
     }
   }
 
   @override
-  bool shouldRepaint(
-    covariant _SimorghFeatherPainter oldDelegate,
-  ) =>
-      false;
+  bool shouldRepaint(covariant _SimorghFeatherPainter oldDelegate) => false;
 }
 
 class CreditSummary extends StatelessWidget {
-  const CreditSummary({
-    super.key,
-    required this.store,
-    this.onShop,
-  });
+  const CreditSummary({super.key, required this.store, this.onShop});
 
   final EducationStore store;
   final VoidCallback? onShop;
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-        listenable: store,
-        builder: (context, _) {
-          final walletError = store.walletError;
+    listenable: store,
+    builder: (context, _) {
+      final walletError = store.walletError;
 
-          if (walletError != null) {
-            return NoticeCard(
-              text: walletError,
-              warning: true,
-            );
-          }
+      if (walletError != null) {
+        return NoticeCard(text: walletError, warning: true);
+      }
 
-          final remainingFree = store.freeAiUsesRemaining;
-          final feathers = store.feathers;
+      final remainingFree = store.freeAiUsesRemaining;
+      final feathers = store.feathers;
 
-          return Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final textScale =
-                      MediaQuery.textScalerOf(context)
-                              .scale(14) /
-                          14;
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
 
-                  final stacked =
-                      constraints.maxWidth < 280 ||
-                          textScale > 1.4;
+              final stacked = constraints.maxWidth < 280 || textScale > 1.4;
 
-                  final balance = Row(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.center,
-                    children: [
-                      const SimorghFeatherMark(size: 28),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'پرهای سیمرغ',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${faNumber(feathers)} پر',
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
+              final balance = Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SimorghFeatherMark(size: 28),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'پرهای سیمرغ',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${faNumber(feathers)} پر',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (stacked) ...[
+                    balance,
+                    if (onShop != null) ...[
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: FilledButton.tonal(
+                          onPressed: onShop,
+                          child: const Text('تهیه پر'),
                         ),
                       ),
                     ],
-                  );
-
-                  return Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.stretch,
-                    children: [
-                      if (stacked) ...[
-                        balance,
+                  ] else
+                    Row(
+                      children: [
+                        Expanded(child: balance),
                         if (onShop != null) ...[
-                          const SizedBox(height: 12),
-                          Align(
-                            alignment:
-                                AlignmentDirectional.centerEnd,
-                            child: FilledButton.tonal(
-                              onPressed: onShop,
-                              child: const Text('تهیه پر'),
-                            ),
+                          const SizedBox(width: 12),
+                          FilledButton.tonal(
+                            onPressed: onShop,
+                            child: const Text('تهیه پر'),
                           ),
                         ],
-                      ] else
-                        Row(
-                          children: [
-                            Expanded(child: balance),
-                            if (onShop != null) ...[
-                              const SizedBox(width: 12),
-                              FilledButton.tonal(
-                                onPressed: onShop,
-                                child: const Text('تهیه پر'),
-                              ),
-                            ],
-                          ],
-                        ),
-                      const SizedBox(height: 10),
-                      Text(
-                        remainingFree > 0
-                            ? '${faNumber(remainingFree)} پرسش '
-                                'رایگان باقی مانده است.'
-                            : 'هر پرسش جدید: یک پر · '
-                                'پاسخ ناموفق: بدون هزینه',
-                        style: const TextStyle(
-                          color: Colors.blueGrey,
-                          height: 1.6,
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          );
-        },
+                      ],
+                    ),
+                  const SizedBox(height: 10),
+                  Text(
+                    remainingFree > 0
+                        ? '${faNumber(remainingFree)} پرسش '
+                              'رایگان باقی مانده است.'
+                        : 'هر پرسش جدید: یک پر · '
+                              'پاسخ ناموفق: بدون هزینه',
+                    style: const TextStyle(color: Colors.blueGrey, height: 1.6),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
       );
+    },
+  );
 }
 
 class EmptyState extends StatelessWidget {
@@ -844,40 +717,27 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(
-          vertical: 40,
-          horizontal: 20,
+    padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+    child: Column(
+      children: [
+        ExcludeSemantics(
+          child: Icon(icon, size: 46, color: Colors.blueGrey.shade300),
         ),
-        child: Column(
-          children: [
-            ExcludeSemantics(
-              child: Icon(
-                icon,
-                size: 46,
-                color: Colors.blueGrey.shade300,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: navy,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.blueGrey,
-                height: 1.7,
-              ),
-            ),
-          ],
+        const SizedBox(height: 12),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontWeight: FontWeight.bold, color: navy),
         ),
-      );
+        const SizedBox(height: 6),
+        Text(
+          subtitle,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.blueGrey, height: 1.7),
+        ),
+      ],
+    ),
+  );
 }
 
 class LoadingPage extends StatelessWidget {
@@ -890,80 +750,67 @@ class LoadingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 20),
-                  Semantics(
-                    liveRegion: true,
-                    child: Text(
-                      message,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
+    body: SafeArea(
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 20),
+              Semantics(
+                liveRegion: true,
+                child: Text(message, textAlign: TextAlign.center),
               ),
-            ),
+            ],
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 /// Brand mark for Simorgh: a rising, guiding bird inspired by the Shahnameh.
 class SimorghMark extends StatelessWidget {
-  const SimorghMark({
-    super.key,
-    this.size = 96,
-    this.compact = false,
-  }) : assert(size > 0 && size < double.infinity);
+  const SimorghMark({super.key, this.size = 96, this.compact = false})
+    : assert(size > 0 && size < double.infinity);
 
   final double size;
   final bool compact;
 
   @override
   Widget build(BuildContext context) => Semantics(
-        image: true,
-        label: 'نشان سیمرغ',
-        child: ExcludeSemantics(
-          child: Container(
-            width: size,
-            height: size,
-            padding: EdgeInsets.all(size * .13),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF1D4770),
-                  Color(0xFF10233F),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(
-                size * (compact ? .28 : .31),
-              ),
-              border: Border.all(
-                color: simorghGold.withValues(alpha: .55),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: navy.withValues(alpha: .18),
-                  blurRadius: 18,
-                  offset: const Offset(0, 7),
-                ),
-              ],
-            ),
-            child: CustomPaint(
-              painter: _SimorghMarkPainter(),
-            ),
+    image: true,
+    label: 'نشان سیمرغ',
+    child: ExcludeSemantics(
+      child: Container(
+        width: size,
+        height: size,
+        padding: EdgeInsets.all(size * .13),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1D4770), Color(0xFF10233F)],
           ),
+          borderRadius: BorderRadius.circular(size * (compact ? .28 : .31)),
+          border: Border.all(
+            color: simorghGold.withValues(alpha: .55),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: navy.withValues(alpha: .18),
+              blurRadius: 18,
+              offset: const Offset(0, 7),
+            ),
+          ],
         ),
-      );
+        child: CustomPaint(painter: _SimorghMarkPainter()),
+      ),
+    ),
+  );
 }
 
 class _SimorghMarkPainter extends CustomPainter {
@@ -973,8 +820,7 @@ class _SimorghMarkPainter extends CustomPainter {
 
     final gold = Paint()..color = simorghGold;
     final tealPaint = Paint()..color = teal;
-    final cream = Paint()
-      ..color = const Color(0xFFFFE8B2);
+    final cream = Paint()..color = const Color(0xFFFFE8B2);
 
     final leftWing = Path()
       ..moveTo(size.width * .48, size.height * .43)
@@ -1121,8 +967,5 @@ class _SimorghMarkPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(
-    covariant _SimorghMarkPainter oldDelegate,
-  ) =>
-      false;
+  bool shouldRepaint(covariant _SimorghMarkPainter oldDelegate) => false;
 }

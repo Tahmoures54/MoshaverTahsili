@@ -3,8 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'ui.dart';
 
-const simorghBazaarUrl =
-    'https://cafebazaar.ir/app/ir.moshaver.tahsili';
+const simorghBazaarUrl = 'https://cafebazaar.ir/app/ir.moshaver.tahsili';
 
 const simorghReferralMessage =
     'من از برنامه «سیمرغ؛ مشاور هوشمند تحصیلی» '
@@ -12,11 +11,7 @@ const simorghReferralMessage =
     'اگر دوست داری تو هم امتحانش کنی، از این لینک نصبش کن:\n'
     '$simorghBazaarUrl';
 
-enum _ReferralOperation {
-  share,
-  copyMessage,
-  copyLink,
-}
+enum _ReferralOperation { share, copyMessage, copyLink }
 
 /// Shares only the public referral message through the existing native channel.
 ///
@@ -41,8 +36,9 @@ class ReferralPage extends StatefulWidget {
 }
 
 class _ReferralPageState extends State<ReferralPage> {
-  static const MethodChannel _shareChannel =
-      MethodChannel('ir.moshaver.tahsili/share');
+  static const MethodChannel _shareChannel = MethodChannel(
+    'ir.moshaver.tahsili/share',
+  );
 
   _ReferralOperation? _operation;
 
@@ -86,9 +82,7 @@ class _ReferralPageState extends State<ReferralPage> {
         try {
           final result = await _shareChannel.invokeMethod<bool>(
             'shareText',
-            const <String, Object>{
-              'text': simorghReferralMessage,
-            },
+            const <String, Object>{'text': simorghReferralMessage},
           );
 
           if (result == false) {
@@ -114,8 +108,7 @@ class _ReferralPageState extends State<ReferralPage> {
           );
         }
       },
-      fallbackMessage:
-          'اشتراک‌گذاری ممکن نشد. لطفاً از گزینه کپی استفاده کن.',
+      fallbackMessage: 'اشتراک‌گذاری ممکن نشد. لطفاً از گزینه کپی استفاده کن.',
     );
   }
 
@@ -144,9 +137,7 @@ class _ReferralPageState extends State<ReferralPage> {
       operation,
       () async {
         try {
-          await Clipboard.setData(
-            ClipboardData(text: text),
-          );
+          await Clipboard.setData(ClipboardData(text: text));
 
           _notify(successMessage);
         } on MissingPluginException {
@@ -161,24 +152,18 @@ class _ReferralPageState extends State<ReferralPage> {
           );
         }
       },
-      fallbackMessage:
-          'کپی انجام نشد. متن یا لینک را دستی انتخاب و کپی کن.',
+      fallbackMessage: 'کپی انجام نشد. متن یا لینک را دستی انتخاب و کپی کن.',
     );
   }
 
-  Widget _operationIcon(
-    _ReferralOperation operation,
-    IconData icon,
-  ) {
+  Widget _operationIcon(_ReferralOperation operation, IconData icon) {
     if (_operation != operation) {
       return Icon(icon);
     }
 
     return const SizedBox.square(
       dimension: 18,
-      child: CircularProgressIndicator(
-        strokeWidth: 2,
-      ),
+      child: CircularProgressIndicator(strokeWidth: 2),
     );
   }
 
@@ -190,11 +175,7 @@ class _ReferralPageState extends State<ReferralPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 8),
-        const Center(
-          child: ExcludeSemantics(
-            child: SimorghMark(size: 112),
-          ),
-        ),
+        const Center(child: ExcludeSemantics(child: SimorghMark(size: 112))),
         const SizedBox(height: 20),
         Text(
           'یادگیری با همراهی دوستان شیرین‌تر است!',
@@ -244,9 +225,7 @@ class _ReferralPageState extends State<ReferralPage> {
               simorghReferralMessage,
               textDirection: TextDirection.rtl,
               textAlign: TextAlign.start,
-              style: textTheme.bodyLarge?.copyWith(
-                height: 1.9,
-              ),
+              style: textTheme.bodyLarge?.copyWith(height: 1.9),
             ),
             const Divider(height: 32),
             Semantics(
@@ -302,15 +281,9 @@ class _ReferralPageState extends State<ReferralPage> {
         FilledButton.icon(
           onPressed: _isBusy ? null : _share,
           style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 16,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           ),
-          icon: _operationIcon(
-            _ReferralOperation.share,
-            Icons.share_outlined,
-          ),
+          icon: _operationIcon(_ReferralOperation.share, Icons.share_outlined),
           label: Text(
             _operation == _ReferralOperation.share
                 ? 'در حال باز کردن اشتراک‌گذاری…'
@@ -322,10 +295,7 @@ class _ReferralPageState extends State<ReferralPage> {
         OutlinedButton.icon(
           onPressed: _isBusy ? null : _copyMessage,
           style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 16,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           ),
           icon: _operationIcon(
             _ReferralOperation.copyMessage,
@@ -353,10 +323,7 @@ class _ReferralPageState extends State<ReferralPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              Icons.privacy_tip_outlined,
-              color: colors.onSurfaceVariant,
-            ),
+            Icon(Icons.privacy_tip_outlined, color: colors.onSurfaceVariant),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -397,24 +364,15 @@ class _ReferralPageState extends State<ReferralPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('معرفی سیمرغ به دوستان'),
-        ),
+        appBar: AppBar(title: const Text('معرفی سیمرغ به دوستان')),
         body: SafeArea(
           top: false,
           child: Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: 680,
-              ),
+              constraints: const BoxConstraints(maxWidth: 680),
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(
-                  18,
-                  12,
-                  18,
-                  24,
-                ),
+                padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
                 children: [
                   _buildIntroduction(theme),
                   const SizedBox(height: 24),

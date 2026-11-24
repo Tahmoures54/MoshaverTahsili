@@ -12,17 +12,12 @@ const _coachRelevantKeys = <String>[
   'edu.deadlines',
 ];
 
-int _safeCoachMinutes(
-  Object? value, {
-  required int fallback,
-}) {
+int _safeCoachMinutes(Object? value, {required int fallback}) {
   if (value is num && value.isFinite) {
     return value.clamp(0, 1440).round();
   }
 
-  final parsed = int.tryParse(
-    digitsToEnglish(value?.toString() ?? '').trim(),
-  );
+  final parsed = int.tryParse(digitsToEnglish(value?.toString() ?? '').trim());
 
   return (parsed ?? fallback).clamp(0, 1440).toInt();
 }
@@ -34,9 +29,7 @@ int _coachDailyMinutes(Map<String, dynamic>? profile) {
     return value.clamp(15, 240).round();
   }
 
-  final parsed = int.tryParse(
-    digitsToEnglish(value?.toString() ?? '').trim(),
-  );
+  final parsed = int.tryParse(digitsToEnglish(value?.toString() ?? '').trim());
 
   return (parsed ?? 120).clamp(15, 240).toInt();
 }
@@ -92,10 +85,7 @@ bool _coachTaskIsOnDay(Entry task, DateTime day) {
   return due != null && _coachDayDifference(day, due) == 0;
 }
 
-int _coachOpenMinutesOnDay(
-  List<Entry> tasks,
-  DateTime day,
-) {
+int _coachOpenMinutesOnDay(List<Entry> tasks, DateTime day) {
   return tasks.fold<int>(0, (sum, task) {
     if (task['done'] == true || !_coachTaskIsOnDay(task, day)) {
       return sum;
@@ -112,20 +102,13 @@ bool _coachAlreadyScheduled(
   LearningCoachStep step,
   DateTime day,
 ) {
-  final title = _cleanCoachText(
-    step.title,
-    maxLength: 240,
-  );
+  final title = _cleanCoachText(step.title, maxLength: 240);
 
   return tasks.any(
     (task) =>
         task['done'] != true &&
         _coachTaskIsOnDay(task, day) &&
-        _cleanCoachText(
-          task['title'],
-          maxLength: 240,
-        ) ==
-            title,
+        _cleanCoachText(task['title'], maxLength: 240) == title,
   );
 }
 
@@ -219,28 +202,19 @@ LearningCoachPlan buildLearningCoachPlan({
   for (final exam in exams) {
     final percent = examPercent(exam);
 
-    if (percent == null ||
-        !percent.isFinite ||
-        percent < 0 ||
-        percent > 100) {
+    if (percent == null || !percent.isFinite || percent < 0 || percent > 100) {
       invalidExamCount++;
       continue;
     }
 
-    final subject = _cleanCoachText(
-      exam['subject'],
-      maxLength: 100,
-    );
+    final subject = _cleanCoachText(exam['subject'], maxLength: 100);
 
     if (subject.isEmpty) {
       missingExamSubjectCount++;
       continue;
     }
 
-    validExams.add({
-      ...exam,
-      'subject': subject,
-    });
+    validExams.add({...exam, 'subject': subject});
   }
 
   final examCounts = <String, int>{};
@@ -276,11 +250,11 @@ LearningCoachPlan buildLearningCoachPlan({
     );
   }
 
-  final invalidTaskDates = tasks.where(
-    (task) =>
-        task['done'] != true &&
-        parseDay(task['dueDate']) == null,
-  ).length;
+  final invalidTaskDates = tasks
+      .where(
+        (task) => task['done'] != true && parseDay(task['dueDate']) == null,
+      )
+      .length;
 
   if (invalidTaskDates > 0) {
     notes.add(
@@ -291,51 +265,36 @@ LearningCoachPlan buildLearningCoachPlan({
   }
 
   // 1. Nearest upcoming exam.
-  final upcoming = deadlines
-      .map(
-        (item) => (
-          item: item,
-          date: parseDay(item['date']),
-        ),
+  final upcoming =
+      deadlines.map((item) => (item: item, date: parseDay(item['date']))).where(
+        (entry) {
+          final date = entry.date;
+          if (date == null) return false;
+
+          if (_cleanCoachText(entry.item['subject'], maxLength: 100).isEmpty) {
+            return false;
+          }
+
+          final days = _coachDayDifference(today, date);
+          return days >= 0 && days <= 3;
+        },
+      ).toList()..sort((a, b) {
+        final dateOrder = a.date!.compareTo(b.date!);
+        if (dateOrder != 0) return dateOrder;
+
+        return _cleanCoachText(
+          a.item['subject'],
+          maxLength: 100,
+        ).compareTo(_cleanCoachText(b.item['subject'], maxLength: 100));
+      });
+
+  final invalidDeadlines = deadlines
+      .where(
+        (item) =>
+            parseDay(item['date']) == null ||
+            _cleanCoachText(item['subject'], maxLength: 100).isEmpty,
       )
-      .where((entry) {
-        final date = entry.date;
-        if (date == null) return false;
-
-        if (_cleanCoachText(
-          entry.item['subject'],
-          maxLength: 100,
-        ).isEmpty) {
-          return false;
-        }
-
-        final days = _coachDayDifference(today, date);
-        return days >= 0 && days <= 3;
-      })
-      .toList()
-    ..sort((a, b) {
-      final dateOrder = a.date!.compareTo(b.date!);
-      if (dateOrder != 0) return dateOrder;
-
-      return _cleanCoachText(
-        a.item['subject'],
-        maxLength: 100,
-      ).compareTo(
-        _cleanCoachText(
-          b.item['subject'],
-          maxLength: 100,
-        ),
-      );
-    });
-
-  final invalidDeadlines = deadlines.where(
-    (item) =>
-        parseDay(item['date']) == null ||
-        _cleanCoachText(
-          item['subject'],
-          maxLength: 100,
-        ).isEmpty,
-  ).length;
+      .length;
 
   if (invalidDeadlines > 0) {
     notes.add(
@@ -348,10 +307,7 @@ LearningCoachPlan buildLearningCoachPlan({
   if (upcoming.isNotEmpty) {
     final exam = upcoming.first;
 
-    final subject = _cleanCoachText(
-      exam.item['subject'],
-      maxLength: 100,
-    );
+    final subject = _cleanCoachText(exam.item['subject'], maxLength: 100);
 
     final daysLeft = _coachDayDifference(today, exam.date!);
 
@@ -375,45 +331,37 @@ LearningCoachPlan buildLearningCoachPlan({
   }
 
   // 2. Oldest overdue task.
-  final overdue = tasks.where((task) {
-    final due = parseDay(task['dueDate']);
+  final overdue =
+      tasks.where((task) {
+        final due = parseDay(task['dueDate']);
 
-    return task['done'] != true &&
-        due != null &&
-        _coachDayDifference(today, due) < 0;
-  }).toList()
-    ..sort((a, b) {
-      final dateOrder = _coachDayDifference(
-        parseDay(b['dueDate'])!,
-        parseDay(a['dueDate'])!,
-      );
+        return task['done'] != true &&
+            due != null &&
+            _coachDayDifference(today, due) < 0;
+      }).toList()..sort((a, b) {
+        final dateOrder = _coachDayDifference(
+          parseDay(b['dueDate'])!,
+          parseDay(a['dueDate'])!,
+        );
 
-      if (dateOrder != 0) return dateOrder;
+        if (dateOrder != 0) return dateOrder;
 
-      final durationOrder = _safeCoachMinutes(
-        a['minutes'],
-        fallback: 30,
-      ).compareTo(
-        _safeCoachMinutes(
-          b['minutes'],
+        final durationOrder = _safeCoachMinutes(
+          a['minutes'],
           fallback: 30,
-        ),
-      );
+        ).compareTo(_safeCoachMinutes(b['minutes'], fallback: 30));
 
-      if (durationOrder != 0) return durationOrder;
+        if (durationOrder != 0) return durationOrder;
 
-      return _cleanCoachText(a['title']).compareTo(
-        _cleanCoachText(b['title']),
-      );
-    });
+        return _cleanCoachText(
+          a['title'],
+        ).compareTo(_cleanCoachText(b['title']));
+      });
 
   if (overdue.isNotEmpty) {
     final task = overdue.first;
 
-    final title = _cleanCoachText(
-      task['title'],
-      fallback: 'کار عقب‌افتاده',
-    );
+    final title = _cleanCoachText(task['title'], fallback: 'کار عقب‌افتاده');
 
     final subject = _cleanCoachText(
       task['subject'],
@@ -438,22 +386,21 @@ LearningCoachPlan buildLearningCoachPlan({
   // 3. More practice, without labeling the learner's ability.
   final averages = subjectAverages(validExams);
 
-  final practiceSubjects = averages.entries
-      .where(
-        (entry) =>
-            entry.value.isFinite &&
-            entry.value >= 0 &&
-            entry.value < 60 &&
-            (examCounts[entry.key] ?? 0) >= 2,
-      )
-      .toList()
-    ..sort((a, b) {
-      final averageOrder = a.value.compareTo(b.value);
+  final practiceSubjects =
+      averages.entries
+          .where(
+            (entry) =>
+                entry.value.isFinite &&
+                entry.value >= 0 &&
+                entry.value < 60 &&
+                (examCounts[entry.key] ?? 0) >= 2,
+          )
+          .toList()
+        ..sort((a, b) {
+          final averageOrder = a.value.compareTo(b.value);
 
-      return averageOrder != 0
-          ? averageOrder
-          : a.key.compareTo(b.key);
-    });
+          return averageOrder != 0 ? averageOrder : a.key.compareTo(b.key);
+        });
 
   if (practiceSubjects.isNotEmpty) {
     final subject = practiceSubjects.first.key;
@@ -474,9 +421,7 @@ LearningCoachPlan buildLearningCoachPlan({
   }
 
   // 4. Active recall.
-  final dueCards = cards.where(
-    (card) => isCardDue(card, now),
-  ).length;
+  final dueCards = cards.where((card) => isCardDue(card, now)).length;
 
   if (dueCards > 0) {
     candidates.add(
@@ -496,9 +441,7 @@ LearningCoachPlan buildLearningCoachPlan({
 
   // 5. Gentle starter.
   if (candidates.isEmpty) {
-    final hasOpenTasks = tasks.any(
-      (task) => task['done'] != true,
-    );
+    final hasOpenTasks = tasks.any((task) => task['done'] != true);
 
     candidates.add(
       LearningCoachStep(
@@ -510,11 +453,11 @@ LearningCoachPlan buildLearningCoachPlan({
         kind: 'starter',
         reason: hasOpenTasks
             ? 'یکی از کارهای باز را انتخاب کن و فقط '
-                '۱۵ دقیقه روی آن کار کن. '
-                'لازم نیست همه کارها را یک‌باره تمام کنی.'
+                  '۱۵ دقیقه روی آن کار کن. '
+                  'لازم نیست همه کارها را یک‌باره تمام کنی.'
             : 'یک بخش کوتاه را بخوان، کتاب را ببند '
-                'و نکته‌های اصلی را از حافظه بنویس؛ '
-                'سپس پاسخ خودت را بررسی کن.',
+                  'و نکته‌های اصلی را از حافظه بنویس؛ '
+                  'سپس پاسخ خودت را بررسی کن.',
       ),
     );
   }
@@ -590,17 +533,11 @@ List<String> _coachReadErrors(EducationStore store) {
   }.toList(growable: false);
 }
 
-_CoachSnapshot _readCoachSnapshot(
-  EducationStore store,
-  DateTime now,
-) {
+_CoachSnapshot _readCoachSnapshot(EducationStore store, DateTime now) {
   final existingErrors = _coachReadErrors(store);
 
   if (existingErrors.isNotEmpty) {
-    return _CoachSnapshot(
-      dailyMinutes: 120,
-      errors: existingErrors,
-    );
+    return _CoachSnapshot(dailyMinutes: 120, errors: existingErrors);
   }
 
   try {
@@ -615,10 +552,7 @@ _CoachSnapshot _readCoachSnapshot(
     final dailyMinutes = _coachDailyMinutes(profile);
 
     if (errors.isNotEmpty) {
-      return _CoachSnapshot(
-        dailyMinutes: dailyMinutes,
-        errors: errors,
-      );
+      return _CoachSnapshot(dailyMinutes: dailyMinutes, errors: errors);
     }
 
     return _CoachSnapshot(
@@ -658,16 +592,12 @@ String _newCoachTaskId() {
 }
 
 class LearningCoachPage extends StatefulWidget {
-  const LearningCoachPage({
-    super.key,
-    required this.store,
-  });
+  const LearningCoachPage({super.key, required this.store});
 
   final EducationStore store;
 
   @override
-  State<LearningCoachPage> createState() =>
-      _LearningCoachPageState();
+  State<LearningCoachPage> createState() => _LearningCoachPageState();
 }
 
 class _LearningCoachPageState extends State<LearningCoachPage> {
@@ -701,10 +631,7 @@ class _LearningCoachPageState extends State<LearningCoachPage> {
       final snapshot = _readCoachSnapshot(widget.store, now);
 
       if (!snapshot.isUsable) {
-        showMessage(
-          context,
-          'اطلاعات فعلی قابل بررسی نیست؛ قدمی اضافه نشد.',
-        );
+        showMessage(context, 'اطلاعات فعلی قابل بررسی نیست؛ قدمی اضافه نشد.');
         return;
       }
 
@@ -741,10 +668,7 @@ class _LearningCoachPageState extends State<LearningCoachPage> {
       });
 
       if (mounted) {
-        showMessage(
-          context,
-          'این قدم به برنامه امروز اضافه شد.',
-        );
+        showMessage(context, 'این قدم به برنامه امروز اضافه شد.');
       }
     } on Object catch (error) {
       if (mounted) {
@@ -769,9 +693,7 @@ class _LearningCoachPageState extends State<LearningCoachPage> {
         final snapshot = _readCoachSnapshot(widget.store, now);
 
         return Scaffold(
-          appBar: AppBar(
-            title: const Text('مربی یادگیری من'),
-          ),
+          appBar: AppBar(title: const Text('مربی یادگیری من')),
           body: SafeArea(
             child: Directionality(
               textDirection: TextDirection.rtl,
@@ -781,11 +703,7 @@ class _LearningCoachPageState extends State<LearningCoachPage> {
                   if (!snapshot.isUsable)
                     ..._buildErrorContent(context, snapshot)
                   else
-                    ..._buildPlanContent(
-                      context,
-                      snapshot,
-                      displayedDay,
-                    ),
+                    ..._buildPlanContent(context, snapshot, displayedDay),
                   const SizedBox(height: 8),
                   const NoticeCard(
                     text:
@@ -825,10 +743,7 @@ class _LearningCoachPageState extends State<LearningCoachPage> {
       for (final error in snapshot.errors)
         Padding(
           padding: const EdgeInsets.only(top: 8),
-          child: Text(
-            error,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          child: Text(error, style: Theme.of(context).textTheme.bodySmall),
         ),
       const SizedBox(height: 12),
       OutlinedButton.icon(
@@ -861,18 +776,13 @@ class _LearningCoachPageState extends State<LearningCoachPage> {
         child: Padding(
           padding: const EdgeInsets.all(18),
           child: DefaultTextStyle.merge(
-            style: TextStyle(
-              color: colors.onPrimaryContainer,
-            ),
+            style: TextStyle(color: colors.onPrimaryContainer),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'قدم بعدی را آگاهانه انتخاب کنیم',
-                  style: TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 const Text(
@@ -896,10 +806,8 @@ class _LearningCoachPageState extends State<LearningCoachPage> {
                 const SizedBox(height: 8),
                 LinearProgressIndicator(
                   value: progress,
-                  semanticsLabel:
-                      'نسبت مدت کارهای باز امروز به سقف تنظیم‌شده',
-                  semanticsValue:
-                      '${faNumber((progress * 100).round())} درصد',
+                  semanticsLabel: 'نسبت مدت کارهای باز امروز به سقف تنظیم‌شده',
+                  semanticsValue: '${faNumber((progress * 100).round())} درصد',
                 ),
               ],
             ),
@@ -910,10 +818,7 @@ class _LearningCoachPageState extends State<LearningCoachPage> {
       for (final note in plan.evidenceNotes)
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: NoticeCard(
-            text: note,
-            warning: true,
-          ),
+          child: NoticeCard(text: note, warning: true),
         ),
       if (plan.steps.isEmpty)
         EmptyState(
@@ -922,19 +827,15 @@ class _LearningCoachPageState extends State<LearningCoachPage> {
               : 'فعلاً قدم تازه‌ای پیشنهاد نمی‌شود',
           subtitle: plan.availableMinutes == 0
               ? 'کارهای باز امروز به سقف زمانی تنظیم‌شده رسیده‌اند. '
-                  'این به معنی اندازه‌گیری زمان مطالعه نیست. '
-                  'استراحت هم بخشی از یادگیری است.'
+                    'این به معنی اندازه‌گیری زمان مطالعه نیست. '
+                    'استراحت هم بخشی از یادگیری است.'
               : 'قدم‌ها ممکن است قبلاً ثبت شده باشند '
-                  'یا در ظرفیت باقی‌مانده جا نشوند. '
-                  'یادداشت‌های بالا را بررسی کن.',
+                    'یا در ظرفیت باقی‌مانده جا نشوند. '
+                    'یادداشت‌های بالا را بررسی کن.',
           icon: Icons.check_circle_outline,
         ),
       for (final step in plan.steps)
-        _buildStepCard(
-          context,
-          step,
-          displayedDay,
-        ),
+        _buildStepCard(context, step, displayedDay),
     ];
   }
 
@@ -954,10 +855,7 @@ class _LearningCoachPageState extends State<LearningCoachPage> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.auto_awesome,
-                  color: colors.primary,
-                ),
+                Icon(Icons.auto_awesome, color: colors.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -971,16 +869,13 @@ class _LearningCoachPageState extends State<LearningCoachPage> {
               ],
             ),
             const SizedBox(height: 8),
-            Text(
-              step.reason,
-              style: const TextStyle(height: 1.7),
-            ),
+            Text(step.reason, style: const TextStyle(height: 1.7)),
             const SizedBox(height: 8),
             Text(
               '${step.subject} · ${faNumber(step.minutes)} دقیقه',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
             ),
             const SizedBox(height: 10),
             Align(
@@ -993,15 +888,11 @@ class _LearningCoachPageState extends State<LearningCoachPage> {
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.add_task),
                 label: Text(
-                  isSaving
-                      ? 'در حال افزودن…'
-                      : 'افزودن به برنامه امروز',
+                  isSaving ? 'در حال افزودن…' : 'افزودن به برنامه امروز',
                 ),
               ),
             ),

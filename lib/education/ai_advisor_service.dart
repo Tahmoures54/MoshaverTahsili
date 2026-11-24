@@ -62,25 +62,23 @@ class AiAdvisorService {
     this.maxTokens = 1200,
     this.maxConcurrentRequests = 1,
     this.disableDeepSeekThinking = false,
-  })  : _ownsClient = client == null,
-        client = client ?? http.Client(),
-        apiKey = (
-          apiKey ?? const String.fromEnvironment('AI_API_KEY')
-        ).trim(),
-        endpoint = (
-          endpoint ??
-          const String.fromEnvironment(
-            'AI_API_ENDPOINT',
-            defaultValue: 'https://api.avalai.ir/v1',
-          )
-        ).trim(),
-        model = (
-          model ??
-          const String.fromEnvironment(
-            'AI_MODEL',
-            defaultValue: 'deepseek-chat',
-          )
-        ).trim();
+  }) : _ownsClient = client == null,
+       client = client ?? http.Client(),
+       apiKey = (apiKey ?? const String.fromEnvironment('AI_API_KEY')).trim(),
+       endpoint =
+           (endpoint ??
+                   const String.fromEnvironment(
+                     'AI_API_ENDPOINT',
+                     defaultValue: 'https://api.avalai.ir/v1',
+                   ))
+               .trim(),
+       model =
+           (model ??
+                   const String.fromEnvironment(
+                     'AI_MODEL',
+                     defaultValue: 'deepseek-chat',
+                   ))
+               .trim();
 
   final EducationStore? store;
 
@@ -220,15 +218,11 @@ class AiAdvisorService {
       if (id.trim().isEmpty ||
           id.length > _maxRequestIdChars ||
           RegExp(r'[\u0000-\u001F\u007F]').hasMatch(id)) {
-        throw const AiException(
-          AiErrorKind.input,
-          'شناسه درخواست معتبر نیست.',
-        );
+        throw const AiException(AiErrorKind.input, 'شناسه درخواست معتبر نیست.');
       }
 
       if (normalizedQuestion.isEmpty ||
-          normalizedQuestion.length >
-              EducationStore.maxQuestionLength) {
+          normalizedQuestion.length > EducationStore.maxQuestionLength) {
         throw AiException(
           AiErrorKind.input,
           'پرسش باید بین ۱ تا '
@@ -237,8 +231,7 @@ class AiAdvisorService {
       }
 
       if (systemInstruction != null &&
-          systemInstruction.length >
-              _maxSystemInstructionChars) {
+          systemInstruction.length > _maxSystemInstructionChars) {
         throw const AiException(
           AiErrorKind.input,
           'دستور آموزشی بیش از حد طولانی است.',
@@ -384,10 +377,7 @@ class AiAdvisorService {
 
   void _checkCancelled(Completer<void> abort) {
     if (abort.isCompleted || _disposed) {
-      throw const AiException(
-        AiErrorKind.cancelled,
-        'درخواست لغو شد.',
-      );
+      throw const AiException(AiErrorKind.cancelled, 'درخواست لغو شد.');
     }
   }
 
@@ -458,10 +448,8 @@ class AiAdvisorService {
         'messages': messages,
         'temperature': temperature,
         'max_tokens': maxTokens,
-        if (disableDeepSeekThinking)
-          'thinking': const {'type': 'disabled'},
-        if (jsonMode)
-          'response_format': const {'type': 'json_object'},
+        if (disableDeepSeekThinking) 'thinking': const {'type': 'disabled'},
+        if (jsonMode) 'response_format': const {'type': 'json_object'},
       };
 
       final body = utf8.encode(jsonEncode(payload));
@@ -504,11 +492,7 @@ class AiAdvisorService {
 
       requestStarted = true;
 
-      final answer = await _post(
-        _endpoint(),
-        body,
-        abort,
-      );
+      final answer = await _post(_endpoint(), body, abort);
 
       answerReceived = true;
 
@@ -563,10 +547,9 @@ class AiAdvisorService {
     String question, {
     String? systemInstruction,
   }) {
-    final approvedProfile =
-        profile?['aiProfileContextConsent'] == true
-            ? profile
-            : null;
+    final approvedProfile = profile?['aiProfileContextConsent'] == true
+        ? profile
+        : null;
 
     String field(String key, int limit) {
       final raw = approvedProfile?[key];
@@ -583,20 +566,21 @@ class AiAdvisorService {
 
     // Explicit allowlist: name, nickname, contact information,
     // wallet data and arbitrary profile keys are not included.
-    final context = jsonEncode(
-      approvedProfile == null
-          ? <String, Object?>{'consent': false}
-          : <String, Object?>{
-              'consent': true,
-              'grade': field('grade', 80),
-              'year': field('year', 80),
-              'field': field('field', 120),
-              'goal': field('goal', 300),
-            },
-    )
-        .replaceAll('<', r'\u003c')
-        .replaceAll('>', r'\u003e')
-        .replaceAll('&', r'\u0026');
+    final context =
+        jsonEncode(
+              approvedProfile == null
+                  ? <String, Object?>{'consent': false}
+                  : <String, Object?>{
+                      'consent': true,
+                      'grade': field('grade', 80),
+                      'year': field('year', 80),
+                      'field': field('field', 120),
+                      'goal': field('goal', 300),
+                    },
+            )
+            .replaceAll('<', r'\u003c')
+            .replaceAll('>', r'\u003e')
+            .replaceAll('&', r'\u0026');
 
     final recent = <Map<String, String>>[];
     var budget = _maxHistoryChars;
@@ -624,10 +608,7 @@ class AiAdvisorService {
 
       if (retained.isEmpty) break;
 
-      recent.add({
-        'role': role as String,
-        'content': retained,
-      });
+      recent.add({'role': role as String, 'content': retained});
 
       budget -= retained.length;
 
@@ -644,7 +625,7 @@ class AiAdvisorService {
     final merged = instruction == null || instruction.isEmpty
         ? systemContent
         : '$systemContent\n\n'
-            'دستور ویژه این نوبت آموزشی:\n$instruction';
+              'دستور ویژه این نوبت آموزشی:\n$instruction';
 
     return [
       {'role': 'system', 'content': merged},
@@ -671,11 +652,7 @@ class AiAdvisorService {
     return value >= 0xD800 && value <= 0xDBFF;
   }
 
-  Future<String> _post(
-    Uri uri,
-    List<int> body,
-    Completer<void> abort,
-  ) async {
+  Future<String> _post(Uri uri, List<int> body, Completer<void> abort) async {
     _checkCancelled(abort);
 
     final result = Completer<String>();
@@ -733,12 +710,7 @@ class AiAdvisorService {
     // custom HTTP client does not promptly interrupt its response stream.
     unawaited(
       abort.future.then((_) {
-        fail(
-          const AiException(
-            AiErrorKind.cancelled,
-            'درخواست لغو شد.',
-          ),
-        );
+        fail(const AiException(AiErrorKind.cancelled, 'درخواست لغو شد.'));
       }),
     );
 
@@ -746,18 +718,15 @@ class AiAdvisorService {
       try {
         if (finished) return;
 
-        final request = http.AbortableRequest(
-          'POST',
-          uri,
-          abortTrigger: abort.future,
-        )
-          ..followRedirects = false
-          ..headers.addAll({
-            'Authorization': 'Bearer $apiKey',
-            'Content-Type': 'application/json; charset=utf-8',
-            'Accept': 'application/json',
-          })
-          ..bodyBytes = body;
+        final request =
+            http.AbortableRequest('POST', uri, abortTrigger: abort.future)
+              ..followRedirects = false
+              ..headers.addAll({
+                'Authorization': 'Bearer $apiKey',
+                'Content-Type': 'application/json; charset=utf-8',
+                'Accept': 'application/json',
+              })
+              ..bodyBytes = body;
 
         final response = await client.send(request);
 
@@ -775,9 +744,9 @@ class AiAdvisorService {
         final declaredLength = response.contentLength;
 
         if (statusError != null ||
-            (declaredLength != null &&
-                declaredLength > maxResponseBytes)) {
-          final error = statusError ??
+            (declaredLength != null && declaredLength > maxResponseBytes)) {
+          final error =
+              statusError ??
               const AiException(
                 AiErrorKind.response,
                 'حجم پاسخ دریافتی بیش از حد مجاز است.',
@@ -813,12 +782,7 @@ class AiAdvisorService {
           },
           onError: (Object _) {
             if (abort.isCompleted) {
-              fail(
-                const AiException(
-                  AiErrorKind.cancelled,
-                  'درخواست لغو شد.',
-                ),
-              );
+              fail(const AiException(AiErrorKind.cancelled, 'درخواست لغو شد.'));
             } else {
               fail(
                 const AiException(
@@ -857,10 +821,7 @@ class AiAdvisorService {
 
         fail(
           abort.isCompleted
-              ? const AiException(
-                  AiErrorKind.cancelled,
-                  'درخواست لغو شد.',
-                )
+              ? const AiException(AiErrorKind.cancelled, 'درخواست لغو شد.')
               : const AiException(
                   AiErrorKind.network,
                   'ارتباط با مشاور برقرار نشد. '
