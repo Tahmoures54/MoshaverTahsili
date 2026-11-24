@@ -14,6 +14,9 @@
 - افزودن منابع آیکون لانچر سیمرغ که در AndroidManifest به آن‌ها ارجاع شده بود.
 - افزودن Gradle Wrapper JAR موردنیاز اجرای `android/gradlew`؛ اعتبارسنجی آن در CI انجام می‌شود.
 - هم‌راستاسازی مسیر keystore در اسکریپت امضا با مسیر مورد استفاده Workflow؛ هیچ کلید یا رمز امضایی تغییر نکرده است.
+- الزام اثرانگشت SHA-256 گواهی انتشار در پیکربندی تولید و انتقال امن آن از GitHub Actions Variable به verifier.
+- اصلاح parsing خروجی `apksigner` برای خواندن stdout/stderr و digestهای جداشده با دونقطه؛ افزودن آزمون‌های رگرسیون Python.
+- افزودن retry با backoff برای پاسخ‌های موقت HTTP 429 و محدودیت نرخ Maven Central.
 
 ### CI و کیفیت
 
