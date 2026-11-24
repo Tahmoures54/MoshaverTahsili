@@ -41,8 +41,8 @@ class CheckSignerTests(unittest.TestCase):
             completed = subprocess.CompletedProcess(
                 args=["apksigner", "verify"],
                 returncode=0,
-                stdout=output.encode(),
-                stderr=b"",
+                stdout=b"",
+                stderr=output.encode(),
             )
 
             with patch.object(check_signer.subprocess, "run", return_value=completed):
