@@ -138,7 +138,7 @@ void main() {
       );
       expect(session.stage, SimorghTeachingStage.reteach);
       expect(session.lastError, SimorghErrorKind.conceptual);
-      expect(session.explanationVariant, 2);
+      expect(session.explanationVariant, 1);
       expect(
         SimorghTeachingEngine.instructionFor(session),
         contains('شیوه توضیح این نوبت'),
@@ -181,7 +181,7 @@ void main() {
         error: SimorghErrorKind.conceptual,
       );
       expect(session.stage, SimorghTeachingStage.reteach);
-      expect(session.explanationVariant, 1);
+      expect(session.explanationVariant, 2);
       session = SimorghTeachingEngine.recordReteachCheck(
         session: session,
         outcome: SimorghAnswerOutcome.correct,
