@@ -1,9 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moshaver_tahsili/education/simorgh_teaching_engine.dart';
 
-import 'package:flutter_test/flutter_test.dart';
-import 'package:moshaver_tahsili/education/simorgh_teaching_engine.dart';
-
 SimorghTeachingSession _diagnosedSession(
   String topic, {
   String grade = '',
