@@ -77,5 +77,27 @@ class CheckSignerTests(unittest.TestCase):
         self.assertFalse(is_debug)
 
 
+    def test_strips_terminal_formatting_and_nonbreaking_spaces(self) -> None:
+        digest = "34" * 32
+        output = (
+            "\\x1b[32mVerifies\\x1b[0m\\r\\n"
+            f"\\x1b[32mSigner #1 certificate DN:\\x1b[0m CN=Release\\u00a0\\r\\n"
+            f"Signer #1 certificate SHA-256 digest: {digest}\\r\\n"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            apk = Path(directory) / "candidate.apk"
+            apk.write_bytes(b"test apk")
+            completed = subprocess.CompletedProcess(
+                args=["apksigner", "verify"],
+                returncode=0,
+                stdout=output.encode(),
+                stderr=b"",
+            )
+            with patch.object(check_signer.subprocess, "run", return_value=completed):
+                fingerprint, is_debug = check_signer.verify_apk(apk, "apksigner")
+        self.assertEqual(fingerprint, digest.upper())
+        self.assertFalse(is_debug)
+
+
 if __name__ == "__main__":
     unittest.main()
