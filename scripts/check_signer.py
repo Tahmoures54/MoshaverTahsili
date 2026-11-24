@@ -1,182 +1,334 @@
-
 #!/usr/bin/env python3
-"""Verify APK signature and enforce release certificate policy."""
+"""Verify an APK with apksigner and enforce certificate pinning.
+
+Requires Python 3.10 or newer and Android SDK apksigner.
+
+Usage:
+    python3 tool/verify_apk_signature.py <artifact.apk>
+    python3 tool/verify_apk_signature.py <artifact.apk> \
+        --apksigner /path/to/android-sdk/build-tools/35.0.0/apksigner
+
+Environment:
+    PRODUCTION_READY:
+        Empty or "false": production certificate policy is not required.
+        "true": require EXPECTED_RELEASE_CERT_SHA256 and reject a
+                recognizable Android debug certificate.
+
+    EXPECTED_RELEASE_CERT_SHA256:
+        Optional outside production, required in production.
+        When provided, the APK certificate must match it.
+
+Exit codes:
+    0: Signature verification and applicable certificate policy passed.
+    1: Verification or certificate policy failed.
+    2: Invalid arguments/configuration or tool execution failure.
+
+This verifies one APK, not an AAB or a complete split-APK installation.
+Use a trusted SDK installation and immutable build artifacts in CI.
+"""
 
 from __future__ import annotations
 
+import argparse
 import os
 import re
+import shutil
+import subprocess
 import sys
 
 from pathlib import Path
 
 
-REPORT_ARGUMENTS = 1
-
-DEBUG_CERTIFICATE_MARKER = "CN=Android Debug"
+VERIFY_TIMEOUT_SECONDS = 120
 
 SHA256_PATTERN = re.compile(
-    r"(?im)^\s*Signer\s+#\d+\s+certificate\s+SHA-256\s+digest:\s*"
-    r"([0-9a-fA-F:]{64,95})\s*$"
+    r"^Signer #(?P<signer>[1-9][0-9]*) "
+    r"certificate SHA-256 digest:[ \t]*"
+    r"(?P<fingerprint>[0-9a-fA-F]{64})[ \t]*$",
+    re.MULTILINE,
 )
 
-VERIFICATION_MARKERS = (
-    "Verifies",
-    "Verified using v1 scheme",
-    "Verified using v2 scheme",
-    "Verified using v3 scheme",
-    "Verified using v4 scheme",
+DN_PATTERN = re.compile(
+    r"^Signer #(?P<signer>[1-9][0-9]*) "
+    r"certificate DN:[ \t]*(?P<dn>[^\r\n]*)$",
+    re.MULTILINE,
 )
+
+DEBUG_CN_PATTERN = re.compile(
+    r"(?:^|,)\s*CN\s*=\s*Android Debug\s*(?:,|$)",
+    re.IGNORECASE,
+)
+
+
+class ConfigurationError(Exception):
+    """Invalid local configuration or unavailable verification tool."""
+
+
+class VerificationError(Exception):
+    """APK verification or certificate policy failed."""
+
+
+def emit_error(message: str) -> None:
+    """Messages are fixed strings; raw tool output is never echoed."""
+    print(f"::error::{message}", file=sys.stderr)
 
 
 def normalize_sha256(value: str) -> str:
-    """Normalize SHA-256 fingerprint to 64 uppercase hexadecimal characters."""
+    """Accept plain hex or 32 colon-separated hexadecimal octets."""
 
-    normalized = value.replace(":", "").replace(" ", "").strip().upper()
+    value = value.strip()
 
-    if not re.fullmatch(r"[0-9A-F]{64}", normalized):
-        raise ValueError("Invalid SHA-256 certificate fingerprint.")
+    if re.fullmatch(r"[0-9a-fA-F]{64}", value):
+        return value.upper()
 
-    return normalized
+    if re.fullmatch(
+        r"[0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){31}",
+        value,
+    ):
+        return value.replace(":", "").upper()
+
+    raise ConfigurationError(
+        "EXPECTED_RELEASE_CERT_SHA256 must contain a valid "
+        "SHA-256 certificate fingerprint."
+    )
 
 
-def read_report(path: Path) -> str:
-    """Read apksigner output safely."""
+def read_policy() -> tuple[bool, str | None]:
+    raw_production = os.environ.get(
+        "PRODUCTION_READY", ""
+    ).strip().lower()
 
-    if not path.exists() or not path.is_file():
-        raise ValueError(f"Signature report not found: {path}")
+    # Fail closed on typos instead of silently disabling production policy.
+    if raw_production not in {"", "false", "true"}:
+        raise ConfigurationError(
+            "PRODUCTION_READY must be empty, false, or true."
+        )
+
+    production = raw_production == "true"
+
+    raw_expected = os.environ.get(
+        "EXPECTED_RELEASE_CERT_SHA256", ""
+    ).strip()
+
+    if production and not raw_expected:
+        raise ConfigurationError(
+            "EXPECTED_RELEASE_CERT_SHA256 is required "
+            "when PRODUCTION_READY=true."
+        )
+
+    expected = (
+        normalize_sha256(raw_expected)
+        if raw_expected
+        else None
+    )
+
+    return production, expected
+
+
+def resolve_apksigner(value: str) -> str:
+    executable = shutil.which(value)
+
+    if executable is None:
+        raise ConfigurationError(
+            "apksigner was not found or is not executable. "
+            "Provide a trusted executable using --apksigner."
+        )
+
+    return str(Path(executable).resolve())
+
+
+def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
+    """Run apksigner and extract the verified single signer's certificate."""
 
     try:
-        report = path.read_text(
-            encoding="utf-8",
-            errors="replace",
-        )
-    except OSError as error:
-        raise ValueError(
-            f"Could not read signature report: {error}"
-        ) from error
+        apk = apk.resolve(strict=True)
 
-    if not report.strip():
-        raise ValueError("Signature verification report is empty.")
-
-    return report
-
-
-def verify_report(report: str) -> tuple[bool, str]:
-    """Check successful signature verification and identify certificate."""
-
-    verified = any(
-        marker in report
-        for marker in VERIFICATION_MARKERS
-    )
-
-    if not verified:
-        raise ValueError(
-            "APK signature verification did not succeed."
-        )
-
-    is_debug = DEBUG_CERTIFICATE_MARKER in report
-
-    matches = SHA256_PATTERN.findall(report)
-
-    if len(matches) > 1:
-        fingerprints = {
-            normalize_sha256(item)
-            for item in matches
-        }
-
-        if len(fingerprints) > 1:
-            raise ValueError(
-                "Multiple different signer certificate fingerprints found."
+        if not apk.is_file() or apk.suffix.lower() != ".apk":
+            raise ConfigurationError(
+                "Input must be an existing APK file."
             )
 
-    fingerprint = (
-        normalize_sha256(matches[0])
-        if matches
-        else ""
+        before = apk.stat()
+
+    except OSError:
+        raise ConfigurationError(
+            "Could not access the APK file."
+        ) from None
+
+    environment = os.environ.copy()
+    environment["LC_ALL"] = "C"
+    environment["LANG"] = "C"
+
+    try:
+        completed = subprocess.run(
+            [
+                executable,
+                "verify",
+                "--verbose",
+                "--print-certs",
+                str(apk),
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=VERIFY_TIMEOUT_SECONDS,
+            check=False,
+            env=environment,
+        )
+
+    except subprocess.TimeoutExpired:
+        raise ConfigurationError(
+            "apksigner verification timed out."
+        ) from None
+
+    except OSError:
+        raise ConfigurationError(
+            "Could not execute apksigner."
+        ) from None
+
+    try:
+        after = apk.stat()
+    except OSError:
+        raise VerificationError(
+            "APK became unavailable during verification."
+        ) from None
+
+    # Best-effort mutation detection; not a substitute for immutable inputs.
+    before_signature = (
+        before.st_dev,
+        before.st_ino,
+        before.st_size,
+        before.st_mtime_ns,
+        before.st_ctime_ns,
+    )
+    after_signature = (
+        after.st_dev,
+        after.st_ino,
+        after.st_size,
+        after.st_mtime_ns,
+        after.st_ctime_ns,
     )
 
-    return is_debug, fingerprint
+    if before_signature != after_signature:
+        raise VerificationError(
+            "APK changed during signature verification."
+        )
+
+    # Verification success comes from the process exit status,
+    # never from a success-looking substring.
+    if completed.returncode != 0:
+        raise VerificationError(
+            "apksigner rejected the APK signature. "
+            "Run the trusted tool directly for detailed diagnostics."
+        )
+
+    try:
+        output = completed.stdout.decode("utf-8", errors="strict")
+    except UnicodeDecodeError:
+        raise VerificationError(
+            "apksigner returned unsupported output encoding."
+        ) from None
+
+    fingerprints = list(SHA256_PATTERN.finditer(output))
+
+    # Explicit single-signer policy. Supporting multiple current signers
+    # requires a separate allowlist policy.
+    if len(fingerprints) != 1:
+        raise VerificationError(
+            "Expected exactly one signer certificate SHA-256 record."
+        )
+
+    fingerprint_match = fingerprints[0]
+
+    if fingerprint_match.group("signer") != "1":
+        raise VerificationError(
+            "Unexpected signer identifier in apksigner output."
+        )
+
+    distinguished_names = list(DN_PATTERN.finditer(output))
+
+    if (
+        len(distinguished_names) != 1
+        or distinguished_names[0].group("signer") != "1"
+    ):
+        raise VerificationError(
+            "Could not identify a single signer certificate DN."
+        )
+
+    fingerprint = fingerprint_match.group("fingerprint").upper()
+    distinguished_name = distinguished_names[0].group("dn")
+
+    # A DN marker is only a heuristic; pinning is the identity check.
+    is_debug = bool(DEBUG_CN_PATTERN.search(distinguished_name))
+
+    return fingerprint, is_debug
 
 
 def main() -> int:
-    if len(sys.argv) != REPORT_ARGUMENTS + 1:
-        print(
-            "Usage: python3 tool/verify_apk_signature.py "
-            "<apksigner-report>",
-            file=sys.stderr,
+    parser = argparse.ArgumentParser(
+        description=(
+            "Verify an APK signature and apply "
+            "an optional release certificate pin."
         )
-        return 2
-
-    report_path = Path(sys.argv[1])
-
-    production_ready = (
-        os.environ.get("PRODUCTION_READY", "").strip().lower()
-        == "true"
+    )
+    parser.add_argument("apk", type=Path)
+    parser.add_argument(
+        "--apksigner",
+        default="apksigner",
+        help="Trusted apksigner executable path or command name.",
     )
 
-    expected_fingerprint_raw = os.environ.get(
-        "EXPECTED_RELEASE_CERT_SHA256",
-        "",
-    ).strip()
+    arguments = parser.parse_args()
 
     try:
-        report = read_report(report_path)
-        is_debug, fingerprint = verify_report(report)
+        production, expected = read_policy()
+        executable = resolve_apksigner(arguments.apksigner)
 
-        if production_ready and is_debug:
-            raise ValueError(
-                "A production build must not use the Android debug certificate."
-            )
-
-        if production_ready and not expected_fingerprint_raw:
-            raise ValueError(
-                "EXPECTED_RELEASE_CERT_SHA256 is required for production verification."
-            )
-
-        if expected_fingerprint_raw:
-            expected_fingerprint = normalize_sha256(
-                expected_fingerprint_raw
-            )
-
-            if not fingerprint:
-                raise ValueError(
-                    "Could not extract signer SHA-256 fingerprint."
-                )
-
-            if fingerprint != expected_fingerprint:
-                raise ValueError(
-                    "APK signer certificate does not match the expected release certificate."
-                )
-
-        certificate_type = (
-            "DEBUG TEST BUILD"
-            if is_debug
-            else "private release certificate"
+        fingerprint, is_debug = verify_apk(
+            arguments.apk,
+            executable,
         )
 
-        print("APK signature verification: PASSED")
-        print(f"Certificate type: {certificate_type}")
-
-        if fingerprint:
-            print(f"Certificate SHA-256: {fingerprint}")
-        else:
-            print(
-                "Certificate SHA-256: unavailable in supplied report"
+        if production and is_debug:
+            raise VerificationError(
+                "Production policy rejects the recognizable "
+                "Android debug certificate."
             )
 
-        if production_ready:
-            print("Production certificate policy: PASSED")
-        else:
-            print(
-                "Production certificate policy: NOT ENFORCED"
+        if expected is not None and fingerprint != expected:
+            raise VerificationError(
+                "APK signer certificate does not match "
+                "EXPECTED_RELEASE_CERT_SHA256."
             )
 
-        return 0
+    except ConfigurationError as error:
+        emit_error(str(error))
+        return 2
 
-    except (ValueError, OSError) as error:
-        print(f"::error::{error}")
+    except VerificationError as error:
+        emit_error(str(error))
         return 1
+
+    print("APK signature verification: PASSED")
+    print(f"Certificate SHA-256: {fingerprint}")
+    print(
+        "Recognizable Android debug certificate: "
+        f"{str(is_debug).lower()}"
+    )
+    print(
+        "Certificate pin check: "
+        + ("PASSED" if expected is not None else "NOT CONFIGURED")
+    )
+    print(
+        "Production certificate policy: "
+        + ("PASSED" if production else "NOT REQUIRED")
+    )
+    print(
+        "Signature verification does not prove installation, "
+        "runtime behavior, store acceptance, or payment functionality."
+    )
+
+    return 0
 
 
 if __name__ == "__main__":
