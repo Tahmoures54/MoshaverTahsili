@@ -25,7 +25,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: android-${{ github.workflow }}-${{ github.ref }}
+  # Share one concurrency group between pushes and PRs from the same source branch.
+  group: android-${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
   # Do not interrupt tag releases or explicitly requested publication.
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') && !(github.event_name == 'workflow_dispatch' && inputs.publish_candidate) }}
 
