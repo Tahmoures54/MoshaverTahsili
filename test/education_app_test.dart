@@ -168,6 +168,12 @@ void main() {
     );
     await tester.tap(find.text('ویرایش'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('ذخیره پروفایل'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('ذخیره پروفایل'));
     await tester.pumpAndSettle();
     expect(store.profile?['dailyMinutes'], 90);
@@ -325,7 +331,19 @@ void main() {
         await tester.pumpWidget(EducationApp(store: store));
         await tester.pumpAndSettle();
         expect(find.text('درود بر جوینده دانایی!'), findsOneWidget);
+        await tester.scrollUntilVisible(
+          find.text('پیشنهاد امروز سیمرغ'),
+          180,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
         expect(find.text('پیشنهاد امروز سیمرغ'), findsOneWidget);
+        await tester.scrollUntilVisible(
+          find.text('خلاصه مسیر یادگیری'),
+          180,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
         expect(find.text('خلاصه مسیر یادگیری'), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.tap(find.byIcon(Icons.calendar_month_outlined));
