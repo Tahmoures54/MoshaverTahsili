@@ -1,137 +1,313 @@
-
 #!/usr/bin/env python3
-"""Expose CI failure diagnostics as safe GitHub annotations and job summary."""
+"""Publish CI failure diagnostics as GitHub annotations and a job summary.
+
+Requires Python 3.10 or newer.
+
+Exit codes:
+    0: Diagnostic reporting completed, including recoverable I/O failures.
+    2: Invalid command-line arguments.
+
+This script does not determine whether tests or builds succeeded.
+Preserve and check the original command's exit status separately.
+"""
 
 from __future__ import annotations
 
 import os
 import re
+import stat
 import sys
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, TextIO
 
-# Maximum amount of diagnostic output per report.
+
+# Limits apply separately to each report unless otherwise noted.
 MAX_SUMMARY_LINES = 160
+MAX_SUMMARY_LINE_LENGTH = 2000
+MAX_SUMMARY_SECTION_BYTES = 128 * 1024
+
 MAX_ANNOTATIONS_PER_FILE = 20
 MAX_ANNOTATION_LENGTH = 900
+
+# For large reports, read only the end of the file.
+MAX_REPORT_BYTES = 8 * 1024 * 1024
+
+# Total permitted size of the GitHub step summary, including existing content.
+MAX_SUMMARY_BYTES = 900 * 1024
+
 CONTEXT_BEFORE = 2
 CONTEXT_AFTER = 7
 TAIL_LINES = 20
 
-# Common failure indicators from Flutter, Dart, Android and integration tests.
+
+# These patterns identify potential failures, not definitive test results.
+# Avoid broad terms such as "Error", "Expected" or "Gradle task" alone.
 FAILURE_PATTERN = re.compile(
-    r"The following"
-    r"|Exception"
-    r"|Error"
-    r"|FAILED"
-    r"|Expected"
-    r"|Actual"
-    r"|Which"
-    r"|test description"
-    r"|was thrown"
-    r"|assertion"
-    r"|Bad state"
-    r"|Looking up"
-    r"|setState"
-    r"|dispose"
-    r"|timeout"
-    r"|Failed to"
-    r"|Uncaught"
-    r"|Stack trace"
-    r"|NoSuchMethod"
-    r"|Null check operator"
-    r"|LateInitializationError"
-    r"|SocketException"
-    r"|PlatformException"
-    r"|MissingPluginException"
-    r"|Gradle task"
-    r"|BUILD FAILED"
-    r"|ProcessException",
+    r"\bThe following\b.*\b(?:exception|assertion)\b"
+    r"|\b[A-Za-z_][A-Za-z0-9_]*(?:Exception|Error)\b"
+    r"|\bException\b"
+    r"|\bError\s*:"
+    r"|\bFAILED\b"
+    r"|\bFAILURE\s*:"
+    r"|\bBUILD FAILED\b"
+    r"|\bExpected\s*:"
+    r"|\bActual\s*:"
+    r"|\bWhich\s*:"
+    r"|\btest description\s*:"
+    r"|\bwas thrown\b"
+    r"|\bassertion\b"
+    r"|\bBad state\b"
+    r"|\bLooking up a deactivated widget\b"
+    r"|\bsetState\b.*\b(?:after dispose|during build)\b"
+    r"|\btimed out\b"
+    r"|\btimeout\b"
+    r"|\bFailed to\b"
+    r"|\bUncaught\b"
+    r"|\bStack trace\b"
+    r"|\bNull check operator\b"
+    r"|\bExecution failed for task\b"
+    r"|\bSome tests failed\b"
+    r"|\bTest failed\b",
     re.IGNORECASE,
 )
 
-# Remove common ANSI terminal escape sequences.
+
+# Remove common ANSI CSI sequences and OSC terminal commands.
 ANSI_PATTERN = re.compile(
-    r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])"
+    r"\x1B\][^\x07\x1B]*(?:\x07|\x1B\\)"
+    r"|\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])"
 )
 
-# Conservative redaction for common credential formats.
-SECRET_PATTERNS = [
+# Preserve tabs and line breaks; remove other terminal control characters.
+CONTROL_PATTERN = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
+
+# Remove bidirectional display controls from published logs.
+BIDI_PATTERN = re.compile(r"[\u202A-\u202E\u2066-\u2069]")
+
+
+SECRET_KEY_PATTERN = (
+    r"api[_-]?key"
+    r"|access[_-]?token"
+    r"|refresh[_-]?token"
+    r"|client[_-]?secret"
+    r"|authorization"
+    r"|password"
+    r"|passwd"
+    r"|pwd"
+)
+
+SECRET_ASSIGNMENT_PATTERN = re.compile(
+    rf"""(?ix)
+    (?P<prefix>
+        ["']?
+        \b(?:{SECRET_KEY_PATTERN})\b
+        ["']?
+        \s*[:=]\s*
+    )
+    (?:
+        "[^"\r\n]*"
+        |
+        '[^'\r\n]*'
+        |
+        [^\s'",;}}\]&]+
+    )
+    """
+)
+
+SECRET_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (
-        re.compile(
-            r"(?i)\b(gh[pousr]_[A-Za-z0-9_]{20,})\b"
-        ),
+        re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{20,}\b"),
+        "[REDACTED_GITHUB_TOKEN]",
+    ),
+    (
+        re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b"),
         "[REDACTED_GITHUB_TOKEN]",
     ),
     (
         re.compile(
-            r"(?i)\bgithub_pat_[A-Za-z0-9_]{20,}\b"
-        ),
-        "[REDACTED_GITHUB_TOKEN]",
-    ),
-    (
-        re.compile(
-            r"(?i)\b(Bearer\s+)[A-Za-z0-9._~+/=-]{12,}",
+            r"(?i)\b(Bearer\s+)[A-Za-z0-9._~+/=-]+"
         ),
         r"\1[REDACTED]",
     ),
     (
         re.compile(
-            r"(?i)\b(api[_-]?key|access[_-]?token|"
-            r"refresh[_-]?token|client[_-]?secret)"
-            r"(\s*[:=]\s*)['\"]?([^\s'\",;]{8,})",
+            r"(?i)\b(Basic\s+)[A-Za-z0-9+/=]{8,}"
         ),
-        r"\1\2[REDACTED]",
+        r"\1[REDACTED]",
     ),
     (
+        # Credentials embedded in URLs.
         re.compile(
-            r"(?i)\b(password|passwd|pwd)"
-            r"(\s*[:=]\s*)['\"]?([^\s'\",;]{4,})",
+            r"(?i)(\b[a-z][a-z0-9+.-]*://)"
+            r"[^/\s:@]+:[^/\s@]+@"
         ),
-        r"\1\2[REDACTED]",
+        r"\1[REDACTED]@",
     ),
 ]
 
+PRIVATE_KEY_PATTERN = re.compile(
+    r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----"
+    r".*?"
+    r"(?:-----END (?:[A-Z0-9]+ )*PRIVATE KEY-----|\Z)",
+    re.DOTALL,
+)
+
+
+SOURCE_FILES = {
+    "app-integration.txt": "integration_test/app_test.dart",
+    "secure-storage-integration.txt": (
+        "integration_test/secure_storage_test.dart"
+    ),
+}
+
 
 def redact_secrets(value: str) -> str:
-    """Redact common secret patterns before publishing diagnostics."""
+    """Best-effort redaction; this is not a complete secret scanner."""
+
+    value = PRIVATE_KEY_PATTERN.sub(
+        "[REDACTED_PRIVATE_KEY]",
+        value,
+    )
 
     for pattern, replacement in SECRET_PATTERNS:
         value = pattern.sub(replacement, value)
 
-    return value
+    return SECRET_ASSIGNMENT_PATTERN.sub(
+        lambda match: (
+            match.group("prefix") + "[REDACTED]"
+        ),
+        value,
+    )
+
+
+def sanitize_text(value: str) -> str:
+    """Remove terminal formatting and redact common sensitive values."""
+
+    value = ANSI_PATTERN.sub("", value)
+    value = CONTROL_PATTERN.sub("", value)
+    value = BIDI_PATTERN.sub("", value)
+
+    return redact_secrets(value)
 
 
 def clean_line(value: str) -> str:
-    """Remove terminal formatting and redact sensitive values."""
-
-    value = ANSI_PATTERN.sub("", value)
-    value = redact_secrets(value)
-
-    return value.rstrip("\r\n")
+    return sanitize_text(value).rstrip("\r\n")
 
 
 def escape_annotation_message(value: str) -> str:
-    """Escape GitHub Actions annotation message data."""
+    """Escape GitHub workflow command message data."""
 
     return (
-        value
-        .replace("%", "%25")
+        value.replace("%", "%25")
         .replace("\r", "%0D")
         .replace("\n", "%0A")
     )
 
 
+def escape_annotation_property(value: str) -> str:
+    """Escape GitHub workflow command properties."""
+
+    return (
+        escape_annotation_message(value)
+        .replace(":", "%3A")
+        .replace(",", "%2C")
+    )
+
+
+def emit_workflow_message(level: str, message: str) -> None:
+    """Publish a sanitized, escaped workflow command."""
+
+    if level not in {"notice", "warning", "error"}:
+        raise ValueError(f"Unsupported annotation level: {level}")
+
+    safe_message = escape_annotation_message(
+        sanitize_text(message)
+    )
+
+    print(f"::{level}::{safe_message}")
+
+
+def truncate_text(value: str, limit: int) -> str:
+    if len(value) <= limit:
+        return value
+
+    suffix = " … [truncated]"
+
+    if limit <= len(suffix):
+        return suffix[:limit]
+
+    return value[: limit - len(suffix)] + suffix
+
+
+def read_report(path: Path) -> list[str] | None:
+    """Read a bounded report, retaining its tail when it is too large."""
+
+    try:
+        with path.open("rb") as report:
+            file_info = os.fstat(report.fileno())
+
+            if not stat.S_ISREG(file_info.st_mode):
+                emit_workflow_message(
+                    "warning",
+                    f"Diagnostic path is not a regular file: {path}",
+                )
+                return None
+
+            truncated = file_info.st_size > MAX_REPORT_BYTES
+
+            if truncated:
+                report.seek(file_info.st_size - MAX_REPORT_BYTES)
+
+            # Bound memory use even if the report grows while being read.
+            raw = report.read(MAX_REPORT_BYTES)
+
+    except FileNotFoundError:
+        emit_workflow_message(
+            "warning",
+            f"Diagnostic report does not exist: {path}",
+        )
+        return None
+    except (OSError, ValueError) as error:
+        emit_workflow_message(
+            "warning",
+            f"Could not read diagnostic report {path}: {error}",
+        )
+        return None
+
+    if truncated:
+        # The bounded tail can begin halfway through a UTF-8 character
+        # or log line. Discard that initial incomplete line.
+        newline_index = raw.find(b"\n")
+
+        if newline_index >= 0:
+            raw = raw[newline_index + 1 :]
+        else:
+            # A single extremely long line: keep the bounded data.
+            pass
+
+        emit_workflow_message(
+            "warning",
+            f"Report {path.name} exceeds {MAX_REPORT_BYTES} bytes. "
+            "Only its bounded tail was processed; earlier diagnostics "
+            "may have been omitted.",
+        )
+
+    text = raw.decode("utf-8-sig", errors="replace")
+
+    # Sanitize the complete text first so multiline private keys
+    # can be redacted before splitting it into lines.
+    text = sanitize_text(text)
+
+    return [
+        line.rstrip("\r\n")
+        for line in text.splitlines()
+    ]
+
+
 def select_diagnostic_lines(
     lines: list[str],
 ) -> tuple[list[int], list[int]]:
-    """
-    Select useful failure context and actual failure indicators.
-
-    Returns:
-        selected: ordered unique line indexes for the job summary.
-        failures: line indexes matching the failure pattern.
-    """
+    """Select failure context while preserving the final log lines."""
 
     failure_indexes = [
         index
@@ -147,50 +323,28 @@ def select_diagnostic_lines(
 
         selected.update(range(start, end))
 
-    # Always include the final log lines for context.
     tail_start = max(0, len(lines) - TAIL_LINES)
-    selected.update(range(tail_start, len(lines)))
+    tail_indexes = list(range(tail_start, len(lines)))
 
-    ordered = sorted(selected)
+    context_indexes = sorted(
+        index
+        for index in selected
+        if index < tail_start
+    )
 
-    return ordered[:MAX_SUMMARY_LINES], failure_indexes
+    context_budget = max(
+        0,
+        MAX_SUMMARY_LINES - len(tail_indexes),
+    )
 
-
-def read_report(path: Path) -> list[str] | None:
-    """Read and sanitize a report without aborting the whole job."""
-
-    if not path.exists():
-        print(
-            f"::warning::Diagnostic report does not exist: "
-            f"{escape_annotation_message(str(path))}"
-        )
-        return None
-
-    if not path.is_file():
-        print(
-            f"::warning::Diagnostic path is not a regular file: "
-            f"{escape_annotation_message(str(path))}"
-        )
-        return None
-
-    try:
-        raw = path.read_text(
-            encoding="utf-8",
-            errors="replace",
-        )
-    except OSError as error:
-        print(
-            f"::warning::Could not read diagnostic report "
-            f"{escape_annotation_message(path.name)}: "
-            f"{escape_annotation_message(str(error))}"
-        )
-        return None
-
-    return [clean_line(line) for line in raw.splitlines()]
+    return (
+        context_indexes[:context_budget] + tail_indexes,
+        failure_indexes,
+    )
 
 
 def markdown_fence(lines: Iterable[str]) -> str:
-    """Choose a Markdown fence longer than any fence in the log."""
+    """Choose a fence longer than any backtick sequence in its content."""
 
     longest = 0
 
@@ -201,22 +355,151 @@ def markdown_fence(lines: Iterable[str]) -> str:
     return "`" * max(3, longest + 1)
 
 
-def write_summary_section(
-    summary,
-    file_name: str,
-    selected_lines: list[str],
-) -> None:
-    """Append a safely fenced report section to the GitHub job summary."""
+def fenced_block(lines: list[str]) -> str:
+    fence = markdown_fence(lines)
 
-    fence = markdown_fence(selected_lines)
+    return (
+        f"{fence}text\n"
+        + "\n".join(lines)
+        + f"\n{fence}\n"
+    )
 
-    summary.write(f"\n### {file_name}\n\n")
-    summary.write(f"{fence}text\n")
 
-    for line in selected_lines:
-        summary.write(line + "\n")
+def build_summary_section(
+    report_name: str,
+    lines: list[str],
+    selected_indexes: list[int],
+) -> str:
+    """Build a bounded section with the file name inside a safe fence."""
 
-    summary.write(f"{fence}\n")
+    safe_name = truncate_text(
+        clean_line(report_name).replace("\r", " ").replace("\n", " "),
+        300,
+    )
+
+    selected_lines: list[str] = []
+    previous_index: int | None = None
+
+    for index in selected_indexes:
+        if previous_index is not None and index > previous_index + 1:
+            selected_lines.append("[... omitted log lines ...]")
+
+        selected_lines.append(
+            truncate_text(
+                lines[index],
+                MAX_SUMMARY_LINE_LENGTH,
+            )
+        )
+
+        previous_index = index
+
+    if not lines:
+        selected_lines.append("[Report is empty]")
+
+    prefix = "\n### Diagnostic report\n\n"
+    name_lines = [f"Report: {safe_name}", ""]
+
+    section = prefix + fenced_block(name_lines + selected_lines)
+
+    if len(section.encode("utf-8")) <= MAX_SUMMARY_SECTION_BYTES:
+        return section
+
+    # Preserve the tail when reducing the section further.
+    omitted_notice = "[Earlier summary content omitted due to size limit]"
+
+    while selected_lines:
+        selected_lines.pop(0)
+
+        section = prefix + fenced_block(
+            name_lines + [omitted_notice] + selected_lines
+        )
+
+        if len(section.encode("utf-8")) <= MAX_SUMMARY_SECTION_BYTES:
+            return section
+
+    return prefix + fenced_block(name_lines + [omitted_notice])
+
+
+class SummaryWriter:
+    """Append complete Markdown blocks without aborting annotation output."""
+
+    def __init__(self, destination: str | None) -> None:
+        self.stream: TextIO | None = None
+        self.bytes_written = 0
+        self.limit_warning_emitted = False
+
+        if not destination:
+            return
+
+        try:
+            path = Path(destination)
+            path.parent.mkdir(parents=True, exist_ok=True)
+
+            self.stream = path.open(
+                "a",
+                encoding="utf-8",
+                newline="\n",
+            )
+
+            self.bytes_written = os.fstat(
+                self.stream.fileno()
+            ).st_size
+
+        except (OSError, ValueError) as error:
+            self.close()
+
+            emit_workflow_message(
+                "warning",
+                f"Could not open GitHub job summary: {error}",
+            )
+
+    def write(self, block: str) -> bool:
+        if self.stream is None:
+            return False
+
+        block_size = len(block.encode("utf-8"))
+
+        if self.bytes_written + block_size > MAX_SUMMARY_BYTES:
+            if not self.limit_warning_emitted:
+                emit_workflow_message(
+                    "warning",
+                    "GitHub job summary size limit reached. "
+                    "Some summary sections were omitted; "
+                    "annotations will continue.",
+                )
+                self.limit_warning_emitted = True
+
+            return False
+
+        try:
+            self.stream.write(block)
+            self.stream.flush()
+            self.bytes_written += block_size
+            return True
+
+        except (OSError, ValueError) as error:
+            emit_workflow_message(
+                "warning",
+                f"Could not write GitHub job summary: {error}. "
+                "Annotations will continue.",
+            )
+            self.close()
+            return False
+
+    def close(self) -> None:
+        stream = self.stream
+        self.stream = None
+
+        if stream is None:
+            return
+
+        try:
+            stream.close()
+        except (OSError, ValueError) as error:
+            emit_workflow_message(
+                "warning",
+                f"Could not close GitHub job summary: {error}",
+            )
 
 
 def emit_annotations(
@@ -224,43 +507,48 @@ def emit_annotations(
     lines: list[str],
     failure_indexes: list[int],
 ) -> int:
-    """Emit annotations for actual failure indicators only."""
+    """Emit bounded annotations for potential failure indicators."""
 
-    if report_name == "app-integration.txt":
-        source_file = "integration_test/app_test.dart"
-    elif report_name == "secure-storage-integration.txt":
-        source_file = "integration_test/secure_storage_test.dart"
-    else:
-        source_file = ""
-
+    source_file = SOURCE_FILES.get(report_name)
     emitted = 0
 
-    for index in failure_indexes[:MAX_ANNOTATIONS_PER_FILE]:
+    for index in failure_indexes:
+        if emitted >= MAX_ANNOTATIONS_PER_FILE:
+            break
+
         message = lines[index].strip()
 
         if not message:
             continue
 
-        message = message[:MAX_ANNOTATION_LENGTH]
-        message = escape_annotation_message(message)
+        # Add report context before escaping the complete message.
+        message = truncate_text(
+            clean_line(f"[{report_name}] {message}"),
+            MAX_ANNOTATION_LENGTH,
+        )
+
+        safe_message = escape_annotation_message(message)
 
         if source_file:
+            # This maps the report to its test file, not a known
+            # source-code line. Do not invent a line number.
             print(
-                f"::error file={source_file},line=1::"
-                f"{message}"
+                "::error "
+                f"file={escape_annotation_property(source_file)}"
+                f"::{safe_message}"
             )
         else:
-            print(f"::error::{message}")
+            print(f"::error::{safe_message}")
 
         emitted += 1
 
     remaining = len(failure_indexes) - emitted
 
     if remaining > 0:
-        print(
-            f"::warning::"
-            f"{remaining} additional failure indicators "
-            f"were omitted from annotations in {report_name}."
+        emit_workflow_message(
+            "warning",
+            f"{remaining} additional potential failure indicators "
+            f"were omitted from annotations in {report_name}.",
         )
 
     return emitted
@@ -275,40 +563,29 @@ def main() -> int:
         )
         return 2
 
-    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-    summary = None
-
-    if summary_path:
-        try:
-            summary_file = Path(summary_path)
-            summary_file.parent.mkdir(
-                parents=True,
-                exist_ok=True,
-            )
-            summary = summary_file.open(
-                "a",
-                encoding="utf-8",
-            )
-        except OSError as error:
-            print(
-                f"::warning::Could not open GitHub job summary: {error}"
-            )
+    summary = SummaryWriter(
+        os.environ.get("GITHUB_STEP_SUMMARY")
+    )
 
     total_reports = 0
     total_failures = 0
     total_annotations = 0
-    missing_reports = 0
+    unavailable_reports = 0
 
     try:
-        if summary:
-            summary.write("\n## Failure diagnostics\n")
+        summary.write(
+            "\n## Failure diagnostics\n\n"
+            "Failure indicators are heuristic matches, "
+            "not authoritative test or build results. "
+            "For oversized reports, only a bounded tail is processed.\n"
+        )
 
         for name in sys.argv[1:]:
             path = Path(name)
             lines = read_report(path)
 
             if lines is None:
-                missing_reports += 1
+                unavailable_reports += 1
                 continue
 
             total_reports += 1
@@ -317,19 +594,15 @@ def main() -> int:
                 select_diagnostic_lines(lines)
             )
 
-            selected_lines = [
-                lines[index]
-                for index in selected_indexes
-            ]
-
             total_failures += len(failure_indexes)
 
-            if summary:
-                write_summary_section(
-                    summary,
+            summary.write(
+                build_summary_section(
                     path.name,
-                    selected_lines,
+                    lines,
+                    selected_indexes,
                 )
+            )
 
             total_annotations += emit_annotations(
                 path.name,
@@ -337,33 +610,40 @@ def main() -> int:
                 failure_indexes,
             )
 
-            print(
-                f"::notice::Processed {path.name}: "
-                f"{len(failure_indexes)} failure indicators, "
-                f"{len(selected_lines)} summary lines."
+            emit_workflow_message(
+                "notice",
+                f"Processed {path.name}: "
+                f"{len(failure_indexes)} potential failure indicators, "
+                f"{len(selected_indexes)} selected log lines.",
             )
 
-        if summary:
-            summary.write("\n### Diagnostic summary\n\n")
-            summary.write(f"- Reports processed: {total_reports}\n")
-            summary.write(f"- Missing or unreadable reports: {missing_reports}\n")
-            summary.write(f"- Failure indicators: {total_failures}\n")
-            summary.write(f"- GitHub annotations: {total_annotations}\n")
-
-            if total_reports == 0:
-                summary.write(
-                    "\nNo readable diagnostic reports were available.\n"
-                )
-
-    finally:
-        if summary:
-            summary.close()
-
-    if total_reports == 0:
-        print(
-            "::notice::No readable diagnostic reports were processed."
+        final_summary = (
+            "\n### Diagnostic summary\n\n"
+            f"- Reports processed: {total_reports}\n"
+            f"- Missing or unreadable reports: {unavailable_reports}\n"
+            f"- Potential failure indicators: {total_failures}\n"
+            f"- Error annotations emitted: {total_annotations}\n"
+            "\nSecret redaction is best-effort. "
+            "Do not intentionally log credentials or private data.\n"
         )
 
+        if total_reports == 0:
+            final_summary += (
+                "\nNo readable diagnostic reports were available.\n"
+            )
+
+        summary.write(final_summary)
+
+    finally:
+        summary.close()
+
+    if total_reports == 0:
+        emit_workflow_message(
+            "notice",
+            "No readable diagnostic reports were processed.",
+        )
+
+    # Reporting success is independent of the original CI command result.
     return 0
 
 
