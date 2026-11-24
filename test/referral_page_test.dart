@@ -17,7 +17,7 @@ void main() {
       expect(find.text('معرفی به دوستان'), findsOneWidget);
       await tester.drag(find.byType(ListView).first, const Offset(0, -420));
       await tester.pumpAndSettle();
-      expect(find.text('کپی متن و لینک'), findsOneWidget);
+      expect(find.text('کپی متن معرفی و لینک'), findsOneWidget);
     },
   );
 
