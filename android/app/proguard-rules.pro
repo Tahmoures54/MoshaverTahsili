@@ -1,144 +1,281 @@
-# ═══════════════════════════════════════════════════════════
-#  proguard-rules.pro – مشاور هوشمند تحصیلی (سیمرغ)
-#  فعال‌شده با: minifyEnabled true, shrinkResources true
-#  مسیر جایگزینی: android/app/proguard-rules.pro
-# ═══════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════
+# android/app/proguard-rules.pro
+# مشاور هوشمند تحصیلی — سیمرغ
+#
+# استفاده همراه با:
+# getDefaultProguardFile('proguard-android-optimize.txt')
+# minifyEnabled = true
+# shrinkResources = true
+#
+# این فایل برای R8 و کد Java/Kotlin اندروید است.
+# کوچک‌سازی یا obfuscation کد Dart با این فایل انجام نمی‌شود.
+#
+# قواعد اختصاصی وابستگی‌ها باید با نسخه واقعی آن‌ها تطبیق داده شوند.
+# بدون بررسی dependencies، تضمین سازگاری تمام افزونه‌ها ممکن نیست.
+# ═══════════════════════════════════════════════════════════════════════
 
-# ─────────────────────────────────────────────
-#  0. Attributes و Stack Trace
-# ─────────────────────────────────────────────
+
+# ───────────────────────────────────────────────────────────────────────
+# ۱. Metadata و اطلاعات موردنیاز برای reflection
+# ───────────────────────────────────────────────────────────────────────
+
 -keepattributes Signature
 -keepattributes *Annotation*
--keepattributes EnclosingMethod
--keepattributes InnerClasses
--keepattributes SourceFile, LineNumberTable
--keepattributes RuntimeVisibleAnnotations
--keepattributes RuntimeInvisibleAnnotations
--keepattributes RuntimeVisibleParameterAnnotations
--keepattributes RuntimeInvisibleParameterAnnotations
--keepattributes AnnotationDefault
+-keepattributes InnerClasses,EnclosingMethod
 
-# ─────────────────────────────────────────────
-#  1. Flutter Engine (حیاتی – بدون این کرش)
-# ─────────────────────────────────────────────
--keep class io.flutter.app.** { *; }
--keep class io.flutter.plugin.** { *; }
--keep class io.flutter.util.** { *; }
--keep class io.flutter.view.** { *; }
--keep class io.flutter.** { *; }
--keep class io.flutter.plugins.** { *; }
--keep class io.flutter.embedding.** { *; }
--keep class io.flutter.FlutterInjector { *; }
--keep class io.flutter.embedding.engine.loader.** { *; }
--dontwarn io.flutter.embedding.**
+# توجه:
+# keepattributes به‌تنهایی مانع حذف کلاس، فیلد یا متد نمی‌شود.
+# اعضایی که فقط با reflection استفاده می‌شوند، قواعد keep دقیق می‌خواهند.
 
-# ─────────────────────────────────────────────
-#  2. Play Core (deferred components استفاده نمی‌شود)
-# ─────────────────────────────────────────────
-# Flutter references Play Core only for optional deferred-component delivery.
-# This application does not ship deferred components, so do not package Play Core.
--dontwarn com.google.android.play.core.**
 
-# ─────────────────────────────────────────────
-#  3. Kotlin & Coroutines
-# ─────────────────────────────────────────────
--keep class kotlin.** { *; }
--keep class kotlin.Metadata { *; }
--keep class kotlin.reflect.jvm.internal.** { *; }
--keepclassmembers class kotlin.Metadata { *; }
--dontwarn kotlin.**
--dontwarn kotlin.reflect.jvm.internal.**
--dontwarn kotlinx.coroutines.**
+# ───────────────────────────────────────────────────────────────────────
+# ۲. اطلاعات stack trace
+# ───────────────────────────────────────────────────────────────────────
 
-# ─────────────────────────────────────────────
-#  4. Bazaar / CafeBazaar IAP
-# ─────────────────────────────────────────────
--keep class com.android.vending.billing.** { *; }
--keep class ir.cafebazaar.pardakht.** { *; }
--keep interface com.android.vending.billing.IInAppBillingService { *; }
--keep class com.farsitel.bazaar.** { *; }
--dontwarn ir.cafebazaar.**
+-keepattributes SourceFile,LineNumberTable
 
-# ─────────────────────────────────────────────
-#  5. JSON / Serialization (AI API responses)
-# ─────────────────────────────────────────────
--keep class org.json.** { *; }
--dontwarn org.json.**
+# فایل mapping.txt هر انتشار را برای Retrace نگه دارید.
+# مسیر متداول:
+# android/app/build/outputs/mapping/release/mapping.txt
+#
+# در پروژه Flutter با buildDir سفارشی، معمولاً:
+# build/app/outputs/mapping/release/mapping.txt
+#
+# mapping مربوط به Android جایگزین فایل‌های --split-debug-info دارت نیست.
 
-# Gson / Moshi (اگر از پلاگین‌های serialization استفاده می‌کنید)
--keep class com.google.gson.** { *; }
--keep class com.squareup.moshi.** { *; }
--keepnames @com.squareup.moshi.JsonClass class *
--keepclassmembers class * {
-    @com.squareup.moshi.Json <methods>;
-}
 
-# ─────────────────────────────────────────────
-#  6. AndroidX & Material
-# ─────────────────────────────────────────────
--keep class androidx.** { *; }
--keep class androidx.lifecycle.** { *; }
--keep class androidx.core.** { *; }
--keep class androidx.security.** { *; }
--keep class androidx.window.** { *; }
--dontwarn androidx.**
+# ───────────────────────────────────────────────────────────────────────
+# ۳. Flutter Engine و افزونه‌ها
+# ───────────────────────────────────────────────────────────────────────
 
-# ─────────────────────────────────────────────
-#  7. OkHttp / Networking
-# ─────────────────────────────────────────────
--dontwarn okhttp3.**
--dontwarn okio.**
--dontwarn javax.annotation.**
--keepnames class okhttp3.internal.publicsuffix.PublicSuffixDatabase
--keep class okhttp3.** { *; }
--keep interface okhttp3.** { *; }
+# Flutter و بسیاری از افزونه‌ها قواعد لازم را از طریق تنظیمات build
+# یا consumer rules ارائه می‌کنند.
+#
+# در نسخه قبلی، قواعد زیر تمام Flutter و افزونه‌های آن را نگه می‌داشتند:
+# -keep class io.flutter.** { *; }
+#
+# نگهداری کامل این بسته‌ها به‌صورت پیش‌فرض ضروری نیست و بخش زیادی
+# از مزایای shrinking و obfuscation را از بین می‌برد.
+#
+# اگر نسخه مشخصی از Flutter یا یک افزونه نیازمند قاعده اضافی بود،
+# فقط قاعده مستند همان نسخه را اضافه کنید.
 
-# TLS (مهم برای ارتباط با DeepSeek API)
--dontwarn org.bouncycastle.**
--dontwarn org.conscrypt.**
--dontwarn org.openjsse.**
 
-# ─────────────────────────────────────────────
-#  8. Project-specific (سیمرغ)
-# ─────────────────────────────────────────────
-# MainActivity و method channel handlers
--keep class ir.moshaver.tahsili.** { *; }
--keep class ir.moshaver.tahsili.MainActivity { *; }
--keepclassmembers class ir.moshaver.tahsili.** { *; }
+# ───────────────────────────────────────────────────────────────────────
+# ۴. Play Core و Deferred Components
+# ───────────────────────────────────────────────────────────────────────
 
-# ─────────────────────────────────────────────
-#  9. Android Keystore (رمزنگاری محلی AES-GCM)
-# ─────────────────────────────────────────────
--keep class java.security.** { *; }
--keep class javax.crypto.** { *; }
--keep class android.security.** { *; }
--keep class android.security.keystore.** { *; }
--keep class java.security.spec.** { *; }
--keep class javax.crypto.spec.** { *; }
+# dontwarn باعث حذف dependency یا جلوگیری از بسته‌بندی آن نمی‌شود.
+# همچنین کلاس‌های گمشده را اضافه نمی‌کند و خطای runtime را حل نمی‌کند.
+#
+# اگر deferred components استفاده می‌شود، dependency سازگار Play Core
+# باید مطابق مستندات نسخه Flutter تنظیم شود.
+#
+# اگر استفاده نمی‌شود و R8 درباره کلاس‌های اختیاری هشدار می‌دهد:
+# ۱. مسیر ارجاع و غیرفعال‌بودن قابلیت را بررسی کنید.
+# ۲. missing_rules.txt تولیدشده توسط R8 را بررسی کنید.
+# ۳. فقط suppression دقیق کلاس‌های واقعاً اختیاری را اضافه کنید.
+#
+# عمداً از این قاعده عمومی استفاده نشده است:
+# -dontwarn com.google.android.play.core.**
 
-# ─────────────────────────────────────────────
-#  10. حذف لاگ در release (امنیت)
-# ─────────────────────────────────────────────
+
+# ───────────────────────────────────────────────────────────────────────
+# ۵. Kotlin، Coroutines، AndroidX و Material
+# ───────────────────────────────────────────────────────────────────────
+
+# نگهداری کامل kotlin.**، kotlinx.coroutines.** یا androidx.**
+# به‌صورت عمومی لازم نیست.
+#
+# نسخه‌های سازگار این کتابخانه‌ها باید قواعد consumer لازم را ارائه کنند.
+# Kotlin reflection سفارشی ممکن است برای کلاس‌ها و اعضای هدف،
+# قواعد keep اختصاصی بخواهد.
+#
+# هشدارهای این بسته‌ها را به‌صورت گسترده پنهان نکنید؛ ممکن است ناشی
+# از dependency ناقص یا ناسازگاری نسخه‌ها باشند.
+
+
+# ───────────────────────────────────────────────────────────────────────
+# ۶. کد برنامه و MethodChannel
+# ───────────────────────────────────────────────────────────────────────
+
+# MainActivity معرفی‌شده در AndroidManifest توسط قواعد Android
+# حفظ می‌شود و معمولاً به keep اضافی نیاز ندارد.
+#
+# نام متدهای MethodChannel رشته‌های قراردادی هستند؛ استفاده معمول
+# از setMethodCallHandler به معنی فراخوانی reflection متدهای Kotlin نیست.
+#
+# بنابراین کل بسته برنامه عمداً حفظ نمی‌شود:
+# -keep class ir.moshaver.tahsili.** { *; }
+#
+# اگر کلاسی با Class.forName یا عضو آن با reflection فراخوانی می‌شود،
+# قاعده دقیق متناظر را اضافه کنید.
+#
+# نمونه — فقط بعد از جایگزینی با نام کلاس واقعی فعال کنید:
+#
+# -keep,allowoptimization class ir.moshaver.tahsili.bridge.NativeBridge {
+#     public <init>();
+#     public java.lang.String execute(java.lang.String);
+# }
+
+
+# ───────────────────────────────────────────────────────────────────────
+# ۷. JNI و کتابخانه‌های Native
+# ───────────────────────────────────────────────────────────────────────
+
+# فایل پیش‌فرض Android معمولاً قواعد متدهای native را دارد.
+#
+# اگر کد C/C++ با FindClass یا GetMethodID به کلاس‌ها و متدهای Java/Kotlin
+# مراجعه می‌کند، اهداف آن باید با نام و signature دقیق حفظ شوند.
+# R8 نمی‌تواند تمام ارجاعات داخل کد native را تشخیص دهد.
+#
+# نمونه — فقط برای callback واقعی JNI فعال شود:
+#
+# -keep,allowoptimization class ir.moshaver.tahsili.bridge.NativeCallbacks {
+#     public static void onResult(java.lang.String);
+# }
+
+
+# ───────────────────────────────────────────────────────────────────────
+# ۸. پرداخت کافه‌بازار / Google Play Billing
+# ───────────────────────────────────────────────────────────────────────
+
+# بسته‌ها و قواعد پرداخت به SDK و نسخه واقعی آن وابسته‌اند.
+# نام‌های فرضی یا نگهداری کامل چند SDK جایگزین مستندات dependency نیست.
+#
+# consumer rules SDK پرداخت را بررسی کنید و فقط در صورت نیاز،
+# قواعد اختصاصی همان نسخه را اضافه کنید.
+#
+# AIDL/Binderهایی که مستقیماً در کد استفاده می‌شوند معمولاً صرفاً
+# به دلیل Binder بودن، نیازمند keep کامل تمام بسته نیستند.
+#
+# تست release باید شامل اتصال، خرید، لغو خرید، خطا،
+# بازیابی خرید و تأیید سمت سرور باشد.
+
+
+# ───────────────────────────────────────────────────────────────────────
+# ۹. JSON و Serialization
+# ───────────────────────────────────────────────────────────────────────
+
+# org.json بخشی از API اندروید است؛ نگهداری کامل آن لازم نیست.
+#
+# JSON پردازش‌شده در Dart نیز تحت تأثیر این فایل قرار نمی‌گیرد.
+#
+# نگهداری کل Gson یا Moshi لزوماً مدل‌های برنامه را حفظ نمی‌کند.
+# مدل‌هایی که با reflection خوانده می‌شوند ممکن است قواعد دقیق بخواهند.
+#
+# Gson:
+# از نسخه دارای consumer rules مناسب استفاده کنید.
+# نام فیلدهای قراردادی را ترجیحاً با @SerializedName مشخص کنید.
+# مدل‌های بدون annotation و adapterهای reflection را جداگانه بررسی کنید.
+#
+# نمونه محافظه‌کارانه برای یک مدل واقعی Gson:
+#
+# -keep class ir.moshaver.tahsili.model.ActualApiResponse {
+#     <fields>;
+# }
+#
+# Moshi:
+# استفاده از code generation با @JsonClass(generateAdapter = true)
+# معمولاً نیاز به قواعد دستی را کاهش می‌دهد.
+# مدل‌های reflection باید مطابق مستندات نسخه Moshi حفظ شوند.
+#
+# نمونه برای یک مدل واقعی Moshi مبتنی بر reflection:
+#
+# -keep class ir.moshaver.tahsili.model.ActualReflectionModel {
+#     *;
+# }
+#
+# نمونه‌ها عمداً غیرفعال‌اند؛ فقط پس از تطبیق با مدل واقعی فعال شوند.
+
+
+# ───────────────────────────────────────────────────────────────────────
+# ۱۰. Networking و TLS
+# ───────────────────────────────────────────────────────────────────────
+
+# OkHttp و Okio را به‌صورت کامل keep نکنید.
+# قواعد لازم باید از نسخه dependency یا مستندات همان نسخه دریافت شوند.
+#
+# هشدارهای okhttp3.** و okio.** نباید به‌طور عمومی نادیده گرفته شوند.
+#
+# نبود providerهای اختیاری TLS مانند Conscrypt یا Bouncy Castle فقط
+# زمانی قابل suppression است که اختیاری‌بودن ارجاع بررسی شده باشد.
+#
+# keep کردن کتابخانه‌های TLS، صحت certificate validation،
+# certificate pinning یا امنیت ارتباط با API را تضمین نمی‌کند.
+#
+# اگر شبکه در Dart با http یا Dio انجام می‌شود، قواعد Android
+# جایگزین تنظیمات امنیتی و TLS آن مسیر نیستند.
+
+
+# ───────────────────────────────────────────────────────────────────────
+# ۱۱. Android Keystore و رمزنگاری
+# ───────────────────────────────────────────────────────────────────────
+
+# java.security، javax.crypto و android.security APIهای platform هستند.
+# R8 کد سیستم‌عامل را از APK شما حذف یا تغییر نام نمی‌دهد.
+# بنابراین keep عمومی این بسته‌ها لازم نیست.
+#
+# امنیت AES-GCM وابسته به مدیریت کلید، nonce، احراز اصالت و رفتار
+# صحیح برنامه است؛ با قواعد ProGuard تأمین نمی‌شود.
+
+
+# ───────────────────────────────────────────────────────────────────────
+# ۱۲. لاگ‌های release
+# ───────────────────────────────────────────────────────────────────────
+
+# حذف لاگ‌های verbose/debug در صورت استفاده‌نشدن از مقدار بازگشتی.
+# لاگ‌های info/warn/error برای عیب‌یابی حفظ می‌شوند.
+#
+# این قاعده فقط android.util.Log را پوشش می‌دهد؛
+# print/debugPrint دارت و سایر loggerها تحت تأثیر آن نیستند.
+#
+# حذف فراخوانی Log الزاماً محاسبه آرگومان دارای side effect را حذف نمی‌کند.
+# هیچ داده حساسی را حتی در لاگ‌های debug قرار ندهید.
+
 -assumenosideeffects class android.util.Log {
-    public static *** d(...);
-    public static *** v(...);
-    public static *** i(...);
-    public static *** w(...);
-    public static *** e(...);
-    public static *** wtf(...);
+    public static int v(java.lang.String, java.lang.String);
+    public static int v(java.lang.String, java.lang.String, java.lang.Throwable);
+    public static int d(java.lang.String, java.lang.String);
+    public static int d(java.lang.String, java.lang.String, java.lang.Throwable);
 }
 
-# ─────────────────────────────────────────────
-#  11. Optimization
-# ─────────────────────────────────────────────
--allowaccessmodification
--repackageclasses
--mergeinterfaceaggressively
 
-# ─────────────────────────────────────────────
-#  12. عمومی
-# ─────────────────────────────────────────────
--dontwarn sun.misc.**
--dontwarn java.lang.invoke.**
--dontwarn org.codehaus.mojo.animal_sniffer.**
--dontnote **
+# ───────────────────────────────────────────────────────────────────────
+# ۱۳. Optimization و هشدارها
+# ───────────────────────────────────────────────────────────────────────
+
+# تنظیمات استاندارد optimization از فایل پیش‌فرض Android دریافت می‌شوند.
+#
+# از اضافه‌کردن عمومی گزینه‌های زیر خودداری شده است:
+# -repackageclasses
+# -mergeinterfaceaggressively
+#
+# رفتار برخی گزینه‌های قدیمی ProGuard در R8 متفاوت یا پشتیبانی‌نشده است.
+# تغییر نام و جابه‌جایی کلاس‌های reflection/JNI باید دقیق بررسی شود.
+#
+# عمداً استفاده نشده‌اند:
+# -ignorewarnings
+# -dontwarn **
+# -dontnote **
+#
+# هشدارهای missing class باید با dependency صحیح، حذف ارجاع غیرضروری
+# یا suppression محدود و بررسی‌شده حل شوند.
+
+
+# ───────────────────────────────────────────────────────────────────────
+# ۱۴. بررسی پیش از انتشار
+# ───────────────────────────────────────────────────────────────────────
+
+# نسخه minified release را روی دستگاه واقعی آزمایش کنید:
+# - اجرای اولیه و بازیابی پس از بسته‌شدن process
+# - MethodChannel و قابلیت‌های native
+# - خرید و بازیابی پرداخت
+# - اعلان‌ها، background tasks و deep links
+# - JSON و مدل‌های مبتنی بر reflection
+# - شبکه، TLS و مدیریت خطا
+# - ذخیره‌سازی امن و بازیابی کلیدها
+#
+# mapping.txt و نمادهای Dart/native هر انتشار را جداگانه نگه دارید.
+# در صورت کرش فقط در release، ابتدا stack trace را deobfuscate کنید
+# و سپس قاعده دقیق اضافه کنید؛ کل برنامه را keep نکنید.
