@@ -41,19 +41,19 @@ from pathlib import Path
 
 VERIFY_TIMEOUT_SECONDS = 120
 
-# Android Build Tools versions differ slightly in how they prefix the
-# certificate lines. Match the digest/DN labels rather than requiring the
-# literal word "certificate" or a particular indentation.
+# apksigner may also print a separate "Source Stamp Signer" certificate.
+# Only lines beginning with the APK's numbered "Signer #N" identity count
+# toward APK signer policy; source-stamp certificates are intentionally ignored.
 SHA256_PATTERN = re.compile(
-    r"^[ \t]*(?:Signer\s*#\s*(?P<signer>[1-9][0-9]*)[ \t]+)?"
-    r"[^\r\n]*?SHA[ -]?256[^\r\n]*?digest\s*:[ \t]*"
-    r"(?P<fingerprint>[^\r\n]+?)[ \t]*$",
+    r"^[ \\t]*Signer\\s*#\\s*(?P<signer>[1-9][0-9]*)[ \\t]+"
+    r"[^\\r\\n]*?SHA[ -]?256[^\\r\\n]*?digest\\s*:[ \\t]*"
+    r"(?P<fingerprint>[^\\r\\n]+?)[ \\t]*$",
     re.MULTILINE | re.IGNORECASE,
 )
 
 DN_PATTERN = re.compile(
-    r"^[ \t]*(?:Signer\s*#\s*(?P<signer>[1-9][0-9]*)[ \t]+)?"
-    r"[^\r\n]*?\bDN\s*:[ \t]*(?P<dn>[^\r\n]*)[ \t]*$",
+    r"^[ \\t]*Signer\\s*#\\s*(?P<signer>[1-9][0-9]*)[ \\t]+"
+    r"[^\\r\\n]*?\\bDN\\s*:[ \\t]*(?P<dn>[^\\r\\n]*)[ \\t]*$",
     re.MULTILINE | re.IGNORECASE,
 )
 
@@ -243,7 +243,7 @@ def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
             normalized = normalize_sha256(match.group("fingerprint"))
         except ConfigurationError:
             continue
-        fingerprints.append((match.group("signer") or "1", normalized))
+        fingerprints.append((match.group("signer"), normalized))
 
     # Repeated identical records are harmless; different signers or
     # fingerprints require a separate explicit multi-signer policy.
@@ -262,7 +262,7 @@ def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
 
     distinguished_names = list(DN_PATTERN.finditer(output))
     unique_names = {
-        (match.group("signer") or "1", match.group("dn"))
+        (match.group("signer"), match.group("dn"))
         for match in distinguished_names
     }
     if len(unique_names) != 1:
