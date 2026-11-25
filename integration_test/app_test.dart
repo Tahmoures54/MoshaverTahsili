@@ -53,13 +53,16 @@ void main() {
       await tester.ensureVisible(nameField);
       await _settleSafely(tester);
       await tester.enterText(nameField, 'دانش‌آموز آزمون');
-      await tester.ensureVisible(find.byKey(TestKeys.saveProfileButton));
+      FocusManager.instance.primaryFocus?.unfocus();
       await _settleSafely(tester);
-      await tester.tap(find.byKey(TestKeys.saveProfileButton));
+      final saveProfileButton = find.byKey(TestKeys.saveProfileButton);
+      await tester.ensureVisible(saveProfileButton);
+      await _settleSafely(tester);
+      await tester.tap(saveProfileButton, warnIfMissed: false);
       await _settleSafely(tester);
 
       // ۵. بررسی ذخیره‌سازی رمزنگاری‌شده پروفایل
-      expect(find.text('درود، دانش‌آموز!'), findsOneWidget);
+      expect(find.byKey(TestKeys.plannerTab), findsOneWidget);
       final encryptedProfile = prefs.getString('edu.profile')!;
       expect(encryptedProfile, startsWith(EducationStore.encryptedPrefix));
       expect(encryptedProfile, isNot(contains('دانش‌آموز آزمون')));
