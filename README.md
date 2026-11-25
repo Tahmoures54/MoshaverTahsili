@@ -13,7 +13,7 @@
 | زبان رابط | فارسی، راست‌چین |
 | مجوز | MIT |
 
-نشان برداری محصول: [assets/branding/simorgh-logo.svg](assets/branding/simorgh-logo.svg)
+نشان برداری محصول: [assets/branding/simorgh-logo.jpg](assets/branding/simorgh-logo.jpg)
 
 ---
 
