@@ -191,5 +191,28 @@ class CheckSignerTests(unittest.TestCase):
         self.assertFalse(is_debug)
 
 
+    def test_parses_scheme_labelled_v3_certificate_and_ignores_public_key_digest(self) -> None:
+        certificate_digest = "d1" * 32
+        public_key_digest = "e2" * 32
+        output = (
+            "Verifies\n"
+            "V3.0 Signer: certificate DN: CN=CI Validation,O=Temporary Build,C=US\n"
+            f"V3.0 Signer: certificate SHA-256 digest: {certificate_digest}\n"
+            f"V3.0 Signer: public key SHA-256 digest: {public_key_digest}\n"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            apk = Path(directory) / "candidate.apk"
+            apk.write_bytes(b"test apk")
+            completed = subprocess.CompletedProcess(
+                args=["apksigner", "verify"],
+                returncode=0,
+                stdout=output.encode(),
+                stderr=b"",
+            )
+            with patch.object(check_signer.subprocess, "run", return_value=completed):
+                fingerprint, is_debug = check_signer.verify_apk(apk, "apksigner")
+        self.assertEqual(fingerprint, certificate_digest.upper())
+        self.assertFalse(is_debug)
+
 if __name__ == "__main__":
     unittest.main()
