@@ -102,9 +102,9 @@ class CheckSignerTests(unittest.TestCase):
     def test_accepts_sha256_label_without_digest_suffix(self) -> None:
         digest = "a7" * 32
         output = (
-            "Verifies\\n"
-            "Signer #1 certificate DN: CN=CI Validation,O=Temporary Build,C=US\\n"
-            f"Signer #1 certificate SHA-256: {digest}\\n"
+            "Verifies\n"
+            "Signer #1 certificate DN: CN=CI Validation,O=Temporary Build,C=US\n"
+            f"Signer #1 certificate SHA-256: {digest}\n"
         )
         with tempfile.TemporaryDirectory() as directory:
             apk = Path(directory) / "candidate.apk"
