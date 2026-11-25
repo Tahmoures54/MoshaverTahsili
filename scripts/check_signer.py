@@ -53,15 +53,19 @@ SIGNER_HEADER_PATTERN = re.compile(
     re.MULTILINE | re.IGNORECASE,
 )
 SIGNER_DIGEST_PATTERN = re.compile(
-    r"^[ \t]*(?:Signer\s*#\s*(?P<signer>[1-9][0-9]*)[ \t]+)?"
-    r"[^\r\n]*?SHA[ -]?256(?:[ \t]+digest)?\s*:[ \t]*"
+    r"^[ \t]*(?:(?:Signer\s*#\s*(?P<signer>[1-9][0-9]*)[ \t]+)"
+    r"|(?:V[0-9]+(?:\.[0-9]+)*[ \t]+Signer:[ \t]*))?"
+    r"[^\r\n]*?\bcertificate[ \t]+SHA[ -]?256"
+    r"(?:[ \t]+digest)?\s*:[ \t]*"
     r"(?P<fingerprint>[^\r\n]+?)[ \t]*$",
     re.MULTILINE | re.IGNORECASE,
 )
 
 DN_PATTERN = re.compile(
-    r"^[ \t]*Signer\s*#\s*(?P<signer>[1-9][0-9]*)[ \t]+"
-    r"[^\r\n]*?\bDN\s*:[ \t]*(?P<dn>[^\r\n]*)[ \t]*$",
+    r"^[ \t]*(?:(?:Signer\s*#\s*(?P<signer>[1-9][0-9]*)[ \t]+)"
+    r"|(?:V[0-9]+(?:\.[0-9]+)*[ \t]+Signer:[ \t]*))"
+    r"[^\r\n]*?\b(?:certificate[ \t]+)?DN\s*:"
+    r"[ \t]*(?P<dn>[^\r\n]*)[ \t]*$",
     re.MULTILINE | re.IGNORECASE,
 )
 
@@ -263,6 +267,13 @@ def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
             continue
 
         signer_id = digest_match.group("signer") or active_signer
+        if signer_id is None and re.match(
+            r"^[ \\t]*V[0-9]+(?:\\.[0-9]+)*[ \\t]+Signer:",
+            line,
+            re.IGNORECASE,
+        ):
+            # Scheme-labelled output such as "V3.0 Signer: certificate ...".
+            signer_id = "1"
         if signer_id is None:
             continue
 
@@ -322,7 +333,7 @@ def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
 
     distinguished_names = list(DN_PATTERN.finditer(output))
     unique_names = {
-        (match.group("signer"), match.group("dn"))
+        (match.group("signer") or "1", match.group("dn"))
         for match in distinguished_names
     }
     if len(unique_names) != 1:
