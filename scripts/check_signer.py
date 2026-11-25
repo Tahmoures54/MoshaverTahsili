@@ -248,6 +248,10 @@ def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
     fingerprints: list[tuple[str, str]] = []
     active_signer: str | None = None
     for line in output.splitlines():
+        if "source stamp" in line.lower():
+            active_signer = None
+            continue
+
         header = SIGNER_HEADER_PATTERN.match(line)
         if header:
             active_signer = header.group("signer")
