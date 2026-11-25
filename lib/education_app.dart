@@ -1210,11 +1210,13 @@ class _DashboardState extends State<Dashboard> {
                     label: 'خانه',
                   ),
                   NavigationDestination(
+                    key: Key('nav_planner'),
                     icon: Icon(Icons.calendar_month_outlined),
                     selectedIcon: Icon(Icons.calendar_month),
                     label: 'برنامه',
                   ),
                   NavigationDestination(
+                    key: Key('nav_exams'),
                     icon: Icon(Icons.assessment_outlined),
                     selectedIcon: Icon(Icons.assessment),
                     label: 'آزمون',
@@ -1225,6 +1227,7 @@ class _DashboardState extends State<Dashboard> {
                     label: 'مرور',
                   ),
                   NavigationDestination(
+                    key: Key('nav_ai'),
                     icon: Icon(Icons.auto_awesome_outlined),
                     selectedIcon: Icon(Icons.auto_awesome),
                     label: 'مشاور',
