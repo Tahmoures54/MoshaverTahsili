@@ -44,8 +44,16 @@ VERIFY_TIMEOUT_SECONDS = 120
 # apksigner may also print a separate "Source Stamp Signer" certificate.
 # Only lines beginning with the APK's numbered "Signer #N" identity count
 # toward APK signer policy; source-stamp certificates are intentionally ignored.
-SHA256_PATTERN = re.compile(
-    r"^[ \t]*Signer\s*#\s*(?P<signer>[1-9][0-9]*)[ \t]+"
+# apksigner output varies across Android Build Tools versions: some versions
+# put the signer identity and digest on one line, while others print a
+# "Signer #N:" heading followed by separate certificate detail lines.
+# Source Stamp records must never be treated as APK signers.
+SIGNER_HEADER_PATTERN = re.compile(
+    r"^[ \t]*Signer\s*#\s*(?P<signer>[1-9][0-9]*)\s*:?\s*$",
+    re.MULTILINE | re.IGNORECASE,
+)
+SIGNER_DIGEST_PATTERN = re.compile(
+    r"^[ \t]*(?:Signer\s*#\s*(?P<signer>[1-9][0-9]*)[ \t]+)?"
     r"[^\r\n]*?SHA[ -]?256[^\r\n]*?digest\s*:[ \t]*"
     r"(?P<fingerprint>[^\r\n]+?)[ \t]*$",
     re.MULTILINE | re.IGNORECASE,
@@ -238,12 +246,27 @@ def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
     # Parse only normalized hexadecimal fingerprints. Ignore unrelated
     # certificate digest lines (for example SHA-1 and MD5).
     fingerprints: list[tuple[str, str]] = []
-    for match in SHA256_PATTERN.finditer(output):
+    active_signer: str | None = None
+    for line in output.splitlines():
+        header = SIGNER_HEADER_PATTERN.match(line)
+        if header:
+            active_signer = header.group("signer")
+            continue
+
+        digest_match = SIGNER_DIGEST_PATTERN.match(line)
+        if not digest_match:
+            # Ignore Source Stamp certificate details and unrelated digests.
+            continue
+
+        signer_id = digest_match.group("signer") or active_signer
+        if signer_id is None:
+            continue
+
         try:
-            normalized = normalize_sha256(match.group("fingerprint"))
+            normalized = normalize_sha256(digest_match.group("fingerprint"))
         except ConfigurationError:
             continue
-        fingerprints.append((match.group("signer"), normalized))
+        fingerprints.append((signer_id, normalized))
 
     # Repeated identical records are harmless; different signers or
     # fingerprints require a separate explicit multi-signer policy.
