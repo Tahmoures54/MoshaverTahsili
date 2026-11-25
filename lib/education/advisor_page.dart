@@ -26,20 +26,12 @@ class _TeachingTurn {
   final String nextQuestion;
 }
 
-List<Map<String, dynamic>> _copyRecords(
-  List<Map<String, dynamic>> records,
-) {
-  return records
-      .map((record) => Map<String, dynamic>.from(record))
-      .toList();
+List<Map<String, dynamic>> _copyRecords(List<Map<String, dynamic>> records) {
+  return records.map((record) => Map<String, dynamic>.from(record)).toList();
 }
 
 class AdvisorPage extends StatefulWidget {
-  const AdvisorPage({
-    super.key,
-    required this.store,
-    this.service,
-  });
+  const AdvisorPage({super.key, required this.store, this.service});
 
   final EducationStore store;
   final AiAdvisorService? service;
@@ -81,11 +73,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
   bool _scrollScheduled = false;
 
   bool get _locked =>
-      _busy ||
-      _recovering ||
-      _managingSession ||
-      _clearing ||
-      _openingShop;
+      _busy || _recovering || _managingSession || _clearing || _openingShop;
 
   bool get _storeHasActiveRequest => widget.store.hasActiveAiRequests;
 
@@ -184,8 +172,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
   }
 
   void _handleInputChanged() {
-    if (_preparedPrompt != null &&
-        _input.text.trim() != _preparedPrompt) {
+    if (_preparedPrompt != null && _input.text.trim() != _preparedPrompt) {
       _preparedPrompt = null;
     }
 
@@ -241,9 +228,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
     });
   }
 
-  SimorghTeachingSession? _decodeSession(
-    Map<String, dynamic> data,
-  ) {
+  SimorghTeachingSession? _decodeSession(Map<String, dynamic> data) {
     try {
       final topic = data['topic'];
       final grade = data['grade'];
@@ -290,10 +275,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
         maximum: SimorghTeachingEngine.diagnosticQuestionLimit,
       );
 
-      final practiceAttempts = counter(
-        'practiceAttempts',
-        maximum: 1000,
-      );
+      final practiceAttempts = counter('practiceAttempts', maximum: 1000);
 
       final masteryCount = counter(
         'masteryCount',
@@ -305,15 +287,9 @@ class _AdvisorPageState extends State<AdvisorPage> {
         maximum: SimorghTeachingEngine.masteryQuestionLimit,
       );
 
-      final reteachCount = counter(
-        'reteachCount',
-        maximum: 1000,
-      );
+      final reteachCount = counter('reteachCount', maximum: 1000);
 
-      final explanationVariant = counter(
-        'explanationVariant',
-        maximum: 1000,
-      );
+      final explanationVariant = counter('explanationVariant', maximum: 1000);
 
       if (diagnosticCorrect > diagnosticCount ||
           masteryCorrect > masteryCount) {
@@ -380,10 +356,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
     };
   }
 
-  Map<String, dynamic>? _findSessionRecord(
-    EducationStore store,
-    String id,
-  ) {
+  Map<String, dynamic>? _findSessionRecord(EducationStore store, String id) {
     for (final record in store.teachingSessions.reversed) {
       if (record['id'] == id) {
         return Map<String, dynamic>.from(record);
@@ -460,9 +433,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
     final recovered = _copyRecords(store.messages);
 
     if (!recovered.any(
-      (message) =>
-          message['role'] == 'user' &&
-          message['status'] == 'pending',
+      (message) => message['role'] == 'user' && message['status'] == 'pending',
     )) {
       return;
     }
@@ -476,8 +447,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
     try {
       for (final message in recovered.toList()) {
-        if (message['role'] != 'user' ||
-            message['status'] != 'pending') {
+        if (message['role'] != 'user' || message['status'] != 'pending') {
           continue;
         }
 
@@ -498,10 +468,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
         if (message['teachingSnapshot'] is Map) {
           try {
             final turn = _decodeTeachingTurn(answer);
-            display = _joinTeachingText(
-              turn.feedback,
-              turn.nextQuestion,
-            );
+            display = _joinTeachingText(turn.feedback, turn.nextQuestion);
 
             final sessionId = message['teachingSessionId'];
             final record = sessionId is String
@@ -510,11 +477,9 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
             final applied = record?['appliedRequestIds'];
 
-            final alreadyApplied = applied is List &&
-                applied.contains(id);
+            final alreadyApplied = applied is List && applied.contains(id);
 
-            if (message['teachingPreparation'] != true &&
-                !alreadyApplied) {
+            if (message['teachingPreparation'] != true && !alreadyApplied) {
               // Recovery must not infer an unrecorded teaching transition.
               display =
                   '$display\n\n'
@@ -526,8 +491,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
             // Do not expose malformed JSON or refund again during recovery.
             final source = answer.trim();
 
-            if (source.startsWith('{') ||
-                source.startsWith('```')) {
+            if (source.startsWith('{') || source.startsWith('```')) {
               display =
                   'پاسخ قبلی بازیابی شد، اما قالب آموزشی آن '
                   'قابل نمایش نیست. وضعیت جلسه تغییر نکرده است. '
@@ -539,9 +503,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
         message['status'] = 'completed';
 
-        if (!recovered.any(
-          (item) => item['id'] == '$id-answer',
-        )) {
+        if (!recovered.any((item) => item['id'] == '$id-answer')) {
           final position = recovered.indexOf(message);
 
           recovered.insert(position + 1, {
@@ -550,8 +512,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
             'content': display,
             'status': 'completed',
             'createdAt':
-                message['createdAt'] ??
-                DateTime.now().toIso8601String(),
+                message['createdAt'] ?? DateTime.now().toIso8601String(),
             'recovered': true,
           });
         }
@@ -653,9 +614,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
                 onPressed: () {
                   if (form.currentState?.validate() != true) return;
 
-                  Navigator.of(dialogContext).pop(
-                    controller.text.trim(),
-                  );
+                  Navigator.of(dialogContext).pop(controller.text.trim());
                 },
                 child: const Text('شروع ارزیابی'),
               ),
@@ -676,10 +635,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
       final profile = store.profile ?? <String, dynamic>{};
 
-      var grade = [
-        profile['grade'],
-        profile['year'],
-      ]
+      var grade = [profile['grade'], profile['year']]
           .whereType<String>()
           .map((value) => value.trim())
           .where((value) => value.isNotEmpty)
@@ -748,12 +704,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
     setState(() => _managingSession = true);
 
     try {
-      await _saveSession(
-        store,
-        session,
-        id: id,
-        active: false,
-      );
+      await _saveSession(store, session, id: id, active: false);
 
       if (!_isCurrent(generation, store)) return;
 
@@ -801,16 +752,11 @@ class _AdvisorPageState extends State<AdvisorPage> {
     };
   }
 
-  void _fillPrompt(
-    String text, {
-    bool preparation = false,
-  }) {
+  void _fillPrompt(String text, {bool preparation = false}) {
     _preparedPrompt = null;
     _input.text = text;
 
-    _input.selection = TextSelection.collapsed(
-      offset: text.length,
-    );
+    _input.selection = TextSelection.collapsed(offset: text.length);
 
     _preparedPrompt = preparation ? text.trim() : null;
 
@@ -830,13 +776,13 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
     final modeInstruction = preparation
         ? 'پیام فعلی فقط درخواست آماده‌سازی درس یا پرسش است، '
-            'نه پاسخ دانش‌آموز. هیچ ارزیابی یا ادعای موفقیت نکن. '
-            'outcome را unclear و error را unknown قرار بده. '
-            'در feedback توضیح لازم را بنویس و در nextQuestion '
-            'حداکثر یک سؤال متناسب با مرحله فعلی بده.'
+              'نه پاسخ دانش‌آموز. هیچ ارزیابی یا ادعای موفقیت نکن. '
+              'outcome را unclear و error را unknown قرار بده. '
+              'در feedback توضیح لازم را بنویس و در nextQuestion '
+              'حداکثر یک سؤال متناسب با مرحله فعلی بده.'
         : 'فقط پاسخ فعلی دانش‌آموز را با توجه به سؤال قبلی ارزیابی کن. '
-            'اگر سؤال قبلی مشخص نیست یا پیام صرفاً درخواست راهنمایی است، '
-            'outcome را unclear قرار بده.';
+              'اگر سؤال قبلی مشخص نیست یا پیام صرفاً درخواست راهنمایی است، '
+              'outcome را unclear قرار بده.';
 
     return '${SimorghTeachingEngine.instructionFor(promptSession)}\n'
         '$modeInstruction\n'
@@ -881,12 +827,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
         throw const FormatException();
       }
 
-      const requiredKeys = {
-        'feedback',
-        'outcome',
-        'error',
-        'nextQuestion',
-      };
+      const requiredKeys = {'feedback', 'outcome', 'error', 'nextQuestion'};
 
       if (decoded.length != requiredKeys.length ||
           !decoded.keys.toSet().containsAll(requiredKeys)) {
@@ -958,28 +899,23 @@ class _AdvisorPageState extends State<AdvisorPage> {
     }
 
     return switch (session.stage) {
-      SimorghTeachingStage.diagnostic =>
-        SimorghTeachingEngine.recordDiagnostic(
-          session,
-          turn.outcome,
-        ),
+      SimorghTeachingStage.diagnostic => SimorghTeachingEngine.recordDiagnostic(
+        session,
+        turn.outcome,
+      ),
       SimorghTeachingStage.explanation =>
-        SimorghTeachingEngine.recordExplanationCheck(
-          session,
-          turn.outcome,
-        ),
+        SimorghTeachingEngine.recordExplanationCheck(session, turn.outcome),
       SimorghTeachingStage.guidedPractice =>
         SimorghTeachingEngine.recordPractice(
           session: session,
           outcome: turn.outcome,
           error: turn.error,
         ),
-      SimorghTeachingStage.reteach =>
-        SimorghTeachingEngine.recordReteachCheck(
-          session: session,
-          outcome: turn.outcome,
-          error: turn.error,
-        ),
+      SimorghTeachingStage.reteach => SimorghTeachingEngine.recordReteachCheck(
+        session: session,
+        outcome: turn.outcome,
+        error: turn.error,
+      ),
       SimorghTeachingStage.masteryCheck =>
         SimorghTeachingEngine.recordMasteryCheck(
           session: session,
@@ -991,18 +927,14 @@ class _AdvisorPageState extends State<AdvisorPage> {
   }
 
   String _joinTeachingText(String feedback, String question) {
-    return question.isEmpty
-        ? feedback
-        : '$feedback\n\n$question';
+    return question.isEmpty ? feedback : '$feedback\n\n$question';
   }
 
   List<Map<String, dynamic>> _historyBefore(
     List<Map<String, dynamic>> messages,
     String id,
   ) {
-    final position = messages.indexWhere(
-      (message) => message['id'] == id,
-    );
+    final position = messages.indexWhere((message) => message['id'] == id);
 
     final previous = position < 0
         ? <Map<String, dynamic>>[]
@@ -1012,8 +944,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
     return previous
         .where(
           (message) =>
-              (message['role'] == 'user' ||
-                  message['role'] == 'assistant') &&
+              (message['role'] == 'user' || message['role'] == 'assistant') &&
               message['status'] != 'failed' &&
               message['status'] != 'pending',
         )
@@ -1060,10 +991,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
       'createdAt': DateTime.now().toIso8601String(),
       if (lessonActive) ...{
         'teachingSessionId': _teachingSessionId,
-        'teachingSnapshot': _sessionRecord(
-          session,
-          id: _teachingSessionId!,
-        ),
+        'teachingSnapshot': _sessionRecord(session, id: _teachingSessionId!),
         'teachingPreparation': preparation,
       },
     };
@@ -1088,10 +1016,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
       _scrollToBottom();
 
-      await _request(
-        id,
-        alreadyBusy: true,
-      );
+      await _request(id, alreadyBusy: true);
     } on Object catch (error) {
       if (_isCurrent(generation, store)) {
         setState(() => _error = friendlyError(error));
@@ -1121,9 +1046,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
       return answer;
     }
 
-    final session = _decodeSession(
-      Map<String, dynamic>.from(snapshot),
-    );
+    final session = _decodeSession(Map<String, dynamic>.from(snapshot));
 
     if (session == null) {
       return 'پاسخ دریافت شد، اما زمینه آموزشی این درخواست '
@@ -1143,10 +1066,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
     }
 
     if (message['teachingPreparation'] == true) {
-      return _joinTeachingText(
-        turn.feedback,
-        turn.nextQuestion,
-      );
+      return _joinTeachingText(turn.feedback, turn.nextQuestion);
     }
 
     final sessionId = message['teachingSessionId'];
@@ -1201,16 +1121,10 @@ class _AdvisorPageState extends State<AdvisorPage> {
           '«آماده‌سازی گام آموزشی» را بزن.';
     }
 
-    return _joinTeachingText(
-      turn.feedback,
-      turn.nextQuestion,
-    );
+    return _joinTeachingText(turn.feedback, turn.nextQuestion);
   }
 
-  Future<void> _request(
-    String id, {
-    bool alreadyBusy = false,
-  }) async {
+  Future<void> _request(String id, {bool alreadyBusy = false}) async {
     if (!mounted) return;
 
     if (alreadyBusy) {
@@ -1226,9 +1140,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
     final working = _copyRecords(store.messages);
 
     final position = working.indexWhere(
-      (message) =>
-          message['id'] == id &&
-          message['role'] == 'user',
+      (message) => message['id'] == id && message['role'] == 'user',
     );
 
     if (position < 0) {
@@ -1239,8 +1151,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
     final message = working[position];
     final text = message['content']?.toString().trim() ?? '';
 
-    if (text.isEmpty ||
-        text.length > EducationStore.maxQuestionLength) {
+    if (text.isEmpty || text.length > EducationStore.maxQuestionLength) {
       setState(() => _error = 'متن درخواست معتبر نیست.');
       return;
     }
@@ -1271,9 +1182,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
       final rawSnapshot = message['teachingSnapshot'];
 
       final session = rawSnapshot is Map
-          ? _decodeSession(
-              Map<String, dynamic>.from(rawSnapshot),
-            )
+          ? _decodeSession(Map<String, dynamic>.from(rawSnapshot))
           : null;
 
       if (rawSnapshot != null && session == null) {
@@ -1297,10 +1206,8 @@ class _AdvisorPageState extends State<AdvisorPage> {
             : _teachingResponseContract(
                 session,
                 // Consent is checked again at retry time.
-                shareProfile:
-                    profile?['aiProfileContextConsent'] == true,
-                preparation:
-                    message['teachingPreparation'] == true,
+                shareProfile: profile?['aiProfileContextConsent'] == true,
+                preparation: message['teachingPreparation'] == true,
               ),
       );
 
@@ -1328,13 +1235,9 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
       updated[userPosition]['status'] = 'completed';
 
-      updated.removeWhere(
-        (item) => item['id'] == '$id-answer',
-      );
+      updated.removeWhere((item) => item['id'] == '$id-answer');
 
-      final insertionPosition = updated.indexWhere(
-        (item) => item['id'] == id,
-      );
+      final insertionPosition = updated.indexWhere((item) => item['id'] == id);
 
       updated.insert(insertionPosition + 1, {
         'id': '$id-answer',
@@ -1373,9 +1276,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
       if (_isCurrent(generation, store)) {
         setState(() {
-          _messages = persistenceFailed
-              ? _copyRecords(store.messages)
-              : failed;
+          _messages = persistenceFailed ? _copyRecords(store.messages) : failed;
 
           _error = friendlyError(error);
 
@@ -1415,9 +1316,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
     try {
       await Navigator.of(context).push<void>(
-        MaterialPageRoute<void>(
-          builder: (_) => CreditShopPage(store: store),
-        ),
+        MaterialPageRoute<void>(builder: (_) => CreditShopPage(store: store)),
       );
     } on Object catch (error) {
       if (_isCurrent(generation, store)) {
@@ -1539,10 +1438,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
             margin: EdgeInsets.zero,
             color: colors.surfaceContainerLow,
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: SimorghChatAvatar(
                 state: resolveSimorghChatState(
                   busy: _busy,
@@ -1587,9 +1483,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
                     Text(
                       'روش تدریس سیمرغ · '
                       '${_teachingStageLabel(session.stage)}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 6),
                     const Text(
@@ -1603,14 +1497,12 @@ class _AdvisorPageState extends State<AdvisorPage> {
                         child: TextButton.icon(
                           onPressed: _canOperate
                               ? () => _fillPrompt(
-                                    _preparePrompt(session),
-                                    preparation: true,
-                                  )
+                                  _preparePrompt(session),
+                                  preparation: true,
+                                )
                               : null,
                           icon: const Icon(Icons.play_arrow),
-                          label: const Text(
-                            'آماده‌سازی گام آموزشی',
-                          ),
+                          label: const Text('آماده‌سازی گام آموزشی'),
                         ),
                       ),
                   ],
@@ -1623,10 +1515,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
             onShop: _canOperate ? _openShop : null,
           ),
           if (widget.store.walletError != null)
-            NoticeCard(
-              text: widget.store.walletError!,
-              warning: true,
-            ),
+            NoticeCard(text: widget.store.walletError!, warning: true),
           if (!_service.isConfigured)
             const NoticeCard(
               text:
@@ -1671,20 +1560,13 @@ class _AdvisorPageState extends State<AdvisorPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              Icons.error_outline,
-              color: colors.onErrorContainer,
-              size: 20,
-            ),
+            Icon(Icons.error_outline, color: colors.onErrorContainer, size: 20),
             const SizedBox(width: 8),
             Expanded(
               child: SingleChildScrollView(
                 child: Text(
                   _error!,
-                  style: TextStyle(
-                    color: colors.onErrorContainer,
-                    height: 1.6,
-                  ),
+                  style: TextStyle(color: colors.onErrorContainer, height: 1.6),
                 ),
               ),
             ),
@@ -1694,11 +1576,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
               onPressed: () {
                 setState(() => _error = null);
               },
-              icon: Icon(
-                Icons.close,
-                color: colors.onErrorContainer,
-                size: 18,
-              ),
+              icon: Icon(Icons.close, color: colors.onErrorContainer, size: 18),
             ),
           ],
         ),
@@ -1719,20 +1597,13 @@ class _AdvisorPageState extends State<AdvisorPage> {
       padding: const EdgeInsets.all(20),
       children: [
         const SizedBox(height: 12),
-        const Icon(
-          Icons.auto_awesome,
-          color: blue,
-          size: 46,
-        ),
+        const Icon(Icons.auto_awesome, color: blue, size: 46),
         const SizedBox(height: 14),
         const Text(
           'سلام! من سیمرغم؛ '
           'بیا با هم مسیر یادگیری‌ات را پیدا کنیم.',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         const SizedBox(height: 10),
         Text(
@@ -1741,10 +1612,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
           'تصمیم‌های مهم را با معلم، مشاور مدرسه یا '
           'بزرگسال مورد اعتماد هم بررسی کن.',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: colors.onSurfaceVariant,
-            height: 1.8,
-          ),
+          style: TextStyle(color: colors.onSurfaceVariant, height: 1.8),
         ),
         const SizedBox(height: 12),
         Text(
@@ -1762,13 +1630,8 @@ class _AdvisorPageState extends State<AdvisorPage> {
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: OutlinedButton(
-              onPressed: _canOperate
-                  ? () => _fillPrompt(prompt)
-                  : null,
-              child: Text(
-                prompt,
-                textAlign: TextAlign.start,
-              ),
+              onPressed: _canOperate ? () => _fillPrompt(prompt) : null,
+              child: Text(prompt, textAlign: TextAlign.start),
             ),
           ),
       ],
@@ -1788,13 +1651,9 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
     final incomplete = status == 'failed' || status == 'pending';
 
-    final background = user
-        ? colors.primary
-        : colors.surfaceContainerLow;
+    final background = user ? colors.primary : colors.surfaceContainerLow;
 
-    final foreground = user
-        ? colors.onPrimary
-        : colors.onSurface;
+    final foreground = user ? colors.onPrimary : colors.onSurface;
 
     final secondary = user
         ? colors.onPrimary.withValues(alpha: .8)
@@ -1805,17 +1664,13 @@ class _AdvisorPageState extends State<AdvisorPage> {
           ? AlignmentDirectional.centerEnd
           : AlignmentDirectional.centerStart,
       child: Container(
-        constraints: BoxConstraints(
-          maxWidth: availableWidth * .88,
-        ),
+        constraints: BoxConstraints(maxWidth: availableWidth * .88),
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: background,
           borderRadius: BorderRadius.circular(18),
-          border: user
-              ? null
-              : Border.all(color: colors.outlineVariant),
+          border: user ? null : Border.all(color: colors.outlineVariant),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1831,10 +1686,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
             const SizedBox(height: 6),
             SelectableText(
               message['content']?.toString() ?? '',
-              style: TextStyle(
-                color: foreground,
-                height: 1.8,
-              ),
+              style: TextStyle(color: foreground, height: 1.8),
             ),
             if (user && incomplete) ...[
               const SizedBox(height: 8),
@@ -1842,27 +1694,19 @@ class _AdvisorPageState extends State<AdvisorPage> {
                 status == 'pending'
                     ? 'پاسخ این درخواست هنوز در گفت‌وگو ثبت نشده است.'
                     : 'این درخواست کامل ثبت نشد.',
-                style: TextStyle(
-                  color: secondary,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: secondary, fontSize: 12),
               ),
               if (id is String && id.isNotEmpty)
                 TextButton.icon(
                   key: ValueKey('advisor-retry-$id'),
                   style: TextButton.styleFrom(
                     foregroundColor: foreground,
-                    disabledForegroundColor:
-                        foreground.withValues(alpha: .4),
+                    disabledForegroundColor: foreground.withValues(alpha: .4),
                     padding: EdgeInsets.zero,
                   ),
-                  onPressed: _canOperate
-                      ? () => unawaited(_request(id))
-                      : null,
+                  onPressed: _canOperate ? () => unawaited(_request(id)) : null,
                   icon: const Icon(Icons.refresh),
-                  label: const Text(
-                    'تلاش دوباره همین درخواست',
-                  ),
+                  label: const Text('تلاش دوباره همین درخواست'),
                 ),
             ],
           ],
@@ -1878,35 +1722,32 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final availableWidth =
-            (constraints.maxWidth - 32).clamp(0.0, double.infinity);
+        final availableWidth = (constraints.maxWidth - 32).clamp(
+          0.0,
+          double.infinity,
+        );
 
         return ListView.builder(
           controller: _scrollController,
-          keyboardDismissBehavior:
-              ScrollViewKeyboardDismissBehavior.onDrag,
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
           itemCount: _messages.length + (_busy ? 1 : 0),
           itemBuilder: (context, index) {
             if (index == _messages.length) {
-              return const Semantics(
+              return Semantics(
                 liveRegion: true,
                 child: Padding(
-                  padding: EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(12),
                   child: Row(
                     children: [
                       SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'سیمرغ دارد پاسخ را آماده و ثبت می‌کند…',
-                        ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text('سیمرغ دارد پاسخ را آماده و ثبت می‌کند…'),
                       ),
                     ],
                   ),
@@ -1918,11 +1759,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
             return KeyedSubtree(
               key: ValueKey(message['id'] ?? 'message-$index'),
-              child: _buildMessage(
-                context,
-                message,
-                availableWidth.toDouble(),
-              ),
+              child: _buildMessage(context, message, availableWidth.toDouble()),
             );
           },
         );
@@ -1936,9 +1773,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
-        border: Border(
-          top: BorderSide(color: colors.outlineVariant),
-        ),
+        border: Border(top: BorderSide(color: colors.outlineVariant)),
       ),
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
       child: SafeArea(
@@ -1989,8 +1824,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
                 const SizedBox(width: 6),
                 IconButton.filled(
                   tooltip: 'ارسال پیام به سیمرغ',
-                  onPressed: _canOperate &&
-                          _input.text.trim().isNotEmpty
+                  onPressed: _canOperate && _input.text.trim().isNotEmpty
                       ? _send
                       : null,
                   icon: const Icon(Icons.send_rounded),
@@ -2015,9 +1849,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
             children: [
               _buildHeader(context),
               _buildError(context),
-              Expanded(
-                child: _buildConversation(context),
-              ),
+              Expanded(child: _buildConversation(context)),
               _buildComposer(context),
             ],
           ),

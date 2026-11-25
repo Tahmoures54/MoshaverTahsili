@@ -13,10 +13,7 @@ import 'ui.dart';
 // Safe data helpers
 // -----------------------------------------------------------------------------
 
-String _safeText(
-  Object? value, {
-  String fallback = '',
-}) {
+String _safeText(Object? value, {String fallback = ''}) {
   if (value is! String) return fallback;
 
   final text = value.trim();
@@ -63,10 +60,7 @@ String _reportDateText(Object? value) {
   return '${faNumber('$year/$month/$day')} میلادی';
 }
 
-typedef _SubjectSummary = ({
-  double average,
-  int count,
-});
+typedef _SubjectSummary = ({double average, int count});
 
 // -----------------------------------------------------------------------------
 // Consultation coordination
@@ -86,43 +80,34 @@ typedef _SubjectSummary = ({
 class _ConsultationCoordinator {
   _ConsultationCoordinator._();
 
-  static final Expando<Future<void>> _writeTails =
-      Expando<Future<void>>('consultationWriteTails');
+  static final Expando<Future<void>> _writeTails = Expando<Future<void>>(
+    'consultationWriteTails',
+  );
 
   static final Expando<Map<String, Future<String>>> _requests =
       Expando<Map<String, Future<String>>>('consultationRequests');
 
-  static final Expando<Set<String>> _deletedIds =
-      Expando<Set<String>>('deletedConsultationIds');
+  static final Expando<Set<String>> _deletedIds = Expando<Set<String>>(
+    'deletedConsultationIds',
+  );
 
   static Set<String> _deletedFor(EducationStore store) {
     return _deletedIds[store] ??= <String>{};
   }
 
-  static Map<String, Future<String>> _requestsFor(
-    EducationStore store,
-  ) {
+  static Map<String, Future<String>> _requestsFor(EducationStore store) {
     return _requests[store] ??= <String, Future<String>>{};
   }
 
-  static bool isDeleted(
-    EducationStore store,
-    String id,
-  ) {
+  static bool isDeleted(EducationStore store, String id) {
     return _deletedFor(store).contains(id);
   }
 
-  static bool isRequestRunning(
-    EducationStore store,
-    String id,
-  ) {
+  static bool isRequestRunning(EducationStore store, String id) {
     return _requestsFor(store).containsKey(id);
   }
 
-  static Map<String, dynamic>? findReport(
-    EducationStore store,
-    String id,
-  ) {
+  static Map<String, dynamic>? findReport(EducationStore store, String id) {
     for (final report in store.reports) {
       if (report['id'] == id) {
         return Map<String, dynamic>.from(report);
@@ -172,15 +157,14 @@ class _ConsultationCoordinator {
           .map((report) => Map<String, dynamic>.from(report))
           .toList();
 
-      final index = reports.indexWhere(
-        (report) => report['id'] == id,
-      );
+      final index = reports.indexWhere((report) => report['id'] == id);
 
       final previous = index >= 0 ? reports[index] : null;
       final previousAnswer = _validAnswer(previous?['answer']);
       final incomingAnswer = _validAnswer(answer);
 
-      final keepCompleted = previous?['status'] == 'completed' &&
+      final keepCompleted =
+          previous?['status'] == 'completed' &&
           previousAnswer != null &&
           status != 'completed';
 
@@ -193,10 +177,7 @@ class _ConsultationCoordinator {
         'title': title,
         'question': question,
         'status': keepCompleted ? 'completed' : status,
-        'createdAt': _safeText(
-          previous?['createdAt'],
-          fallback: now,
-        ),
+        'createdAt': _safeText(previous?['createdAt'], fallback: now),
         'updatedAt': now,
         if (incomingAnswer != null) 'answer': incomingAnswer,
       };
@@ -225,10 +206,7 @@ class _ConsultationCoordinator {
     });
   }
 
-  static Future<void> deleteReport(
-    EducationStore store,
-    String id,
-  ) {
+  static Future<void> deleteReport(EducationStore store, String id) {
     return _serialize<void>(store, () async {
       await store.deleteReport(id);
 
@@ -277,18 +255,13 @@ class _ConsultationCoordinator {
 // -----------------------------------------------------------------------------
 
 class AcademicInsightsPage extends StatefulWidget {
-  const AcademicInsightsPage({
-    super.key,
-    required this.store,
-    this.service,
-  });
+  const AcademicInsightsPage({super.key, required this.store, this.service});
 
   final EducationStore store;
   final AiAdvisorService? service;
 
   @override
-  State<AcademicInsightsPage> createState() =>
-      _AcademicInsightsPageState();
+  State<AcademicInsightsPage> createState() => _AcademicInsightsPageState();
 }
 
 class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
@@ -302,8 +275,9 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
       final percentage = examPercent(exam);
       if (percentage == null) continue;
 
-      final subject = _safeText(exam['subject'])
-          .replaceAll(RegExp(r'\s+'), ' ');
+      final subject = _safeText(
+        exam['subject'],
+      ).replaceAll(RegExp(r'\s+'), ' ');
 
       if (subject.isEmpty || subject.length > 80) continue;
 
@@ -325,15 +299,11 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
   }
 
   List<MapEntry<String, _SubjectSummary>> _orderedSubjects() {
-    return _subjects().entries.toList()
-      ..sort((a, b) {
-        final byAverage =
-            b.value.average.compareTo(a.value.average);
+    return _subjects().entries.toList()..sort((a, b) {
+      final byAverage = b.value.average.compareTo(a.value.average);
 
-        return byAverage != 0
-            ? byAverage
-            : a.key.compareTo(b.key);
-      });
+      return byAverage != 0 ? byAverage : a.key.compareTo(b.key);
+    });
   }
 
   void _analyze() {
@@ -345,22 +315,23 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
     final selected = entries.take(20).toList();
 
     final tasks = widget.store.tasks;
-    final done = tasks.where(
-      (task) => task['done'] == true,
-    ).length;
+    final done = tasks.where((task) => task['done'] == true).length;
 
-    final summary = selected.map((entry) {
-      return '${entry.key}: میانگین '
-          '${entry.value.average.toStringAsFixed(1)} درصد '
-          'از ${entry.value.count} آزمون معتبر';
-    }).join('؛ ');
+    final summary = selected
+        .map((entry) {
+          return '${entry.key}: میانگین '
+              '${entry.value.average.toStringAsFixed(1)} درصد '
+              'از ${entry.value.count} آزمون معتبر';
+        })
+        .join('؛ ');
 
     final limitedSubjects = entries.length > selected.length
         ? 'فقط ${selected.length} درس از ${entries.length} درس '
-            'در این خلاصه آمده است. '
+              'در این خلاصه آمده است. '
         : '';
 
-    final request = 'وضعیت تحصیلی ثبت‌شده من را تحلیل کن. '
+    final request =
+        'وضعیت تحصیلی ثبت‌شده من را تحلیل کن. '
         'اطلاعات درس‌ها: $summary. '
         '$limitedSubjects'
         'تعداد کارهای مطالعه ثبت‌شده: ${tasks.length}، '
@@ -390,9 +361,7 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('بررسی وضعیت تحصیلی'),
-        ),
+        appBar: AppBar(title: const Text('بررسی وضعیت تحصیلی')),
         body: SafeArea(
           top: false,
           child: ListenableBuilder(
@@ -401,15 +370,14 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
               final entries = _orderedSubjects();
 
               final tasks = widget.store.tasks;
-              final done = tasks.where(
-                (task) => task['done'] == true,
-              ).length;
+              final done = tasks.where((task) => task['done'] == true).length;
 
               return ListView(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
                 children: [
                   const NoticeCard(
-                    text: 'این بخش ابتدا نمره‌های معتبر را روی گوشی '
+                    text:
+                        'این بخش ابتدا نمره‌های معتبر را روی گوشی '
                         'خلاصه می‌کند. تحلیل سیمرغ فقط با انتخاب '
                         'دکمه درخواست انجام می‌شود. پاسخ جایگزین '
                         'ارزیابی معلم یا مشاور مدرسه نیست.',
@@ -420,9 +388,7 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
                       Navigator.push<void>(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => CreditShopPage(
-                            store: widget.store,
-                          ),
+                          builder: (_) => CreditShopPage(store: widget.store),
                         ),
                       );
                     },
@@ -430,15 +396,16 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
                   if (entries.isEmpty)
                     const EmptyState(
                       title: 'برای بررسی، نمره معتبر لازم داریم',
-                      subtitle: 'از بخش آزمون، نتیجه و نام '
+                      subtitle:
+                          'از بخش آزمون، نتیجه و نام '
                           'دست‌کم یک درس را ثبت کن.',
                       icon: Icons.insights_outlined,
                     ),
-                  for (final entry in entries)
-                    _subjectCard(entry),
+                  for (final entry in entries) _subjectCard(entry),
                   if (tasks.isNotEmpty)
                     NoticeCard(
-                      text: '${faNumber(done)} کار از '
+                      text:
+                          '${faNumber(done)} کار از '
                           '${faNumber(tasks.length)} کار مطالعه '
                           'انجام‌شده علامت خورده است. '
                           'این نسبت، میزان یادگیری، انجام به‌موقع '
@@ -447,14 +414,16 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
                     ),
                   if (entries.length > 20 && question == null)
                     const NoticeCard(
-                      text: 'برای محدودکردن حجم درخواست، خلاصه '
+                      text:
+                          'برای محدودکردن حجم درخواست، خلاصه '
                           'حداکثر ۲۰ درس با ترتیب نمایش فعلی '
                           'ارسال می‌شود.',
                       icon: Icons.info_outline,
                     ),
                   if (entries.isNotEmpty && question == null) ...[
                     const NoticeCard(
-                      text: 'با انتخاب دکمه زیر، خلاصه حداکثر '
+                      text:
+                          'با انتخاب دکمه زیر، خلاصه حداکثر '
                           '۲۰ درس و تعداد کارهای مطالعه، همراه '
                           'با پروفایل ثبت‌شده‌ای که به سرویس '
                           'مشاوره داده می‌شود، برای تحلیل در اختیار '
@@ -490,20 +459,18 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
     );
   }
 
-  Widget _subjectCard(
-    MapEntry<String, _SubjectSummary> entry,
-  ) {
+  Widget _subjectCard(MapEntry<String, _SubjectSummary> entry) {
     final average = _validPercentage(entry.value.average);
 
     final description = entry.value.count < 2
         ? 'شواهد اولیه؛ برای بررسی روند آزمون بیشتری لازم است'
         : average == null
-            ? 'میانگین معتبر موجود نیست'
-            : average >= 75
-                ? 'میانگین فعلی در محدوده بالاتر است'
-                : average < 60
-                    ? 'پیشنهاد برای بررسی و تمرین بیشتر'
-                    : 'پیشنهاد برای ادامه تمرین و بررسی روند';
+        ? 'میانگین معتبر موجود نیست'
+        : average >= 75
+        ? 'میانگین فعلی در محدوده بالاتر است'
+        : average < 60
+        ? 'پیشنهاد برای بررسی و تمرین بیشتر'
+        : 'پیشنهاد برای ادامه تمرین و بررسی روند';
 
     return Card(
       key: ValueKey('subject:${entry.key}'),
@@ -516,9 +483,7 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
               average != null && average >= 75
                   ? Icons.trending_up
                   : Icons.flag_outlined,
-              color: average != null && average >= 75
-                  ? teal
-                  : blue,
+              color: average != null && average >= 75 ? teal : blue,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -532,17 +497,11 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
                     children: [
                       Text(
                         entry.key,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        average == null
-                            ? 'نامعتبر'
-                            : _percentageText(average),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        average == null ? 'نامعتبر' : _percentageText(average),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -567,11 +526,7 @@ class _AcademicInsightsPageState extends State<AcademicInsightsPage> {
 // -----------------------------------------------------------------------------
 
 class CareerPage extends StatefulWidget {
-  const CareerPage({
-    super.key,
-    required this.store,
-    this.service,
-  });
+  const CareerPage({super.key, required this.store, this.service});
 
   final EducationStore store;
   final AiAdvisorService? service;
@@ -599,21 +554,13 @@ class _CareerPageState extends State<CareerPage> {
 
     final draft = widget.store.careerDraft;
 
-    interests = TextEditingController(
-      text: _safeText(draft?['interests']),
-    );
+    interests = TextEditingController(text: _safeText(draft?['interests']));
 
-    strengths = TextEditingController(
-      text: _safeText(draft?['strengths']),
-    );
+    strengths = TextEditingController(text: _safeText(draft?['strengths']));
 
-    favorites = TextEditingController(
-      text: _safeText(draft?['favorites']),
-    );
+    favorites = TextEditingController(text: _safeText(draft?['favorites']));
 
-    workStyle = TextEditingController(
-      text: _safeText(draft?['workStyle']),
-    );
+    workStyle = TextEditingController(text: _safeText(draft?['workStyle']));
   }
 
   @override
@@ -710,9 +657,7 @@ class _CareerPageState extends State<CareerPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('راهنمای انتخاب رشته'),
-        ),
+        appBar: AppBar(title: const Text('راهنمای انتخاب رشته')),
         body: SafeArea(
           top: false,
           child: ListenableBuilder(
@@ -722,7 +667,8 @@ class _CareerPageState extends State<CareerPage> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
                 children: [
                   const NoticeCard(
-                    text: 'این پرسش‌ها برای شناخت گزینه‌ها هستند، '
+                    text:
+                        'این پرسش‌ها برای شناخت گزینه‌ها هستند، '
                         'نه تشخیص قطعی استعداد یا شخصیت. '
                         'پاسخ‌ها پیش از درخواست در فضای ذخیره‌سازی '
                         'برنامه ثبت می‌شوند.',
@@ -733,42 +679,40 @@ class _CareerPageState extends State<CareerPage> {
                       Navigator.push<void>(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => CreditShopPage(
-                            store: widget.store,
-                          ),
+                          builder: (_) => CreditShopPage(store: widget.store),
                         ),
                       );
                     },
                   ),
-                  if (error != null)
-                    NoticeCard(
-                      text: error!,
-                      warning: true,
-                    ),
+                  if (error != null) NoticeCard(text: error!, warning: true),
                   Form(
                     key: form,
                     child: Column(
                       children: [
                         _field(
                           controller: interests,
-                          label: 'به چه فعالیت‌ها و موضوع‌هایی '
+                          label:
+                              'به چه فعالیت‌ها و موضوع‌هایی '
                               'علاقه داری؟',
                           isRequired: true,
                         ),
                         _field(
                           controller: strengths,
-                          label: 'در چه کارهایی احساس توانمندی '
+                          label:
+                              'در چه کارهایی احساس توانمندی '
                               'می‌کنی؟',
                         ),
                         _field(
                           controller: favorites,
-                          label: 'کدام درس‌ها را بیشتر دوست داری '
+                          label:
+                              'کدام درس‌ها را بیشتر دوست داری '
                               'یا بهتر یاد می‌گیری؟',
                           isRequired: true,
                         ),
                         _field(
                           controller: workStyle,
-                          label: 'کار عملی، پژوهشی، هنری یا '
+                          label:
+                              'کار عملی، پژوهشی، هنری یا '
                               'ارتباط با مردم را ترجیح می‌دهی؟',
                         ),
                       ],
@@ -776,7 +720,8 @@ class _CareerPageState extends State<CareerPage> {
                   ),
                   if (question == null)
                     const NoticeCard(
-                      text: 'با انتخاب دکمه زیر، پاسخ‌های این فرم '
+                      text:
+                          'با انتخاب دکمه زیر، پاسخ‌های این فرم '
                           'همراه با پروفایل ثبت‌شده‌ای که به '
                           'سرویس مشاوره داده می‌شود، برای تحلیل '
                           'در اختیار آن سرویس قرار می‌گیرد. '
@@ -788,15 +733,12 @@ class _CareerPageState extends State<CareerPage> {
                     ),
                   const SizedBox(height: 8),
                   FilledButton.icon(
-                    onPressed:
-                        saving || question != null ? null : _analyze,
+                    onPressed: saving || question != null ? null : _analyze,
                     icon: saving
                         ? const SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                            ),
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.explore_outlined),
                     label: Text(
@@ -808,7 +750,8 @@ class _CareerPageState extends State<CareerPage> {
                   const SizedBox(height: 12),
                   if (question != null) ...[
                     const NoticeCard(
-                      text: 'پاسخ‌های فرم برای این درخواست ثابت '
+                      text:
+                          'پاسخ‌های فرم برای این درخواست ثابت '
                           'شده‌اند تا متن نمایش‌داده‌شده با '
                           'اطلاعات استفاده‌شده در تحلیل یکسان باشد.',
                       icon: Icons.info_outline,
@@ -845,10 +788,7 @@ class _CareerPageState extends State<CareerPage> {
         maxLines: 4,
         maxLength: 600,
         textInputAction: TextInputAction.newline,
-        decoration: InputDecoration(
-          labelText: label,
-          alignLabelWithHint: true,
-        ),
+        decoration: InputDecoration(labelText: label, alignLabelWithHint: true),
         validator: (value) {
           final text = value?.trim() ?? '';
 
@@ -904,8 +844,7 @@ class ConsultationRunner extends StatefulWidget {
   final bool autoStart;
 
   @override
-  State<ConsultationRunner> createState() =>
-      _ConsultationRunnerState();
+  State<ConsultationRunner> createState() => _ConsultationRunnerState();
 }
 
 class _ConsultationRunnerState extends State<ConsultationRunner> {
@@ -949,10 +888,7 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
       return;
     }
 
-    final stored = _ConsultationCoordinator.findReport(
-      _store,
-      _id,
-    );
+    final stored = _ConsultationCoordinator.findReport(_store, _id);
 
     final storedAnswer = _validAnswer(stored?['answer']);
 
@@ -1008,10 +944,7 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
     }
   }
 
-  Future<bool> _save(
-    String status, {
-    String? answer,
-  }) {
+  Future<bool> _save(String status, {String? answer}) {
     return _ConsultationCoordinator.saveReport(
       store: _store,
       id: _id,
@@ -1031,10 +964,7 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
     final answer = _answer;
     if (answer == null) return;
 
-    final saved = await _save(
-      'completed',
-      answer: answer,
-    );
+    final saved = await _save('completed', answer: answer);
 
     _answerSaved = saved;
     _reportDeleted = !saved;
@@ -1053,7 +983,8 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
       // No service.ask call here.
       await _persistCurrentAnswer();
     } on Object {
-      _error = 'پاسخ دریافت شده است، اما ذخیره آن هنوز انجام نشد. '
+      _error =
+          'پاسخ دریافت شده است، اما ذخیره آن هنوز انجام نشد. '
           'می‌توانی پاسخ را کپی کنی و دوباره برای ذخیره تلاش کنی.';
     } finally {
       _finishOperation();
@@ -1081,17 +1012,15 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
 
     if (_ConsultationCoordinator.isDeleted(_store, _id)) {
       _reportDeleted = true;
-      _error = 'این گزارش حذف شده است و از این صفحه '
+      _error =
+          'این گزارش حذف شده است و از این صفحه '
           'دوباره ارسال نمی‌شود.';
       _refresh();
       return;
     }
 
     // Recheck storage immediately before a retry.
-    final stored = _ConsultationCoordinator.findReport(
-      _store,
-      _id,
-    );
+    final stored = _ConsultationCoordinator.findReport(_store, _id);
 
     final storedAnswer = _validAnswer(stored?['answer']);
 
@@ -1118,7 +1047,8 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
           return;
         }
       } on Object {
-        _error = 'ثبت اولیه درخواست انجام نشد؛ '
+        _error =
+            'ثبت اولیه درخواست انجام نشد؛ '
             'این تلاش از این صفحه به سرویس ارسال نشد. '
             'دوباره تلاش کن.';
         return;
@@ -1133,10 +1063,7 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
           action: () async {
             // Another runner may have completed the report while this one
             // was waiting for its pending write.
-            final latest = _ConsultationCoordinator.findReport(
-              _store,
-              _id,
-            );
+            final latest = _ConsultationCoordinator.findReport(_store, _id);
 
             final existingAnswer = _validAnswer(latest?['answer']);
             if (existingAnswer != null) return existingAnswer;
@@ -1167,7 +1094,8 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
           final saved = await _save('failed');
           _reportDeleted = !saved;
         } on Object {
-          _error = '${_error!}\n'
+          _error =
+              '${_error!}\n'
               'به‌روزرسانی وضعیت گزارش نیز انجام نشد. '
               'وضعیت نهایی دریافت پاسخ یا مصرف اعتبار '
               'باید از طریق سرویس بررسی شود.';
@@ -1186,7 +1114,8 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
         await _persistCurrentAnswer();
       } on Object {
         _answerSaved = false;
-        _error = 'پاسخ دریافت شد، اما ذخیره آن انجام نشد. '
+        _error =
+            'پاسخ دریافت شد، اما ذخیره آن انجام نشد. '
             'پاسخ را کپی کن یا دکمه ذخیره دوباره را بزن. '
             'این دکمه درخواست تازه‌ای به سرویس ارسال نمی‌کند.';
       }
@@ -1201,15 +1130,11 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
 
   @override
   Widget build(BuildContext context) {
-    final canRequest = !_busy &&
-        _answer == null &&
-        !_reportDeleted &&
-        _validReportId(_id);
+    final canRequest =
+        !_busy && _answer == null && !_reportDeleted && _validReportId(_id);
 
-    final canSave = !_busy &&
-        _answer != null &&
-        !_answerSaved &&
-        !_reportDeleted;
+    final canSave =
+        !_busy && _answer != null && !_answerSaved && !_reportDeleted;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -1249,25 +1174,19 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
               if (_error != null)
                 Semantics(
                   liveRegion: true,
-                  child: NoticeCard(
-                    text: _error!,
-                    warning: true,
-                  ),
+                  child: NoticeCard(text: _error!, warning: true),
                 ),
               if (_answer != null) ...[
-                SelectableText(
-                  _answer!,
-                  style: const TextStyle(height: 1.9),
-                ),
+                SelectableText(_answer!, style: const TextStyle(height: 1.9)),
                 const SizedBox(height: 12),
                 Text(
                   _answerSaved
                       ? 'پاسخ سیمرغ · در تاریخچه مشاوره‌ها ذخیره شد'
                       : _reportDeleted
-                          ? 'این گزارش حذف شده است؛ پاسخ فعلاً '
-                              'در این صفحه قابل مشاهده و کپی است.'
-                          : 'پاسخ واقعی دریافت شده؛ ذخیره در '
-                              'تاریخچه هنوز تأیید نشده است.',
+                      ? 'این گزارش حذف شده است؛ پاسخ فعلاً '
+                            'در این صفحه قابل مشاهده و کپی است.'
+                      : 'پاسخ واقعی دریافت شده؛ ذخیره در '
+                            'تاریخچه هنوز تأیید نشده است.',
                   style: TextStyle(
                     color: _answerSaved ? teal : null,
                     fontSize: 12,
@@ -1279,9 +1198,7 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
                   OutlinedButton.icon(
                     onPressed: _retrySave,
                     icon: const Icon(Icons.save_outlined),
-                    label: const Text(
-                      'ذخیره پاسخ بدون ارسال درخواست جدید',
-                    ),
+                    label: const Text('ذخیره پاسخ بدون ارسال درخواست جدید'),
                   ),
                 ],
               ],
@@ -1291,17 +1208,13 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
                   OutlinedButton.icon(
                     onPressed: _run,
                     icon: const Icon(Icons.refresh),
-                    label: const Text(
-                      'تلاش دوباره با همان شناسه درخواست',
-                    ),
+                    label: const Text('تلاش دوباره با همان شناسه درخواست'),
                   )
                 else
                   FilledButton.icon(
                     onPressed: _run,
                     icon: const Icon(Icons.play_arrow),
-                    label: const Text(
-                      'ارسال یا ادامه درخواست ذخیره‌شده',
-                    ),
+                    label: const Text('ارسال یا ادامه درخواست ذخیره‌شده'),
                   ),
               ],
               if (_answer == null && !_busy && !_reportDeleted)
@@ -1311,10 +1224,7 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
                     'تلاش دوباره از همان شناسه استفاده می‌کند. '
                     'جلوگیری قطعی از هزینه یا اجرای تکراری '
                     'به پشتیبانی سرویس و بک‌اند وابسته است.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      height: 1.8,
-                    ),
+                    style: TextStyle(fontSize: 12, height: 1.8),
                   ),
                 ),
             ],
@@ -1330,10 +1240,7 @@ class _ConsultationRunnerState extends State<ConsultationRunner> {
 // -----------------------------------------------------------------------------
 
 class ReportsPage extends StatelessWidget {
-  const ReportsPage({
-    super.key,
-    required this.store,
-  });
+  const ReportsPage({super.key, required this.store});
 
   final EducationStore store;
 
@@ -1342,9 +1249,7 @@ class ReportsPage extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('تاریخچه مشاوره‌ها'),
-        ),
+        appBar: AppBar(title: const Text('تاریخچه مشاوره‌ها')),
         body: SafeArea(
           top: false,
           child: ListenableBuilder(
@@ -1368,7 +1273,8 @@ class ReportsPage extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
                 children: [
                   const NoticeCard(
-                    text: 'پاسخ‌های واقعی دریافت‌شده و ذخیره‌شده '
+                    text:
+                        'پاسخ‌های واقعی دریافت‌شده و ذخیره‌شده '
                         'در تاریخچه نمایش داده می‌شوند. '
                         'درخواست کامل‌نشده پاسخ ساختگی ندارد. '
                         'ادامه درخواست می‌تواند با سرویس بیرونی '
@@ -1377,7 +1283,8 @@ class ReportsPage extends StatelessWidget {
                   if (reports.isEmpty)
                     const EmptyState(
                       title: 'هنوز گزارشی نداری',
-                      subtitle: 'تحلیل وضعیت تحصیلی یا راهنمای '
+                      subtitle:
+                          'تحلیل وضعیت تحصیلی یا راهنمای '
                           'انتخاب رشته را از خانه شروع کن.',
                       icon: Icons.history_edu_outlined,
                     ),
@@ -1438,10 +1345,7 @@ class _ReportCardState extends State<_ReportCard> {
     final store = widget.store;
     final id = _id;
 
-    final running = _ConsultationCoordinator.isRequestRunning(
-      store,
-      id,
-    );
+    final running = _ConsultationCoordinator.isRequestRunning(store, id);
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1453,14 +1357,14 @@ class _ReportCardState extends State<_ReportCard> {
             content: Text(
               running
                   ? 'این درخواست هنوز در حال اجراست. '
-                      'حذف گزارش، تماس سرویس را لغو نمی‌کند '
-                      'و اعتبار مصرف‌شده را بازنمی‌گرداند. '
-                      'نتیجه دیررس این درخواست از طریق این '
-                      'صفحه دوباره وارد تاریخچه نمی‌شود. '
-                      'گزارش حذف شود؟'
+                        'حذف گزارش، تماس سرویس را لغو نمی‌کند '
+                        'و اعتبار مصرف‌شده را بازنمی‌گرداند. '
+                        'نتیجه دیررس این درخواست از طریق این '
+                        'صفحه دوباره وارد تاریخچه نمی‌شود. '
+                        'گزارش حذف شود؟'
                   : 'گزارش از تاریخچه برنامه حذف شود؟ '
-                      'این کار اطلاعات احتمالی نگهداری‌شده '
-                      'در سرویس بیرونی را حذف نمی‌کند.',
+                        'این کار اطلاعات احتمالی نگهداری‌شده '
+                        'در سرویس بیرونی را حذف نمی‌کند.',
             ),
             actions: [
               TextButton(
@@ -1491,25 +1395,14 @@ class _ReportCardState extends State<_ReportCard> {
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      await _ConsultationCoordinator.deleteReport(
-        store,
-        id,
-      );
+      await _ConsultationCoordinator.deleteReport(store, id);
 
       if (messenger.mounted) {
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text('گزارش حذف شد.'),
-          ),
-        );
+        messenger.showSnackBar(const SnackBar(content: Text('گزارش حذف شد.')));
       }
     } on Object catch (error) {
       if (messenger.mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(friendlyError(error)),
-          ),
-        );
+        messenger.showSnackBar(SnackBar(content: Text(friendlyError(error))));
       }
     } finally {
       if (mounted) {
@@ -1527,10 +1420,7 @@ class _ReportCardState extends State<_ReportCard> {
   }) {
     if (_deleting || !_hasValidIdentity) return;
 
-    final kind = _safeText(
-      widget.report['kind'],
-      fallback: 'academic',
-    );
+    final kind = _safeText(widget.report['kind'], fallback: 'academic');
 
     Navigator.push<void>(
       context,
@@ -1538,9 +1428,7 @@ class _ReportCardState extends State<_ReportCard> {
         builder: (_) => Directionality(
           textDirection: TextDirection.rtl,
           child: Scaffold(
-            appBar: AppBar(
-              title: Text(title),
-            ),
+            appBar: AppBar(title: Text(title)),
             body: SafeArea(
               top: false,
               child: ListView(
@@ -1548,7 +1436,8 @@ class _ReportCardState extends State<_ReportCard> {
                 children: [
                   if (savedAnswer == null)
                     const NoticeCard(
-                      text: 'دکمه ادامه، همان شناسه درخواست را '
+                      text:
+                          'دکمه ادامه، همان شناسه درخواست را '
                           'استفاده می‌کند. اگر درخواست قبلی در '
                           'همین برنامه هنوز در حال اجرا باشد، '
                           'این صفحه منتظر همان تماس می‌ماند. '
@@ -1580,10 +1469,7 @@ class _ReportCardState extends State<_ReportCard> {
   Widget build(BuildContext context) {
     final report = widget.report;
 
-    final title = _safeText(
-      report['title'],
-      fallback: 'مشاوره بدون عنوان',
-    );
+    final title = _safeText(report['title'], fallback: 'مشاوره بدون عنوان');
 
     final status = _safeText(report['status']);
     final answer = _validAnswer(report['answer']);
@@ -1596,12 +1482,12 @@ class _ReportCardState extends State<_ReportCard> {
     final statusText = completed
         ? 'پاسخ دریافت و ذخیره شده'
         : answer != null
-            ? 'پاسخ ذخیره شده؛ وضعیت گزارش نیازمند تکمیل است'
-            : status == 'pending'
-                ? 'درخواست ثبت شده؛ وضعیت نهایی هنوز مشخص نیست'
-                : status == 'failed'
-                    ? 'دریافت یا ثبت نتیجه درخواست کامل نشده'
-                    : 'وضعیت گزارش نامشخص است';
+        ? 'پاسخ ذخیره شده؛ وضعیت گزارش نیازمند تکمیل است'
+        : status == 'pending'
+        ? 'درخواست ثبت شده؛ وضعیت نهایی هنوز مشخص نیست'
+        : status == 'failed'
+        ? 'دریافت یا ثبت نتیجه درخواست کامل نشده'
+        : 'وضعیت گزارش نامشخص است';
 
     return Card(
       child: Padding(
@@ -1618,22 +1504,14 @@ class _ReportCardState extends State<_ReportCard> {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 6),
-                      Text(
-                        statusText,
-                        style: const TextStyle(height: 1.8),
-                      ),
+                      Text(statusText, style: const TextStyle(height: 1.8)),
                       if (date.isNotEmpty)
                         Text(
                           date,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            height: 1.8,
-                          ),
+                          style: const TextStyle(fontSize: 12, height: 1.8),
                         ),
                     ],
                   ),
@@ -1645,9 +1523,7 @@ class _ReportCardState extends State<_ReportCard> {
                     child: SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                      ),
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     ),
                   )
                 else
@@ -1662,7 +1538,8 @@ class _ReportCardState extends State<_ReportCard> {
             ),
             if (!_hasValidIdentity)
               const NoticeCard(
-                text: 'شناسه این گزارش نامعتبر یا تکراری است. '
+                text:
+                    'شناسه این گزارش نامعتبر یا تکراری است. '
                     'برای جلوگیری از حذف یا اجرای گزارش اشتباه، '
                     'عملیات آن غیرفعال شده است.',
                 warning: true,
@@ -1684,9 +1561,7 @@ class _ReportCardState extends State<_ReportCard> {
                   ),
                 ],
               ),
-            if (!completed &&
-                question.isNotEmpty &&
-                _hasValidIdentity)
+            if (!completed && question.isNotEmpty && _hasValidIdentity)
               TextButton.icon(
                 onPressed: _deleting
                     ? null
@@ -1698,9 +1573,7 @@ class _ReportCardState extends State<_ReportCard> {
                         );
                       },
                 icon: Icon(
-                  answer == null
-                      ? Icons.refresh
-                      : Icons.save_outlined,
+                  answer == null ? Icons.refresh : Icons.save_outlined,
                 ),
                 label: Text(
                   answer == null
@@ -1713,10 +1586,7 @@ class _ReportCardState extends State<_ReportCard> {
                 padding: EdgeInsets.only(top: 8),
                 child: Text(
                   'متن درخواست موجود نیست؛ ادامه خودکار ممکن نیست.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    height: 1.8,
-                  ),
+                  style: TextStyle(fontSize: 12, height: 1.8),
                 ),
               ),
           ],

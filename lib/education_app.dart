@@ -19,10 +19,7 @@ export 'education/assessment_pages.dart';
 export 'education/study_pages.dart';
 export 'education/ui.dart' show EmptyState;
 
-const appVersion = String.fromEnvironment(
-  'APP_VERSION',
-  defaultValue: '1.1.2',
-);
+const appVersion = String.fromEnvironment('APP_VERSION', defaultValue: '1.1.2');
 
 const appBuildNumber = String.fromEnvironment(
   'APP_BUILD_NUMBER',
@@ -37,42 +34,22 @@ const _maximumDailyMinutes = 1440;
 const _contentMaxWidth = 920.0;
 
 const gradeYears = <String, List<String>>{
-  'ابتدایی': [
-    'اول',
-    'دوم',
-    'سوم',
-    'چهارم',
-    'پنجم',
-    'ششم',
-  ],
-  'متوسطه اول': [
-    'هفتم',
-    'هشتم',
-    'نهم',
-  ],
-  'متوسطه دوم': [
-    'دهم',
-    'یازدهم',
-    'دوازدهم',
-  ],
+  'ابتدایی': ['اول', 'دوم', 'سوم', 'چهارم', 'پنجم', 'ششم'],
+  'متوسطه اول': ['هفتم', 'هشتم', 'نهم'],
+  'متوسطه دوم': ['دهم', 'یازدهم', 'دوازدهم'],
   'دانش‌آموز کنکوری': [
     'پایه دهم',
     'پایه یازدهم',
     'پایه دوازدهم',
     'فارغ‌التحصیل',
   ],
-  'دانشجو': [
-    'ترم اول',
-    'ترم دوم یا بالاتر',
-  ],
+  'دانشجو': ['ترم اول', 'ترم دوم یا بالاتر'],
 };
 
 int _safeHomeMinutes(Object? value) {
   final num? parsed = value is num
       ? value
-      : num.tryParse(
-          digitsToEnglish(value?.toString() ?? ''),
-        );
+      : num.tryParse(digitsToEnglish(value?.toString() ?? ''));
 
   if (parsed == null || !parsed.isFinite) return 0;
 
@@ -81,22 +58,13 @@ int _safeHomeMinutes(Object? value) {
 
 String _normalizeProfileText(String value) {
   return value
-      .replaceAll(
-        RegExp(r'[\u0000-\u001F\u007F]'),
-        ' ',
-      )
-      .replaceAll(
-        RegExp(r'[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]'),
-        '',
-      )
+      .replaceAll(RegExp(r'[\u0000-\u001F\u007F]'), ' ')
+      .replaceAll(RegExp(r'[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]'), '')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
 }
 
-String _storedText(
-  Object? value, {
-  String fallback = '',
-}) {
+String _storedText(Object? value, {String fallback = ''}) {
   final text = _normalizeProfileText(value?.toString() ?? '');
 
   return text.isEmpty || text == 'null' ? fallback : text;
@@ -163,9 +131,7 @@ String? _validateGoal(String? value) {
 }
 
 String? _validateDailyMinutes(String? value) {
-  final parsed = int.tryParse(
-    digitsToEnglish(value ?? ''),
-  );
+  final parsed = int.tryParse(digitsToEnglish(value ?? ''));
 
   if (parsed == null) {
     return 'زمان مطالعه را با عدد وارد کن.';
@@ -187,10 +153,7 @@ String _profileGradeLine(Map<dynamic, dynamic> profile) {
 }
 
 class _ContentWidth extends StatelessWidget {
-  const _ContentWidth({
-    required this.child,
-    this.maxWidth = _contentMaxWidth,
-  });
+  const _ContentWidth({required this.child, this.maxWidth = _contentMaxWidth});
 
   final Widget child;
   final double maxWidth;
@@ -201,20 +164,14 @@ class _ContentWidth extends StatelessWidget {
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
-        child: SizedBox(
-          width: double.infinity,
-          child: child,
-        ),
+        child: SizedBox(width: double.infinity, child: child),
       ),
     );
   }
 }
 
 class EducationApp extends StatefulWidget {
-  const EducationApp({
-    super.key,
-    this.store,
-  });
+  const EducationApp({super.key, this.store});
 
   final EducationStore? store;
 
@@ -262,10 +219,7 @@ class _EducationAppState extends State<EducationApp> {
       title: 'سیمرغ | مشاور هوشمند تحصیلی',
       debugShowCheckedModeBanner: false,
       locale: const Locale('fa'),
-      supportedLocales: const [
-        Locale('fa'),
-        Locale('en'),
-      ],
+      supportedLocales: const [Locale('fa'), Locale('en')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: buildAppTheme(),
       home: FutureBuilder<EducationStore>(
@@ -282,10 +236,7 @@ class _EducationAppState extends State<EducationApp> {
             return _StartupErrorPage(onRetry: _retry);
           }
 
-          return EntryScreen(
-            key: ObjectKey(store),
-            store: store,
-          );
+          return EntryScreen(key: ObjectKey(store), store: store);
         },
       ),
     );
@@ -293,9 +244,7 @@ class _EducationAppState extends State<EducationApp> {
 }
 
 class _StartupErrorPage extends StatelessWidget {
-  const _StartupErrorPage({
-    required this.onRetry,
-  });
+  const _StartupErrorPage({required this.onRetry});
 
   final VoidCallback onRetry;
 
@@ -312,22 +261,17 @@ class _StartupErrorPage extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(
-                    Icons.storage_outlined,
-                    size: 56,
-                  ),
+                  const Icon(Icons.storage_outlined, size: 56),
                   const SizedBox(height: 16),
                   const Text(
                     'آماده‌سازی برنامه انجام نشد',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
                   const NoticeCard(
-                    text: 'راه‌اندازی برنامه با مشکل مواجه شد. '
+                    text:
+                        'راه‌اندازی برنامه با مشکل مواجه شد. '
                         'فضای خالی گوشی را بررسی کن و دوباره تلاش کن. '
                         'برای جلوگیری از از دست رفتن اطلاعات، '
                         'پیش از بررسی مشکل، داده‌های برنامه را پاک نکن.',
@@ -368,9 +312,7 @@ Future<bool> showProfileSheet(
 }
 
 class _ProfileSheet extends StatefulWidget {
-  const _ProfileSheet({
-    required this.store,
-  });
+  const _ProfileSheet({required this.store});
 
   final EducationStore store;
 
@@ -400,14 +342,12 @@ class _ProfileSheetState extends State<_ProfileSheet> {
     final current = widget.store.profile ?? {};
 
     // Do not silently carry forward consent from an older privacy version.
-    final privacyVersion = int.tryParse(
-          current['privacyVersion']?.toString() ?? '',
-        ) ??
-        0;
+    final privacyVersion =
+        int.tryParse(current['privacyVersion']?.toString() ?? '') ?? 0;
 
     _shareProfileWithAi =
         current['aiProfileContextConsent'] == true &&
-            privacyVersion >= _profilePrivacyVersion;
+        privacyVersion >= _profilePrivacyVersion;
 
     _fullName = TextEditingController(
       text: _storedText(
@@ -420,9 +360,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
       text: _storedText(current['field'], fallback: 'عمومی'),
     );
 
-    _goal = TextEditingController(
-      text: _storedText(current['goal']),
-    );
+    _goal = TextEditingController(text: _storedText(current['goal']));
 
     final storedMinutes = current['dailyMinutes'];
 
@@ -436,9 +374,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
 
     final storedGrade = _storedText(current['grade']);
 
-    _grade = gradeYears.containsKey(storedGrade)
-        ? storedGrade
-        : 'متوسطه اول';
+    _grade = gradeYears.containsKey(storedGrade) ? storedGrade : 'متوسطه اول';
 
     final storedYear = _storedText(current['year']);
 
@@ -471,9 +407,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
     final normalizedField = _normalizeProfileText(_field.text);
     final normalizedGoal = _normalizeProfileText(_goal.text);
 
-    final dailyMinutes = int.tryParse(
-      digitsToEnglish(_dailyMinutes.text),
-    );
+    final dailyMinutes = int.tryParse(digitsToEnglish(_dailyMinutes.text));
 
     if (dailyMinutes == null) return;
 
@@ -538,8 +472,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
             bottom: MediaQuery.viewInsetsOf(context).bottom,
           ),
           child: SingleChildScrollView(
-            keyboardDismissBehavior:
-                ScrollViewKeyboardDismissBehavior.onDrag,
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             child: _ContentWidth(
               maxWidth: 600,
@@ -585,6 +518,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
                     ),
                     const SizedBox(height: 18),
                     TextFormField(
+                      key: const Key('profile_name_field'),
                       controller: _fullName,
                       enabled: !_saving,
                       maxLength: 80,
@@ -605,10 +539,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
                       ),
                       items: [
                         for (final value in gradeYears.keys)
-                          DropdownMenuItem(
-                            value: value,
-                            child: Text(value),
-                          ),
+                          DropdownMenuItem(value: value, child: Text(value)),
                       ],
                       onChanged: _saving
                           ? null
@@ -631,10 +562,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
                       ),
                       items: [
                         for (final value in gradeYears[_grade]!)
-                          DropdownMenuItem(
-                            value: value,
-                            child: Text(value),
-                          ),
+                          DropdownMenuItem(value: value, child: Text(value)),
                       ],
                       onChanged: _saving
                           ? null
@@ -701,9 +629,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
                                 _shareProfileWithAi = value ?? false;
                               });
                             },
-                      title: const Text(
-                        'اجازه استفاده سیمرغ از زمینه تحصیلی',
-                      ),
+                      title: const Text('اجازه استفاده سیمرغ از زمینه تحصیلی'),
                       subtitle: const Text(
                         'اجازه ارسال مقطع، پایه، رشته و هدف تحصیلی '
                         'برای شخصی‌سازی پاسخ؛ این اجازه شامل نام نیست. '
@@ -715,27 +641,21 @@ class _ProfileSheetState extends State<_ProfileSheet> {
                       const SizedBox(height: 8),
                       Semantics(
                         liveRegion: true,
-                        child: NoticeCard(
-                          text: _error!,
-                          warning: true,
-                        ),
+                        child: NoticeCard(text: _error!, warning: true),
                       ),
                     ],
                     const SizedBox(height: 16),
                     FilledButton.icon(
+                      key: const Key('save_profile_button'),
                       onPressed: _saving ? null : _save,
                       icon: _saving
                           ? const SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                              ),
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.check),
-                      label: Text(
-                        _saving ? 'در حال ذخیره…' : 'ذخیره پروفایل',
-                      ),
+                      label: Text(_saving ? 'در حال ذخیره…' : 'ذخیره پروفایل'),
                     ),
                     const SizedBox(height: 8),
                     TextButton(
@@ -754,10 +674,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
 }
 
 class EntryScreen extends StatefulWidget {
-  const EntryScreen({
-    super.key,
-    required this.store,
-  });
+  const EntryScreen({super.key, required this.store});
 
   final EducationStore store;
 
@@ -832,10 +749,7 @@ class _EntryScreenState extends State<EntryScreen> {
       animation: widget.store,
       builder: (context, _) {
         if (widget.store.profile != null) {
-          return Dashboard(
-            key: ObjectKey(widget.store),
-            store: widget.store,
-          );
+          return Dashboard(key: ObjectKey(widget.store), store: widget.store);
         }
 
         return _buildWelcome(context);
@@ -882,9 +796,7 @@ class _EntryScreenState extends State<EntryScreen> {
                   Text(
                     'مشاور هوشمند تحصیلی',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: colors.onSurfaceVariant,
-                    ),
+                    style: TextStyle(color: colors.onSurfaceVariant),
                   ),
                   const SizedBox(height: 24),
                   Card(
@@ -912,9 +824,9 @@ class _EntryScreenState extends State<EntryScreen> {
                           ),
                           const SizedBox(height: 8),
                           Theme(
-                            data: Theme.of(context).copyWith(
-                              dividerColor: Colors.transparent,
-                            ),
+                            data: Theme.of(
+                              context,
+                            ).copyWith(dividerColor: Colors.transparent),
                             child: const ExpansionTile(
                               tilePadding: EdgeInsets.zero,
                               childrenPadding: EdgeInsets.only(bottom: 8),
@@ -927,8 +839,7 @@ class _EntryScreenState extends State<EntryScreen> {
                               ),
                               children: [
                                 Align(
-                                  alignment:
-                                      AlignmentDirectional.centerStart,
+                                  alignment: AlignmentDirectional.centerStart,
                                   child: Text(
                                     'اجازه استفاده از زمینه تحصیلی '
                                     'جداگانه در پروفایل انتخاب می‌شود '
@@ -950,10 +861,10 @@ class _EntryScreenState extends State<EntryScreen> {
                             ),
                           ),
                           CheckboxListTile(
+                            key: const Key('consent_checkbox'),
                             value: _accepted,
                             contentPadding: EdgeInsets.zero,
-                            controlAffinity:
-                                ListTileControlAffinity.leading,
+                            controlAffinity: ListTileControlAffinity.leading,
                             onChanged: _openingProfile
                                 ? null
                                 : (value) {
@@ -970,27 +881,18 @@ class _EntryScreenState extends State<EntryScreen> {
                     ),
                   ),
                   if (widget.store.walletError != null)
-                    NoticeCard(
-                      text: widget.store.walletError!,
-                      warning: true,
-                    ),
+                    NoticeCard(text: widget.store.walletError!, warning: true),
                   if (profileError != null)
-                    NoticeCard(
-                      text: profileError,
-                      warning: true,
-                    ),
+                    NoticeCard(text: profileError, warning: true),
                   const SizedBox(height: 14),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: _accepted && !_openingProfile
-                          ? _start
-                          : null,
+                      key: const Key('start_button'),
+                      onPressed: _accepted && !_openingProfile ? _start : null,
                       icon: const Icon(Icons.arrow_forward),
                       label: Text(
-                        _openingProfile
-                            ? 'در حال آماده‌سازی…'
-                            : 'بزن بریم',
+                        _openingProfile ? 'در حال آماده‌سازی…' : 'بزن بریم',
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
@@ -1018,10 +920,7 @@ class _EntryScreenState extends State<EntryScreen> {
 }
 
 class Dashboard extends StatefulWidget {
-  const Dashboard({
-    super.key,
-    required this.store,
-  });
+  const Dashboard({super.key, required this.store});
 
   final EducationStore store;
 
@@ -1082,11 +981,9 @@ class _DashboardState extends State<Dashboard> {
     try {
       FocusScope.of(context).unfocus();
 
-      await Navigator.of(context).push<void>(
-        MaterialPageRoute<void>(
-          builder: (_) => page,
-        ),
-      );
+      await Navigator.of(
+        context,
+      ).push<void>(MaterialPageRoute<void>(builder: (_) => page));
     } on Object catch (error) {
       if (mounted) {
         showMessage(context, friendlyError(error));
@@ -1102,10 +999,7 @@ class _DashboardState extends State<Dashboard> {
   }
 
   Future<void> _settings() async {
-    if (!mounted ||
-        _settingsOpen ||
-        _deletingWorkspace ||
-        _openingPage) {
+    if (!mounted || _settingsOpen || _deletingWorkspace || _openingPage) {
       return;
     }
 
@@ -1122,9 +1016,7 @@ class _DashboardState extends State<Dashboard> {
         ),
       );
 
-      if (!mounted ||
-          choice == null ||
-          !identical(store, widget.store)) {
+      if (!mounted || choice == null || !identical(store, widget.store)) {
         return;
       }
 
@@ -1170,10 +1062,7 @@ class _DashboardState extends State<Dashboard> {
     final store = widget.store;
 
     if (store.hasActiveAiRequests) {
-      showMessage(
-        context,
-        'صبر کن تا درخواست فعلی مشاور کامل شود.',
-      );
+      showMessage(context, 'صبر کن تا درخواست فعلی مشاور کامل شود.');
       return;
     }
 
@@ -1260,24 +1149,15 @@ class _DashboardState extends State<Dashboard> {
 
     final Widget page = switch (tabIndex) {
       0 => HomePage(
-          store: widget.store,
-          go: _go,
-          active: _index == 0,
-          onReturn: _refresh,
-          onOpenPage: _openPage,
-        ),
-      1 => PlannerPage(
-          store: widget.store,
-          changed: _refresh,
-        ),
-      2 => ExamsPage(
-          store: widget.store,
-          changed: _refresh,
-        ),
-      3 => CardsPage(
-          store: widget.store,
-          changed: _refresh,
-        ),
+        store: widget.store,
+        go: _go,
+        active: _index == 0,
+        onReturn: _refresh,
+        onOpenPage: _openPage,
+      ),
+      1 => PlannerPage(store: widget.store, changed: _refresh),
+      2 => ExamsPage(store: widget.store, changed: _refresh),
+      3 => CardsPage(store: widget.store, changed: _refresh),
       4 => AdvisorPage(store: widget.store),
       _ => const SizedBox.shrink(),
     };
@@ -1317,10 +1197,7 @@ class _DashboardState extends State<Dashboard> {
                 child: IndexedStack(
                   key: ObjectKey(widget.store),
                   index: _index,
-                  children: List<Widget>.generate(
-                    _titles.length,
-                    _buildTab,
-                  ),
+                  children: List<Widget>.generate(_titles.length, _buildTab),
                 ),
               ),
               bottomNavigationBar: NavigationBar(
@@ -1333,11 +1210,13 @@ class _DashboardState extends State<Dashboard> {
                     label: 'خانه',
                   ),
                   NavigationDestination(
+                    key: Key('nav_planner'),
                     icon: Icon(Icons.calendar_month_outlined),
                     selectedIcon: Icon(Icons.calendar_month),
                     label: 'برنامه',
                   ),
                   NavigationDestination(
+                    key: Key('nav_exams'),
                     icon: Icon(Icons.assessment_outlined),
                     selectedIcon: Icon(Icons.assessment),
                     label: 'آزمون',
@@ -1348,6 +1227,7 @@ class _DashboardState extends State<Dashboard> {
                     label: 'مرور',
                   ),
                   NavigationDestination(
+                    key: Key('nav_ai'),
                     icon: Icon(Icons.auto_awesome_outlined),
                     selectedIcon: Icon(Icons.auto_awesome),
                     label: 'مشاور',
@@ -1357,10 +1237,7 @@ class _DashboardState extends State<Dashboard> {
             ),
           ),
           if (_deletingWorkspace) ...[
-            const ModalBarrier(
-              dismissible: false,
-              color: Colors.black38,
-            ),
+            const ModalBarrier(dismissible: false, color: Colors.black38),
             Center(
               child: Semantics(
                 liveRegion: true,
@@ -1394,9 +1271,7 @@ class _DashboardState extends State<Dashboard> {
 }
 
 class _SettingsSheet extends StatelessWidget {
-  const _SettingsSheet({
-    required this.profileSummary,
-  });
+  const _SettingsSheet({required this.profileSummary});
 
   final String profileSummary;
 
@@ -1416,12 +1291,7 @@ class _SettingsSheet extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(
-                  18,
-                  12,
-                  8,
-                  8,
-                ),
+                padding: const EdgeInsetsDirectional.fromSTEB(18, 12, 8, 8),
                 child: Row(
                   children: [
                     const Expanded(
@@ -1452,9 +1322,7 @@ class _SettingsSheet extends StatelessWidget {
                 onTap: () => _select(context, 'profile'),
               ),
               ListTile(
-                leading: const Icon(
-                  Icons.account_balance_wallet_outlined,
-                ),
+                leading: const Icon(Icons.account_balance_wallet_outlined),
                 title: const Text('کیف اعتبار و تاریخچه خرید'),
                 onTap: () => _select(context, 'wallet'),
               ),
@@ -1494,9 +1362,7 @@ class _SettingsSheet extends StatelessWidget {
                 ),
                 title: Text(
                   'حذف اطلاعات تحصیلی این گوشی',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
                 onTap: () => _select(context, 'delete'),
               ),
@@ -1558,26 +1424,15 @@ class _LearningSnapshot {
     return (todayMinutes / dailyMinutes).clamp(0.0, 1.0).toDouble();
   }
 
-  factory _LearningSnapshot.fromStore(
-    EducationStore store,
-    DateTime now,
-  ) {
+  factory _LearningSnapshot.fromStore(EducationStore store, DateTime now) {
     final today = _startOfDay(now);
 
     // Seven calendar days including today, not a rolling 168-hour window.
-    final weekStart = DateTime(
-      today.year,
-      today.month,
-      today.day - 6,
-    );
+    final weekStart = DateTime(today.year, today.month, today.day - 6);
 
     final dayMinutes = <DateTime, int>{
       for (var offset = 0; offset < 7; offset++)
-        DateTime(
-          weekStart.year,
-          weekStart.month,
-          weekStart.day + offset,
-        ): 0,
+        DateTime(weekStart.year, weekStart.month, weekStart.day + offset): 0,
     };
 
     var doneTasks = 0;
@@ -1631,9 +1486,7 @@ class _LearningSnapshot {
       final bDate = _storedDate(b['dueDate']);
 
       if (aDate == null && bDate == null) {
-        return _storedText(a['title']).compareTo(
-          _storedText(b['title']),
-        );
+        return _storedText(a['title']).compareTo(_storedText(b['title']));
       }
 
       if (aDate == null) return 1;
@@ -1657,18 +1510,14 @@ class _LearningSnapshot {
 
       percentages.add(percentage);
 
-      final subject = _storedText(
-        exam['subject'],
-        fallback: 'درس نامشخص',
-      );
+      final subject = _storedText(exam['subject'], fallback: 'درس نامشخص');
 
       subjectScores.putIfAbsent(subject, () => []).add(percentage);
     }
 
     final subjectAverages = <String, double>{
       for (final entry in subjectScores.entries)
-        entry.key:
-            entry.value.reduce((a, b) => a + b) / entry.value.length,
+        entry.key: entry.value.reduce((a, b) => a + b) / entry.value.length,
     };
 
     String? nextExamSubject;
@@ -1741,8 +1590,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage>
-    with WidgetsBindingObserver {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   bool _openingPage = false;
   Timer? _clock;
 
@@ -1808,9 +1656,9 @@ class _HomePageState extends State<HomePage>
     _openingPage = true;
 
     try {
-      await Navigator.of(context).push<void>(
-        MaterialPageRoute<void>(builder: (_) => page),
-      );
+      await Navigator.of(
+        context,
+      ).push<void>(MaterialPageRoute<void>(builder: (_) => page));
     } on Object catch (error) {
       if (mounted) {
         showMessage(context, friendlyError(error));
@@ -1836,10 +1684,7 @@ class _HomePageState extends State<HomePage>
       builder: (context, _) {
         final store = widget.store;
         final profile = store.profile ?? {};
-        final snapshot = _LearningSnapshot.fromStore(
-          store,
-          DateTime.now(),
-        );
+        final snapshot = _LearningSnapshot.fromStore(store, DateTime.now());
 
         final fullName = _storedText(profile['fullName']);
         final nickname = fullName.isNotEmpty
@@ -1850,9 +1695,7 @@ class _HomePageState extends State<HomePage>
 
         return _ContentWidth(
           child: ListView(
-            key: const PageStorageKey<String>(
-              'education-home-scroll',
-            ),
+            key: const PageStorageKey<String>('education-home-scroll'),
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             children: [
               ..._dataNotices(store),
@@ -1870,15 +1713,9 @@ class _HomePageState extends State<HomePage>
                 title: 'پیشنهاد امروز سیمرغ',
                 subtitle: 'پیشنهادهای ساده بر اساس اطلاعات محلی تو.',
               ),
-              _DailySuggestions(
-                snapshot: snapshot,
-                go: widget.go,
-              ),
+              _DailySuggestions(snapshot: snapshot, go: widget.go),
               if (goal.isNotEmpty)
-                NoticeCard(
-                  text: 'هدف تو: $goal',
-                  icon: Icons.flag_outlined,
-                ),
+                NoticeCard(text: 'هدف تو: $goal', icon: Icons.flag_outlined),
               const SimorghSectionTitle(
                 title: 'خلاصه مسیر یادگیری',
                 subtitle: 'هفت روز تقویمی اخیر، شامل امروز.',
@@ -1886,14 +1723,13 @@ class _HomePageState extends State<HomePage>
               _StatsGrid(snapshot: snapshot),
               _DailyGoalCard(snapshot: snapshot),
               const NoticeCard(
-                text: 'زمان‌های نمایش‌داده‌شده، مجموع زمان برنامه‌های '
+                text:
+                    'زمان‌های نمایش‌داده‌شده، مجموع زمان برنامه‌های '
                     'انجام‌شده با تاریخ تکمیل معتبر هستند؛ '
                     'این عدد اندازه‌گیری خودکار زمان مطالعه نیست.',
                 icon: Icons.timer_outlined,
               ),
-              const SimorghSectionTitle(
-                title: 'دسترسی سریع',
-              ),
+              const SimorghSectionTitle(title: 'دسترسی سریع'),
               _QuickAction(
                 icon: Icons.calendar_month_outlined,
                 title: 'برنامه مطالعه',
@@ -1909,17 +1745,14 @@ class _HomePageState extends State<HomePage>
               _QuickAction(
                 icon: Icons.style_outlined,
                 title: 'مرور فلش‌کارت‌ها',
-                subtitle:
-                    '${faNumber(snapshot.dueCards)} کارت آماده مرور',
+                subtitle: '${faNumber(snapshot.dueCards)} کارت آماده مرور',
                 onTap: () => widget.go(3),
               ),
               _QuickAction(
                 icon: Icons.insights_outlined,
                 title: 'گزارش محلی پیشرفت',
                 subtitle: 'آمار برنامه‌ها و درصد آزمون‌ها؛ بدون ارسال',
-                onTap: () => _open(
-                  _LocalProgressPage(store: store),
-                ),
+                onTap: () => _open(_LocalProgressPage(store: store)),
               ),
               _QuickAction(
                 icon: Icons.menu_book_outlined,
@@ -1943,9 +1776,9 @@ class _HomePageState extends State<HomePage>
               Text(
                 faNumber(appVersionLabel),
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.blueGrey,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.blueGrey),
               ),
             ],
           ),
@@ -1956,12 +1789,7 @@ class _HomePageState extends State<HomePage>
 }
 
 List<Widget> _dataNotices(EducationStore store) {
-  const keys = [
-    'edu.profile',
-    'edu.tasks',
-    'edu.exams',
-    'edu.cards',
-  ];
+  const keys = ['edu.profile', 'edu.tasks', 'edu.exams', 'edu.cards'];
 
   final messages = <String>{};
 
@@ -1974,16 +1802,12 @@ List<Widget> _dataNotices(EducationStore store) {
   }
 
   return [
-    for (final message in messages)
-      NoticeCard(text: message, warning: true),
+    for (final message in messages) NoticeCard(text: message, warning: true),
   ];
 }
 
 class _DailySuggestions extends StatelessWidget {
-  const _DailySuggestions({
-    required this.snapshot,
-    required this.go,
-  });
+  const _DailySuggestions({required this.snapshot, required this.go});
 
   final _LearningSnapshot snapshot;
   final ValueChanged<int> go;
@@ -1996,7 +1820,8 @@ class _DailySuggestions extends StatelessWidget {
           _QuickAction(
             icon: Icons.event_busy_outlined,
             title: 'موعد بعضی برنامه‌ها گذشته است',
-            subtitle: '${faNumber(snapshot.overdueTasks)} کار را '
+            subtitle:
+                '${faNumber(snapshot.overdueTasks)} کار را '
                 'بازبینی کن؛ لازم نیست همه را امروز انجام بدهی.',
             onTap: () => go(1),
           ),
@@ -2004,7 +1829,8 @@ class _DailySuggestions extends StatelessWidget {
           _QuickAction(
             icon: Icons.flag_outlined,
             title: 'امتحان پیش‌رو: ${snapshot.nextExamSubject}',
-            subtitle: 'تاریخ میلادی: '
+            subtitle:
+                'تاریخ میلادی: '
                 '${_dateLabel(snapshot.nextExamDate!)}؛ '
                 'برای مرور و حل نمونه‌سؤال زمان بگذار.',
             onTap: () => go(1),
@@ -2013,7 +1839,8 @@ class _DailySuggestions extends StatelessWidget {
           _QuickAction(
             icon: Icons.psychology_alt_outlined,
             title: 'یک مرور کوتاه',
-            subtitle: '${faNumber(snapshot.dueCards)} فلش‌کارت '
+            subtitle:
+                '${faNumber(snapshot.dueCards)} فلش‌کارت '
                 'آماده مرور است. با چند کارت شروع کن.',
             onTap: () => go(3),
           ),
@@ -2023,23 +1850,25 @@ class _DailySuggestions extends StatelessWidget {
             title: 'قدم بعدی: ${snapshot.nextTask}',
             subtitle: snapshot.dailyMinutes > 0
                 ? 'با توجه به توان امروز و هدف '
-                    '${faNumber(snapshot.dailyMinutes)} دقیقه‌ای '
-                    'خودت، حجم کار را تنظیم کن.'
+                      '${faNumber(snapshot.dailyMinutes)} دقیقه‌ای '
+                      'خودت، حجم کار را تنظیم کن.'
                 : 'فعلاً هدف زمانی نداری؛ '
-                    'یک قدم کوچک و قابل‌انجام انتخاب کن.',
+                      'یک قدم کوچک و قابل‌انجام انتخاب کن.',
             onTap: () => go(1),
           ),
         if (snapshot.pendingTasks == 0)
           _QuickAction(
             icon: Icons.add_task,
             title: 'یک قدم کوچک تعریف کن',
-            subtitle: 'برنامه انجام‌نشده‌ای نداری. '
+            subtitle:
+                'برنامه انجام‌نشده‌ای نداری. '
                 'اگر آماده‌ای، یک کار کوتاه اضافه کن.',
             onTap: () => go(1),
           ),
         if (snapshot.dueCards == 0 && snapshot.totalCards > 0)
           const NoticeCard(
-            text: 'فعلاً فلش‌کارت آماده مرور نداری. '
+            text:
+                'فعلاً فلش‌کارت آماده مرور نداری. '
                 'می‌توانی روی تمرین، فهم مفاهیم یا استراحت تمرکز کنی.',
             icon: Icons.done_all,
           ),
@@ -2049,9 +1878,7 @@ class _DailySuggestions extends StatelessWidget {
 }
 
 class _StatsGrid extends StatelessWidget {
-  const _StatsGrid({
-    required this.snapshot,
-  });
+  const _StatsGrid({required this.snapshot});
 
   final _LearningSnapshot snapshot;
 
@@ -2082,17 +1909,15 @@ class _StatsGrid extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final scale =
-            MediaQuery.textScalerOf(context).scale(14) / 14;
+        final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
 
         final columns = constraints.maxWidth < 300 || scale > 1.6
             ? 1
             : constraints.maxWidth >= 720
-                ? 4
-                : 2;
+            ? 4
+            : 2;
 
-        final width =
-            (constraints.maxWidth - (columns - 1) * 10) / columns;
+        final width = (constraints.maxWidth - (columns - 1) * 10) / columns;
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -2100,8 +1925,7 @@ class _StatsGrid extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: [
-              for (final item in items)
-                SizedBox(width: width, child: item),
+              for (final item in items) SizedBox(width: width, child: item),
             ],
           ),
         );
@@ -2130,9 +1954,7 @@ class _StatCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ExcludeSemantics(
-              child: Icon(icon, color: blue, size: 23),
-            ),
+            ExcludeSemantics(child: Icon(icon, color: blue, size: 23)),
             const SizedBox(height: 9),
             Text(
               value,
@@ -2159,9 +1981,7 @@ class _StatCard extends StatelessWidget {
 }
 
 class _DailyGoalCard extends StatelessWidget {
-  const _DailyGoalCard({
-    required this.snapshot,
-  });
+  const _DailyGoalCard({required this.snapshot});
 
   final _LearningSnapshot snapshot;
 
@@ -2183,9 +2003,9 @@ class _DailyGoalCard extends StatelessWidget {
             Text(
               ratio == null
                   ? '${faNumber(snapshot.todayMinutes)} دقیقه از '
-                      'برنامه‌های تکمیل‌شده ثبت شده؛ هدف زمانی تعیین نشده.'
+                        'برنامه‌های تکمیل‌شده ثبت شده؛ هدف زمانی تعیین نشده.'
                   : '${faNumber(snapshot.todayMinutes)} دقیقه ثبت‌شده '
-                      'از هدف ${faNumber(snapshot.dailyMinutes)} دقیقه',
+                        'از هدف ${faNumber(snapshot.dailyMinutes)} دقیقه',
             ),
             if (ratio != null) ...[
               const SizedBox(height: 12),
@@ -2198,7 +2018,7 @@ class _DailyGoalCard extends StatelessWidget {
               Text(
                 ratio >= 1
                     ? 'به هدف زمانی ثبت‌شده رسیده‌ای؛ '
-                        'برای استراحت هم وقت بگذار.'
+                          'برای استراحت هم وقت بگذار.'
                     : 'این هدف راهنماست، نه معیار ارزش یا توانایی تو.',
                 style: const TextStyle(
                   fontSize: 12,
@@ -2231,31 +2051,17 @@ class _QuickAction extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 8,
-        ),
-        leading: ExcludeSemantics(
-          child: Icon(icon, color: blue),
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: ExcludeSemantics(child: Icon(icon, color: blue)),
         title: Text(
           title,
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            height: 1.6,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.w700, height: 1.6),
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Text(
-            subtitle,
-            style: const TextStyle(height: 1.7),
-          ),
+          child: Text(subtitle, style: const TextStyle(height: 1.7)),
         ),
-        trailing: const Icon(
-          Icons.chevron_right,
-          size: 21,
-        ),
+        trailing: const Icon(Icons.chevron_right, size: 21),
         onTap: onTap,
       ),
     );
@@ -2263,27 +2069,20 @@ class _QuickAction extends StatelessWidget {
 }
 
 class _LocalProgressPage extends StatelessWidget {
-  const _LocalProgressPage({
-    required this.store,
-  });
+  const _LocalProgressPage({required this.store});
 
   final EducationStore store;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('گزارش محلی پیشرفت'),
-      ),
+      appBar: AppBar(title: const Text('گزارش محلی پیشرفت')),
       body: SafeArea(
         top: false,
         child: AnimatedBuilder(
           animation: store,
           builder: (context, _) {
-            final snapshot = _LearningSnapshot.fromStore(
-              store,
-              DateTime.now(),
-            );
+            final snapshot = _LearningSnapshot.fromStore(store, DateTime.now());
 
             final subjects = snapshot.subjectAverages.entries.toList()
               ..sort((a, b) => a.key.compareTo(b.key));
@@ -2293,16 +2092,15 @@ class _LocalProgressPage extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 children: [
                   const NoticeCard(
-                    text: 'این گزارش روی دستگاه محاسبه می‌شود و '
+                    text:
+                        'این گزارش روی دستگاه محاسبه می‌شود و '
                         'برای ساخت آن درخواست آنلاین ارسال نمی‌شود. '
                         'اعداد، خلاصه اطلاعات ثبت‌شده‌اند؛ '
                         'نه تشخیص استعداد یا اثبات تسلط.',
                     icon: Icons.privacy_tip_outlined,
                   ),
                   ..._dataNotices(store),
-                  const SimorghSectionTitle(
-                    title: 'هفت روز اخیر',
-                  ),
+                  const SimorghSectionTitle(title: 'هفت روز اخیر'),
                   _StatsGrid(snapshot: snapshot),
                   _DailyGoalCard(snapshot: snapshot),
                   Card(
@@ -2349,17 +2147,11 @@ class _LocalProgressPage extends StatelessWidget {
                         children: [
                           for (final entry in snapshot.dayMinutes.entries)
                             Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 6,
-                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 6),
                               child: Row(
                                 children: [
-                                  Expanded(
-                                    child: Text(_dateLabel(entry.key)),
-                                  ),
-                                  Text(
-                                    '${faNumber(entry.value)} دقیقه',
-                                  ),
+                                  Expanded(child: Text(_dateLabel(entry.key))),
+                                  Text('${faNumber(entry.value)} دقیقه'),
                                 ],
                               ),
                             ),
@@ -2368,14 +2160,13 @@ class _LocalProgressPage extends StatelessWidget {
                     ),
                   ),
                   const NoticeCard(
-                    text: 'کارهای قدیمی که تاریخ تکمیل ندارند، '
+                    text:
+                        'کارهای قدیمی که تاریخ تکمیل ندارند، '
                         'در آمار زمانی هفت روز اخیر محاسبه نمی‌شوند. '
                         'زمان‌ها بر اساس مدت ثبت‌شده برای کارها هستند.',
                     icon: Icons.timer_outlined,
                   ),
-                  const SimorghSectionTitle(
-                    title: 'خلاصه آزمون‌ها',
-                  ),
+                  const SimorghSectionTitle(title: 'خلاصه آزمون‌ها'),
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(18),
@@ -2441,7 +2232,8 @@ class _LocalProgressPage extends StatelessWidget {
                       icon: Icons.assessment_outlined,
                     ),
                   const NoticeCard(
-                    text: 'تفاوت سختی آزمون‌ها، تعداد سؤال‌ها و '
+                    text:
+                        'تفاوت سختی آزمون‌ها، تعداد سؤال‌ها و '
                         'شرایط برگزاری در این میانگین لحاظ نشده است. '
                         'برای تصمیم آموزشی، نمره‌ها را همراه با '
                         'نوع اشتباه‌ها و نظر معلم بررسی کن.',
@@ -2462,9 +2254,7 @@ class AboutPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('درباره سیمرغ'),
-      ),
+      appBar: AppBar(title: const Text('درباره سیمرغ')),
       body: SafeArea(
         top: false,
         child: _ContentWidth(
@@ -2472,9 +2262,7 @@ class AboutPage extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              const Center(
-                child: SimorghMark(size: 100),
-              ),
+              const Center(child: SimorghMark(size: 100)),
               const SizedBox(height: 16),
               const Text(
                 'سیمرغ',
@@ -2489,27 +2277,23 @@ class AboutPage extends StatelessWidget {
               const Text(
                 'همراه دانای راه آینده',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: teal,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(color: teal, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
-              Text(
-                faNumber(appVersionLabel),
-                textAlign: TextAlign.center,
-              ),
+              Text(faNumber(appVersionLabel), textAlign: TextAlign.center),
               const SizedBox(height: 24),
               const _AboutSection(
                 title: 'سیمرغ چه کمکی می‌کند؟',
-                text: 'ثبت برنامه مطالعه، پیگیری نتیجه آزمون‌ها، '
+                text:
+                    'ثبت برنامه مطالعه، پیگیری نتیجه آزمون‌ها، '
                     'مرور فاصله‌دار فلش‌کارت‌ها و گفت‌وگوی تحصیلی. '
                     'پیشنهادها برای کمک به تصمیم‌گیری تو هستند؛ '
                     'نه جایگزین انتخاب و قضاوت خودت.',
               ),
               const _AboutSection(
                 title: 'ذخیره‌سازی و پشتیبان‌گیری',
-                text: 'اطلاعات تحصیلی در ذخیره‌سازی محلی برنامه '
+                text:
+                    'اطلاعات تحصیلی در ذخیره‌سازی محلی برنامه '
                     'نگهداری می‌شوند. حذف برنامه یا پاک‌کردن داده‌های آن '
                     'می‌تواند اطلاعات محلی را از بین ببرد. '
                     'قبل از این کار، بخش پشتیبان‌گیری را بررسی کن. '
@@ -2518,7 +2302,8 @@ class AboutPage extends StatelessWidget {
               ),
               const _AboutSection(
                 title: 'گفت‌وگو و سرویس بیرونی',
-                text: 'برای پاسخ‌گویی آنلاین، متن پیام و بخشی از '
+                text:
+                    'برای پاسخ‌گویی آنلاین، متن پیام و بخشی از '
                     'گفت‌وگو به سرویس هوش مصنوعی ارسال می‌شود. '
                     'نام، شماره تماس، نشانی، رمز عبور و اطلاعات '
                     'حساس داخل پیام ننویس. '
@@ -2527,7 +2312,8 @@ class AboutPage extends StatelessWidget {
               ),
               const _AboutSection(
                 title: 'رضایت زمینه تحصیلی',
-                text: 'اجازه استفاده از مقطع، پایه، رشته و هدف '
+                text:
+                    'اجازه استفاده از مقطع، پایه، رشته و هدف '
                     'تحصیلی در فرم پروفایل انتخاب می‌شود. '
                     'این انتخاب اختیاری است و شامل نام نیست. '
                     'لغو رضایت برای درخواست‌های بعدی است و '
@@ -2535,6 +2321,55 @@ class AboutPage extends StatelessWidget {
               ),
               const _AboutSection(
                 title: 'محدودیت پاسخ‌ها و گزارش‌ها',
-                text: 'پاسخ هوش مصنوعی ممکن است اشتباه، ناقص '
+                text:
+                    'پاسخ هوش مصنوعی ممکن است اشتباه، ناقص '
                     'یا نامتناسب با شرایط تو باشد. '
-                    'اطلاعات مهم را با معلم و منابع رسمی بررسی کن. '
+                    'اطلاعات مهم را با معلم و منابع رسمی بررسی کن.',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AboutSection extends StatelessWidget {
+  const _AboutSection({required this.title, required this.text});
+
+  final String title;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Semantics(
+              header: true,
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: navy,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              text,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(height: 1.7),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

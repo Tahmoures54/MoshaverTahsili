@@ -20,42 +20,53 @@ void main() {
     channel.setMockMethodCallHandler(null);
   });
 
-  testWidgets('exports the local study workspace through the Android file channel', (tester) async {
-    final store = await EducationStore.open();
-    await store.addTask({
-      'id': 'task-1',
-      'title': 'مرور ریاضی',
-      'subject': 'ریاضی',
-      'minutes': 30,
-      'done': false,
-    });
+  testWidgets(
+    'exports the local study workspace through the Android file channel',
+    (tester) async {
+      final store = await EducationStore.open();
+      await store.addTask({
+        'id': 'task-1',
+        'title': 'مرور ریاضی',
+        'subject': 'ریاضی',
+        'minutes': 30,
+        'done': false,
+      });
 
-    String? exported;
-    channel.setMockMethodCallHandler((call) async {
-      expect(call.method, 'saveBackup');
-      final arguments = call.arguments as Map<Object?, Object?>;
-      expect(arguments['fileName'], startsWith('simorgh-backup-'));
-      exported = arguments['content'] as String;
-      return true;
-    });
+      String? exported;
+      channel.setMockMethodCallHandler((call) async {
+        expect(call.method, 'saveBackup');
+        final arguments = call.arguments as Map<Object?, Object?>;
+        expect(arguments['fileName'], startsWith('simorgh-backup-'));
+        exported = arguments['content'] as String;
+        return true;
+      });
 
-    await tester.pumpWidget(MaterialApp(home: BackupPage(store: store)));
-    await tester.tap(find.text('ذخیره فایل پشتیبان'));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(MaterialApp(home: BackupPage(store: store)));
+      await tester.tap(find.text('ذخیره فایل پشتیبان'));
+      await tester.pumpAndSettle();
 
-    expect(exported, isNotNull);
-    final decoded = WorkspaceBackup.decode(exported!);
-    final tasks = decoded['edu.tasks'] as List<Object?>;
-    expect((tasks.single as Map<Object?, Object?>)['title'], 'مرور ریاضی');
-    expect(exported, isNot(contains('edu.ai.wallet')));
-    expect(find.text('فایل پشتیبان ذخیره شد.'), findsOneWidget);
-  });
+      expect(exported, isNotNull);
+      final decoded = WorkspaceBackup.decode(exported!);
+      final tasks = decoded['edu.tasks'] as List<Object?>;
+      expect((tasks.single as Map<Object?, Object?>)['title'], 'مرور ریاضی');
+      expect(exported, isNot(contains('edu.ai.wallet')));
+      expect(find.text('فایل پشتیبان ذخیره شد.'), findsOneWidget);
+    },
+  );
 
-  testWidgets('loads a selected backup file into the confirmation form', (tester) async {
+  testWidgets('loads a selected backup file into the confirmation form', (
+    tester,
+  ) async {
     final store = await EducationStore.open();
     final backup = WorkspaceBackup.encode({
       'edu.tasks': [
-        {'id': 'task-2', 'title': 'تمرین فیزیک', 'subject': 'فیزیک', 'minutes': 20, 'done': false},
+        {
+          'id': 'task-2',
+          'title': 'تمرین فیزیک',
+          'subject': 'فیزیک',
+          'minutes': 20,
+          'done': false,
+        },
       ],
     }, DateTime(2026, 11, 18));
 
@@ -65,10 +76,23 @@ void main() {
     });
 
     await tester.pumpWidget(MaterialApp(home: BackupPage(store: store)));
-    await tester.tap(find.text('انتخاب فایل پشتیبان'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('انتخاب و بررسی فایل پشتیبان'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('انتخاب و بررسی فایل پشتیبان'));
     await tester.pumpAndSettle();
 
-    expect(find.text('فایل پشتیبان خوانده شد؛ برای تأیید و بازیابی اقدام کن.'), findsOneWidget);
+    expect(
+      find.text(
+        'فایل خوانده شد و بررسی ساختار انجام شد. '
+        'برای جایگزینی اطلاعات، دکمه بازیابی را بزن.',
+      ),
+      findsOneWidget,
+    );
     final field = tester.widget<TextField>(find.byType(TextField));
     expect(field.controller!.text, backup);
   });
@@ -100,5 +124,4 @@ void main() {
     await target.importBackup(raw);
     expect(target.teachingSessions, [session]);
   });
-
 }

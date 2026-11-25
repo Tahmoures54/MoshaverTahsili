@@ -53,13 +53,16 @@ void main() {
       await tester.ensureVisible(nameField);
       await _settleSafely(tester);
       await tester.enterText(nameField, 'دانش‌آموز آزمون');
-      await tester.ensureVisible(find.byKey(TestKeys.saveProfileButton));
+      FocusManager.instance.primaryFocus?.unfocus();
       await _settleSafely(tester);
-      await tester.tap(find.byKey(TestKeys.saveProfileButton));
+      final saveProfileButton = find.byKey(TestKeys.saveProfileButton);
+      await tester.ensureVisible(saveProfileButton);
+      await _settleSafely(tester);
+      await tester.tap(saveProfileButton, warnIfMissed: false);
       await _settleSafely(tester);
 
       // ۵. بررسی ذخیره‌سازی رمزنگاری‌شده پروفایل
-      expect(find.text('درود، دانش‌آموز!'), findsOneWidget);
+      expect(find.byKey(TestKeys.plannerTab), findsOneWidget);
       final encryptedProfile = prefs.getString('edu.profile')!;
       expect(encryptedProfile, startsWith(EducationStore.encryptedPrefix));
       expect(encryptedProfile, isNot(contains('دانش‌آموز آزمون')));
@@ -76,9 +79,16 @@ void main() {
 
       // ۷. انتظار برای نمایش تسک (با استفاده از waitFor داخلی)
       // در محیط Integration، عملیات پلتفرمی ممکن است بیش از چند فریم طول بکشد
-      await _pumpUntilFound(tester, find.text('مرور ریاضی'), maxWait: const Duration(seconds: 10));
+      await _pumpUntilFound(
+        tester,
+        find.text('مرور ریاضی'),
+        maxWait: const Duration(seconds: 10),
+      );
       expect(find.text('مرور ریاضی'), findsOneWidget);
-      expect(prefs.getString('edu.tasks'), startsWith(EducationStore.encryptedPrefix));
+      expect(
+        prefs.getString('edu.tasks'),
+        startsWith(EducationStore.encryptedPrefix),
+      );
 
       // ۸. ثبت نمره
       await tester.tap(find.byKey(TestKeys.examsTab));
@@ -125,7 +135,10 @@ void main() {
 
 /// انجام یک چرخه Pump و Settle با Timeout مشخص (حداکثر ۵ ثانیه)
 /// از فراخوانی بدون سقف `pumpAndSettle()` جلوگیری می‌کند.
-Future<void> _settleSafely(WidgetTester tester, {Duration timeout = const Duration(seconds: 5)}) async {
+Future<void> _settleSafely(
+  WidgetTester tester, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
   await tester.pumpAndSettle(timeout);
 }
 

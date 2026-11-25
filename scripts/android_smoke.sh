@@ -36,8 +36,10 @@ set -Eeuo pipefail
 #   PROCESS_START_SECONDS       (default: 30)
 #   PROCESS_STABILITY_SECONDS   (default: 5)
 
-PACKAGE_NAME="ir.moshaver.tahsili"
-ACTIVITY_NAME=".MainActivity"
+PACKAGE_NAME="ir.moshaver.tahsili.debug"
+# The debug variant adds an applicationId suffix, while the Kotlin
+# Activity class remains in the stable Gradle namespace.
+ACTIVITY_NAME="ir.moshaver.tahsili.MainActivity"
 
 BUILD_TIMEOUT_SECONDS="${BUILD_TIMEOUT_SECONDS:-1800}"
 TEST_TIMEOUT_SECONDS="${TEST_TIMEOUT_SECONDS:-1800}"

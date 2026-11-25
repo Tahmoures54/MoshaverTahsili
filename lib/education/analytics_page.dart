@@ -93,10 +93,7 @@ String _gregorianDateText(DateTime date) {
 /// It does not make guarantees about storage, synchronization or networking
 /// elsewhere in the application.
 class AnalyticsPage extends StatelessWidget {
-  const AnalyticsPage({
-    super.key,
-    required this.store,
-  });
+  const AnalyticsPage({super.key, required this.store});
 
   final EducationStore store;
 
@@ -156,10 +153,7 @@ class AnalyticsPage extends StatelessWidget {
                 icon: Icons.insights_outlined,
               ),
               for (final gap in report.dataGaps)
-                NoticeCard(
-                  text: gap,
-                  warning: true,
-                ),
+                NoticeCard(text: gap, warning: true),
               _buildAcademicHighlights(report),
               _buildSubjectSection(report),
               _buildTopicSection(topicMastery),
@@ -200,13 +194,15 @@ class AnalyticsPage extends StatelessWidget {
       children: [
         if (strengths.isNotEmpty)
           NoticeCard(
-            text: 'درس‌های با میانگین ثبت‌شده بالاتر: '
+            text:
+                'درس‌های با میانگین ثبت‌شده بالاتر: '
                 '${strengths.join('، ')}',
             icon: Icons.emoji_events_outlined,
           ),
         if (weaknesses.isNotEmpty)
           NoticeCard(
-            text: 'درس‌های پیشنهادی برای تمرین بیشتر: '
+            text:
+                'درس‌های پیشنهادی برای تمرین بیشتر: '
                 '${weaknesses.join('، ')}',
             warning: true,
           ),
@@ -226,12 +222,12 @@ class AnalyticsPage extends StatelessWidget {
         if (report.subjects.isEmpty)
           const EmptyState(
             title: 'هنوز داده‌ای نداریم',
-            subtitle: 'با ثبت نمره معتبر و نام درس، '
+            subtitle:
+                'با ثبت نمره معتبر و نام درس، '
                 'میانگین و روند هر درس نمایش داده می‌شود.',
             icon: Icons.assessment_outlined,
           ),
-        for (final subject in report.subjects)
-          _buildSubjectCard(subject),
+        for (final subject in report.subjects) _buildSubjectCard(subject),
       ],
     );
   }
@@ -248,10 +244,7 @@ class AnalyticsPage extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         if (average != null)
-          _progress(
-            label: 'میانگین درس $title',
-            percentage: average,
-          )
+          _progress(label: 'میانگین درس $title', percentage: average)
         else
           const Text(
             'میانگین معتبر برای نمایش موجود نیست.',
@@ -260,10 +253,7 @@ class AnalyticsPage extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           _trendText(subject),
-          style: const TextStyle(
-            fontSize: 13,
-            height: 1.8,
-          ),
+          style: const TextStyle(fontSize: 13, height: 1.8),
         ),
       ],
     );
@@ -284,10 +274,7 @@ class AnalyticsPage extends StatelessWidget {
 
     final trend = subject.trend;
 
-    if (trend == null ||
-        !trend.isFinite ||
-        trend < -100 ||
-        trend > 100) {
+    if (trend == null || !trend.isFinite || trend < -100 || trend > 100) {
       return '$prefix داده معتبر برای مقایسه روند موجود نیست.';
     }
 
@@ -318,14 +305,16 @@ class AnalyticsPage extends StatelessWidget {
         if (topics.isEmpty)
           const EmptyState(
             title: 'هنوز شواهد موضوعی ثبت نشده',
-            subtitle: 'برای فلش‌کارت‌ها نام مبحث ثبت کن و پس از مرور، '
+            subtitle:
+                'برای فلش‌کارت‌ها نام مبحث ثبت کن و پس از مرور، '
                 'نتیجه یادآوری را ارزیابی کن.',
             icon: Icons.school_outlined,
           ),
         for (final topic in topics) _buildTopicCard(topic),
         if (topics.isNotEmpty)
           const NoticeCard(
-            text: 'این برآورد از مرورهای ثبت‌شده فلش‌کارت‌ها ساخته می‌شود '
+            text:
+                'این برآورد از مرورهای ثبت‌شده فلش‌کارت‌ها ساخته می‌شود '
                 'و به بعضی کیفیت‌های یادآوری وزن متفاوت می‌دهد. '
                 'بازه نمایش‌داده‌شده تقریبی است؛ '
                 'نمره امتحان یا احتمال قطعی موفقیت نیست. '
@@ -343,7 +332,8 @@ class AnalyticsPage extends StatelessWidget {
     final lower = _validProbability(item.lowerBound);
     final upper = _validProbability(item.upperBound);
 
-    final hasValidInterval = estimate != null &&
+    final hasValidInterval =
+        estimate != null &&
         lower != null &&
         upper != null &&
         lower <= estimate &&
@@ -357,13 +347,13 @@ class AnalyticsPage extends StatelessWidget {
 
     final evidenceText = hasValidCounts
         ? '${faNumber(count)} مرور معتبر · '
-            '${faNumber(successes)} یادآوری موفق'
+              '${faNumber(successes)} یادآوری موفق'
         : 'تعداد شواهد معتبر موجود نیست';
 
     final intervalText = hasValidInterval
         ? 'بازه تقریبی برآورد: '
-            '${faNumber((lower * 100).toStringAsFixed(1))} تا '
-            '${faNumber((upper * 100).toStringAsFixed(1))} درصد'
+              '${faNumber((lower * 100).toStringAsFixed(1))} تا '
+              '${faNumber((upper * 100).toStringAsFixed(1))} درصد'
         : 'بازه برآورد معتبر موجود نیست';
 
     final confidence = _nonEmptyText(item.confidence);
@@ -372,9 +362,7 @@ class AnalyticsPage extends StatelessWidget {
       children: [
         _titleAndValue(
           title: title,
-          value: estimate == null
-              ? 'نامعتبر'
-              : _percentageText(estimate * 100),
+          value: estimate == null ? 'نامعتبر' : _percentageText(estimate * 100),
         ),
         const SizedBox(height: 10),
         if (estimate != null)
@@ -388,14 +376,8 @@ class AnalyticsPage extends StatelessWidget {
             style: TextStyle(height: 1.8),
           ),
         const SizedBox(height: 8),
-        Text(
-          evidenceText,
-          style: const TextStyle(fontSize: 12, height: 1.8),
-        ),
-        Text(
-          intervalText,
-          style: const TextStyle(fontSize: 12, height: 1.8),
-        ),
+        Text(evidenceText, style: const TextStyle(fontSize: 12, height: 1.8)),
+        Text(intervalText, style: const TextStyle(fontSize: 12, height: 1.8)),
         if (confidence != null && hasValidCounts)
           Text(
             'برچسب حجم شواهد: $confidence',
@@ -421,7 +403,8 @@ class AnalyticsPage extends StatelessWidget {
         if (totalSessions == 0)
           const EmptyState(
             title: 'هنوز جلسه تدریسی ثبت نشده',
-            subtitle: 'از صفحه گفت‌وگوی سیمرغ '
+            subtitle:
+                'از صفحه گفت‌وگوی سیمرغ '
                 'یک مبحث را برای یادگیری انتخاب کن.',
             icon: Icons.school_outlined,
           )
@@ -440,10 +423,7 @@ class AnalyticsPage extends StatelessWidget {
           ),
           if (totalSessions > sessions.length)
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 4,
-                vertical: 8,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
               child: Text(
                 '${faNumber(sessions.length)} جلسه پایانی '
                 'در ترتیب ذخیره‌شده نمایش داده می‌شود.',
@@ -452,7 +432,8 @@ class AnalyticsPage extends StatelessWidget {
             ),
           for (final lesson in sessions) _buildTeachingCard(lesson),
           const NoticeCard(
-            text: 'وضعیت «تکمیل‌شده» مطابق رکورد ذخیره‌شده جلسه است. '
+            text:
+                'وضعیت «تکمیل‌شده» مطابق رکورد ذخیره‌شده جلسه است. '
                 'این شاخص جایگزین نمره امتحان یا ارزیابی معلم نیست.',
             icon: Icons.info_outline,
           ),
@@ -467,16 +448,10 @@ class AnalyticsPage extends StatelessWidget {
       children: [
         Text(
           faNumber(value),
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, height: 1.7),
-        ),
+        Text(label, style: const TextStyle(fontSize: 12, height: 1.7)),
       ],
     );
   }
@@ -522,9 +497,9 @@ class AnalyticsPage extends StatelessWidget {
                   Text(
                     correct == null
                         ? 'تعداد پاسخ‌های درست پایانی '
-                            'ثبت نشده یا نامعتبر است.'
+                              'ثبت نشده یا نامعتبر است.'
                         : '${faNumber(correct)} پاسخ درست '
-                            'در سنجش پایانی',
+                              'در سنجش پایانی',
                     style: const TextStyle(fontSize: 12, height: 1.8),
                   ),
                 ],
@@ -565,8 +540,7 @@ class AnalyticsPage extends StatelessWidget {
 
     final hasData = adherence != null && sample != null && sample > 0;
 
-    final noRecords =
-        report.adherence == null && report.adherenceSample == 0;
+    final noRecords = report.adherence == null && report.adherenceSample == 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -622,10 +596,7 @@ class AnalyticsPage extends StatelessWidget {
     var hasInvalidMinutes = false;
 
     for (final week in weeks) {
-      for (final raw in [
-        week.plannedMinutes,
-        week.completedMinutes,
-      ]) {
+      for (final raw in [week.plannedMinutes, week.completedMinutes]) {
         final minutes = _validCount(raw);
 
         if (minutes == null) {
@@ -645,20 +616,23 @@ class AnalyticsPage extends StatelessWidget {
         if (weeks.isEmpty)
           const EmptyState(
             title: 'داده‌ای برای نمودار وجود ندارد',
-            subtitle: 'با ثبت برنامه و انجام فعالیت‌های مطالعه، '
+            subtitle:
+                'با ثبت برنامه و انجام فعالیت‌های مطالعه، '
                 'گزارش نمایش داده می‌شود.',
             icon: Icons.bar_chart_outlined,
           )
         else ...[
           if (hasInvalidMinutes)
             const NoticeCard(
-              text: 'بعضی مجموع‌های زمانی نامعتبرند '
+              text:
+                  'بعضی مجموع‌های زمانی نامعتبرند '
                   'و میله آن‌ها رسم نشده است.',
               warning: true,
             ),
           if (!hasPositiveMinutes && !hasInvalidMinutes)
             const NoticeCard(
-              text: 'در این بازه‌ها زمان مثبتی در گزارش ثبت نشده است. '
+              text:
+                  'در این بازه‌ها زمان مثبتی در گزارش ثبت نشده است. '
                   'این موضوع به معنی مطالعه‌نکردن نیست.',
               icon: Icons.info_outline,
             ),
@@ -678,10 +652,9 @@ class AnalyticsPage extends StatelessWidget {
 
                       final minimumWidth = columnWidth * weeks.length;
 
-                      final chartWidth =
-                          constraints.maxWidth > minimumWidth
-                              ? constraints.maxWidth
-                              : minimumWidth;
+                      final chartWidth = constraints.maxWidth > minimumWidth
+                          ? constraints.maxWidth
+                          : minimumWidth;
 
                       return SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
@@ -692,11 +665,7 @@ class AnalyticsPage extends StatelessWidget {
                             children: [
                               for (var i = 0; i < weeks.length; i++)
                                 Expanded(
-                                  child: _weekColumn(
-                                    weeks[i],
-                                    i + 1,
-                                    maximum,
-                                  ),
+                                  child: _weekColumn(weeks[i], i + 1, maximum),
                                 ),
                             ],
                           ),
@@ -714,10 +683,7 @@ class AnalyticsPage extends StatelessWidget {
                         color: Color(0xFFBDBDBD),
                         label: 'برنامه‌ریزی‌شده',
                       ),
-                      _ChartLegend(
-                        color: teal,
-                        label: 'انجام‌شده',
-                      ),
+                      _ChartLegend(color: teal, label: 'انجام‌شده'),
                     ],
                   ),
                 ],
@@ -725,7 +691,8 @@ class AnalyticsPage extends StatelessWidget {
             ),
           ),
           const NoticeCard(
-            text: 'هر ستون یک بازه هفت‌روزه است، نه هفته تقویمی. '
+            text:
+                'هر ستون یک بازه هفت‌روزه است، نه هفته تقویمی. '
                 'برنامه‌ریزی‌شده بر اساس موعد کار و انجام‌شده '
                 'بر اساس تاریخ تکمیل ثبت‌شده محاسبه می‌شود. '
                 'زمان‌ها مدت ثبت‌شده کارها هستند، '
@@ -737,11 +704,7 @@ class AnalyticsPage extends StatelessWidget {
     );
   }
 
-  Widget _weekColumn(
-    WeekLoad week,
-    int number,
-    int maximum,
-  ) {
+  Widget _weekColumn(WeekLoad week, int number, int maximum) {
     final planned = _validCount(week.plannedMinutes);
     final completed = _validCount(week.completedMinutes);
 
@@ -750,15 +713,15 @@ class AnalyticsPage extends StatelessWidget {
 
       final denominator = maximum > 0 ? maximum : 1;
 
-      return (minutes / denominator * 110)
-          .clamp(0.0, 110.0)
-          .toDouble();
+      return (minutes / denominator * 110).clamp(0.0, 110.0).toDouble();
     }
 
     return Semantics(
-      label: 'بازه ${faNumber(number)}، '
+      label:
+          'بازه ${faNumber(number)}، '
           'از ${_gregorianDateText(week.start)} میلادی',
-      value: 'برنامه‌ریزی‌شده: ${_minutesText(planned)}، '
+      value:
+          'برنامه‌ریزی‌شده: ${_minutesText(planned)}، '
           'انجام‌شده: ${_minutesText(completed)}',
       child: ExcludeSemantics(
         child: Padding(
@@ -773,10 +736,7 @@ class AnalyticsPage extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      _bar(
-                        heightFor(planned),
-                        const Color(0xFFBDBDBD),
-                      ),
+                      _bar(heightFor(planned), const Color(0xFFBDBDBD)),
                       const SizedBox(width: 6),
                       _bar(heightFor(completed), teal),
                     ],
@@ -827,9 +787,7 @@ class AnalyticsPage extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(4),
-        ),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
       ),
     );
   }
@@ -851,9 +809,9 @@ class AnalyticsPage extends StatelessWidget {
               dueCards == null
                   ? 'تعداد معتبر کارت‌های آماده مرور موجود نیست.'
                   : dueCards == 0
-                      ? 'در زمان تهیه گزارش، کارتی آماده مرور نیست.'
-                      : '${faNumber(dueCards)} فلش‌کارت '
-                          'در زمان تهیه گزارش آماده مرور است.',
+                  ? 'در زمان تهیه گزارش، کارتی آماده مرور نیست.'
+                  : '${faNumber(dueCards)} فلش‌کارت '
+                        'در زمان تهیه گزارش آماده مرور است.',
               style: const TextStyle(height: 1.8),
             ),
             const SizedBox(height: 6),
@@ -879,18 +837,13 @@ class AnalyticsPage extends StatelessWidget {
         header: true,
         child: Text(
           title,
-          style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
         ),
       ),
     );
   }
 
-  Widget _contentCard({
-    required List<Widget> children,
-  }) {
+  Widget _contentCard({required List<Widget> children}) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -902,10 +855,7 @@ class AnalyticsPage extends StatelessWidget {
     );
   }
 
-  Widget _titleAndValue({
-    required String title,
-    required String value,
-  }) {
+  Widget _titleAndValue({required String title, required String value}) {
     // Wrap avoids forcing large text into a narrow fixed-height row.
     return Wrap(
       alignment: WrapAlignment.spaceBetween,
@@ -913,25 +863,16 @@ class AnalyticsPage extends StatelessWidget {
       spacing: 16,
       runSpacing: 8,
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
+        Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         Text(
           value,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
       ],
     );
   }
 
-  Widget _progress({
-    required String label,
-    required double percentage,
-  }) {
+  Widget _progress({required String label, required double percentage}) {
     final valid = _validPercentage(percentage);
 
     if (valid == null) {
@@ -957,10 +898,7 @@ class AnalyticsPage extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _ChartLegend extends StatelessWidget {
-  const _ChartLegend({
-    required this.color,
-    required this.label,
-  });
+  const _ChartLegend({required this.color, required this.label});
 
   final Color color;
   final String label;
@@ -982,10 +920,7 @@ class _ChartLegend extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         Flexible(
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 12, height: 1.7),
-          ),
+          child: Text(label, style: const TextStyle(fontSize: 12, height: 1.7)),
         ),
       ],
     );

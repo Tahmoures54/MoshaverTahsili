@@ -65,67 +65,88 @@ void main() {
     expect(reopened.teachingSessions.first['active'], isFalse);
     expect(reopened.teachingSessions.first['stage'], 'completed');
   });
-  testWidgets('advisor recovers a completed AI answer when transcript write was interrupted', (tester) async {
-    final store = await EducationStore.open();
-    await store.prepareAiRequest(id: 'recovery-request', question: 'پرسش ذخیره‌شده');
-    await store.completeAiRequest('recovery-request', 'پاسخ بازیابی‌شده از دفتر امن');
+  testWidgets(
+    'advisor recovers a completed AI answer when transcript write was interrupted',
+    (tester) async {
+      final store = await EducationStore.open();
+      await store.prepareAiRequest(
+        id: 'recovery-request',
+        question: 'پرسش ذخیره‌شده',
+      );
+      await store.completeAiRequest(
+        'recovery-request',
+        'پاسخ بازیابی‌شده از دفتر امن',
+      );
 
-    await store.saveMessages([
-      {
-        'id': 'recovery-request',
-        'role': 'user',
-        'content': 'پرسش ذخیره‌شده',
-        'status': 'pending',
-        'createdAt': '2026-11-20T10:00:00.000Z',
-      },
-    ]);
+      await store.saveMessages([
+        {
+          'id': 'recovery-request',
+          'role': 'user',
+          'content': 'پرسش ذخیره‌شده',
+          'status': 'pending',
+          'createdAt': '2026-11-20T10:00:00.000Z',
+        },
+      ]);
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: AdvisorPage(store: store)),
-    ));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: AdvisorPage(store: store)),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(store.messages.singleWhere((item) => item['role'] == 'user')['status'], 'completed');
-    expect(find.text('پاسخ بازیابی‌شده از دفتر امن'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      expect(
+        store.messages.singleWhere((item) => item['role'] == 'user')['status'],
+        'completed',
+      );
+      expect(find.text('پاسخ بازیابی‌شده از دفتر امن'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
-  testWidgets('advisor restores the exact lesson stage and can prepare its next step', (tester) async {
-    final store = await EducationStore.open();
-    await store.saveTeachingSessions([
-      {
-        'id': 'simorgh-resume-check',
-        'active': true,
-        'topic': 'معادله درجه دوم',
-        'grade': 'متوسطه دوم · دهم',
-        'stage': 'masteryCheck',
-        'diagnosticCount': 3,
-        'diagnosticCorrect': 1,
-        'practiceAttempts': 2,
-        'masteryCount': 1,
-        'masteryCorrect': 1,
-        'reteachCount': 1,
-        'explanationVariant': 2,
-        'lastError': null,
-      },
-    ]);
+  testWidgets(
+    'advisor restores the exact lesson stage and can prepare its next step',
+    (tester) async {
+      final store = await EducationStore.open();
+      await store.saveTeachingSessions([
+        {
+          'id': 'simorgh-resume-check',
+          'active': true,
+          'topic': 'معادله درجه دوم',
+          'grade': 'متوسطه دوم · دهم',
+          'stage': 'masteryCheck',
+          'diagnosticCount': 3,
+          'diagnosticCorrect': 1,
+          'practiceAttempts': 2,
+          'masteryCount': 1,
+          'masteryCorrect': 1,
+          'reteachCount': 1,
+          'explanationVariant': 2,
+          'lastError': null,
+        },
+      ]);
 
-    final reopened = await EducationStore.open(preferences: store.prefs);
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: AdvisorPage(store: reopened)),
-    ));
-    expect(find.text('روش تدریس سیمرغ · سنجش یادگیری'), findsOneWidget);
-    expect(find.text('جلسه: معادله درجه دوم'), findsOneWidget);
+      final reopened = await EducationStore.open(preferences: store.prefs);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: AdvisorPage(store: reopened)),
+        ),
+      );
+      expect(find.text('روش تدریس سیمرغ · سنجش یادگیری'), findsOneWidget);
+      expect(find.text('جلسه: معادله درجه دوم'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('آماده‌سازی گام آموزشی'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('آماده‌سازی گام آموزشی'));
-    await tester.pump();
-    final input = tester.widget<TextField>(find.byType(TextField));
-    expect(input.controller!.text, contains('معادله درجه دوم'));
-    expect(tester.takeException(), isNull);
-  });
-  testWidgets('does not resume a corrupted lesson with impossible counters', (tester) async {
+      await tester.ensureVisible(find.text('آماده‌سازی گام آموزشی'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('آماده‌سازی گام آموزشی'));
+      await tester.pump();
+      final input = tester.widget<TextField>(find.byType(TextField));
+      expect(input.controller!.text, contains('معادله درجه دوم'));
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets('does not resume a corrupted lesson with impossible counters', (
+    tester,
+  ) async {
     final store = await EducationStore.open();
     await store.saveTeachingSessions([
       {
@@ -142,14 +163,14 @@ void main() {
       },
     ]);
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: AdvisorPage(store: store)),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: AdvisorPage(store: store)),
+      ),
+    );
     expect(find.textContaining('روش تدریس سیمرغ'), findsNothing);
     expect(tester.takeException(), isNull);
     // Corrupt data is ignored for resumption, not silently overwritten.
     expect(store.teachingSessions.single['diagnosticCorrect'], 4);
   });
-
-
 }

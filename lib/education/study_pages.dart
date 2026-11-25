@@ -23,19 +23,14 @@ int _safeTaskMinutes(Map<String, dynamic> task) {
     return value.clamp(0, _maxTaskMinutes).toInt();
   }
 
-  final parsed = int.tryParse(
-    digitsToEnglish(value?.toString() ?? '').trim(),
-  );
+  final parsed = int.tryParse(digitsToEnglish(value?.toString() ?? '').trim());
 
   if (parsed == null || parsed < 0) return 0;
 
   return parsed.clamp(0, _maxTaskMinutes).toInt();
 }
 
-String _safeLabel(
-  Object? value, {
-  String fallback = 'بدون عنوان',
-}) {
+String _safeLabel(Object? value, {String fallback = 'بدون عنوان'}) {
   final text = value?.toString().trim() ?? '';
   return text.isEmpty || text == 'null' ? fallback : text;
 }
@@ -71,10 +66,7 @@ Future<bool> _confirmDelete(
     context: context,
     builder: (dialogContext) => AlertDialog(
       title: Text(title),
-      content: Text(
-        message,
-        style: const TextStyle(height: 1.7),
-      ),
+      content: Text(message, style: const TextStyle(height: 1.7)),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, false),
@@ -92,11 +84,7 @@ Future<bool> _confirmDelete(
 }
 
 class PlannerPage extends StatefulWidget {
-  const PlannerPage({
-    super.key,
-    required this.store,
-    required this.changed,
-  });
+  const PlannerPage({super.key, required this.store, required this.changed});
 
   final EducationStore store;
   final VoidCallback changed;
@@ -137,13 +125,9 @@ class _PlannerPageState extends State<PlannerPage> {
 
     final parsed = value is num
         ? (value.isFinite ? value.toInt() : null)
-        : int.tryParse(
-            digitsToEnglish(value?.toString() ?? '').trim(),
-          );
+        : int.tryParse(digitsToEnglish(value?.toString() ?? '').trim());
 
-    return parsed != null && dailyChoices.contains(parsed)
-        ? parsed
-        : 120;
+    return parsed != null && dailyChoices.contains(parsed) ? parsed : 120;
   }
 
   Future<void> add() async {
@@ -166,10 +150,7 @@ class _PlannerPageState extends State<PlannerPage> {
         minutes == null ||
         minutes < 1 ||
         minutes > _maxTaskMinutes) {
-      showMessage(
-        context,
-        'اطلاعات برنامه معتبر نیست. دوباره تلاش کن.',
-      );
+      showMessage(context, 'اطلاعات برنامه معتبر نیست. دوباره تلاش کن.');
       return;
     }
 
@@ -226,15 +207,10 @@ class _PlannerPageState extends State<PlannerPage> {
     );
   }
 
-  Future<void> deleteDeadline(
-    Map<String, dynamic> deadline,
-  ) async {
+  Future<void> deleteDeadline(Map<String, dynamic> deadline) async {
     if (saving) return;
 
-    final subject = _safeLabel(
-      deadline['subject'],
-      fallback: 'این امتحان',
-    );
+    final subject = _safeLabel(deadline['subject'], fallback: 'این امتحان');
 
     final confirmed = await _confirmDelete(
       context,
@@ -257,10 +233,7 @@ class _PlannerPageState extends State<PlannerPage> {
   Future<void> deleteTask(Map<String, dynamic> task) async {
     if (saving) return;
 
-    final title = _safeLabel(
-      task['title'],
-      fallback: 'این برنامه',
-    );
+    final title = _safeLabel(task['title'], fallback: 'این برنامه');
 
     final confirmed = await _confirmDelete(
       context,
@@ -333,9 +306,7 @@ class _PlannerPageState extends State<PlannerPage> {
       (sum, item) => sum + _safeTaskMinutes(item),
     );
 
-    final completed = tasks.where(
-      (task) => task['done'] == true,
-    ).length;
+    final completed = tasks.where((task) => task['done'] == true).length;
 
     final pending = tasks.length - completed;
     final tasksError = widget.store.dataError('edu.tasks');
@@ -343,6 +314,7 @@ class _PlannerPageState extends State<PlannerPage> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(
+        key: const Key('add_task_button'),
         heroTag: null,
         onPressed: saving ? null : add,
         icon: const Icon(Icons.add),
@@ -352,17 +324,14 @@ class _PlannerPageState extends State<PlannerPage> {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 92),
         children: [
           NoticeCard(
-            text: '${faNumber(minutes)} دقیقه زمان برای برنامه‌ها ثبت کرده‌ای؛ '
+            text:
+                '${faNumber(minutes)} دقیقه زمان برای برنامه‌ها ثبت کرده‌ای؛ '
                 '${faNumber(completed)} کار انجام‌شده و '
                 '${faNumber(pending)} کار باقی‌مانده. '
                 'برنامه را متناسب با توان و زمان واقعی خودت نگه دار.',
             icon: Icons.timer_outlined,
           ),
-          if (tasksError != null)
-            NoticeCard(
-              text: tasksError,
-              warning: true,
-            ),
+          if (tasksError != null) NoticeCard(text: tasksError, warning: true),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(14),
@@ -393,9 +362,7 @@ class _PlannerPageState extends State<PlannerPage> {
                     width: double.infinity,
                     child: FilledButton.icon(
                       onPressed: saving ? null : smartPlan,
-                      icon: const Icon(
-                        Icons.auto_fix_high_outlined,
-                      ),
+                      icon: const Icon(Icons.auto_fix_high_outlined),
                       label: const Text('ساخت برنامه هوشمند'),
                     ),
                   ),
@@ -404,10 +371,7 @@ class _PlannerPageState extends State<PlannerPage> {
                     'جمعه‌ها روز استراحت است. برنامه با توجه به '
                     'نمره‌های ثبت‌شده، امتحان‌های پیش‌رو و موعد کارها '
                     'پیشنهاد می‌شود. پیش از اعمال، تغییرها را بررسی می‌کنی.',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      height: 1.7,
-                    ),
+                    style: TextStyle(fontSize: 12.5, height: 1.7),
                   ),
                 ],
               ),
@@ -424,9 +388,7 @@ class _PlannerPageState extends State<PlannerPage> {
                       const Expanded(
                         child: Text(
                           'امتحان‌های پیش‌رو',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
                       TextButton.icon(
@@ -443,18 +405,11 @@ class _PlannerPageState extends State<PlannerPage> {
                     ),
                   for (final deadline in deadlines)
                     ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                       title: Text(
-                        _safeLabel(
-                          deadline['subject'],
-                          fallback: 'درس نامشخص',
-                        ),
+                        _safeLabel(deadline['subject'], fallback: 'درس نامشخص'),
                       ),
-                      subtitle: Text(
-                        'تاریخ: ${_formatDate(deadline['date'])}',
-                      ),
+                      subtitle: Text('تاریخ: ${_formatDate(deadline['date'])}'),
                       trailing: IconButton(
                         tooltip: 'حذف امتحان',
                         icon: const Icon(Icons.delete_outline),
@@ -480,10 +435,8 @@ class _PlannerPageState extends State<PlannerPage> {
                 onChanged: saving || _recordId(task).isEmpty
                     ? null
                     : (_) => mutate(
-                          () => widget.store.toggleTask(
-                            _recordId(task),
-                          ),
-                        ),
+                        () => widget.store.toggleTask(_recordId(task)),
+                      ),
                 controlAffinity: ListTileControlAffinity.leading,
                 title: Text(
                   _safeLabel(task['title']),
@@ -531,42 +484,39 @@ class _DeadlineDialogState extends State<_DeadlineDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        title: const Text('امتحان پیش‌رو'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Form(
-              key: form,
-              child: TextFormField(
-                controller: subject,
-                maxLength: 80,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  labelText: 'نام درس',
-                ),
-                validator: (value) =>
-                    value == null || value.trim().isEmpty
-                        ? 'نام درس را بنویس.'
-                        : null,
-              ),
-            ),
+    title: const Text('امتحان پیش‌رو'),
+    content: SizedBox(
+      width: 420,
+      child: SingleChildScrollView(
+        child: Form(
+          key: form,
+          child: TextFormField(
+            controller: subject,
+            maxLength: 80,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(labelText: 'نام درس'),
+            validator: (value) => value == null || value.trim().isEmpty
+                ? 'نام درس را بنویس.'
+                : null,
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('انصراف'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (form.currentState?.validate() == true) {
-                Navigator.pop(context, subject.text.trim());
-              }
-            },
-            child: const Text('ادامه'),
-          ),
-        ],
-      );
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('انصراف'),
+      ),
+      FilledButton(
+        onPressed: () {
+          if (form.currentState?.validate() == true) {
+            Navigator.pop(context, subject.text.trim());
+          }
+        },
+        child: const Text('ادامه'),
+      ),
+    ],
+  );
 }
 
 class _PlanReportDialog extends StatelessWidget {
@@ -576,83 +526,70 @@ class _PlanReportDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        title: const Text('پیش‌نمایش برنامه هوشمند'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${faNumber(plan.assignments.length)} کار در برنامه بررسی شد.',
-                ),
-                if (plan.changes.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: Text(
-                      'تغییری نسبت به تاریخ‌های قبلی لازم نبود.',
-                    ),
-                  ),
-                for (final change in plan.changes)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          change.title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'تاریخ پیشنهادی: ${faNumber(change.newDate)}',
-                        ),
-                        Text(
-                          change.reason,
-                          style: const TextStyle(height: 1.7),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (plan.unplacedIds.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text(
-                      '${faNumber(plan.unplacedIds.length)} کار '
-                      'در افق ۱۴ روزه جا نشد. '
-                      'می‌توانی حجم کارها را خردتر کنی یا '
-                      'زمان مطالعه روزانه را بازبینی کنی.',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                        height: 1.7,
-                      ),
-                    ),
-                  ),
-              ],
+    title: const Text('پیش‌نمایش برنامه هوشمند'),
+    content: SizedBox(
+      width: 420,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${faNumber(plan.assignments.length)} کار در برنامه بررسی شد.',
             ),
-          ),
+            if (plan.changes.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text('تغییری نسبت به تاریخ‌های قبلی لازم نبود.'),
+              ),
+            for (final change in plan.changes)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      change.title,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text('تاریخ پیشنهادی: ${faNumber(change.newDate)}'),
+                    Text(change.reason, style: const TextStyle(height: 1.7)),
+                  ],
+                ),
+              ),
+            if (plan.unplacedIds.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(
+                  '${faNumber(plan.unplacedIds.length)} کار '
+                  'در افق ۱۴ روزه جا نشد. '
+                  'می‌توانی حجم کارها را خردتر کنی یا '
+                  'زمان مطالعه روزانه را بازبینی کنی.',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    height: 1.7,
+                  ),
+                ),
+              ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('فعلاً نه'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('اعمال برنامه'),
-          ),
-        ],
-      );
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context, false),
+        child: const Text('فعلاً نه'),
+      ),
+      FilledButton(
+        onPressed: () => Navigator.pop(context, true),
+        child: const Text('اعمال برنامه'),
+      ),
+    ],
+  );
 }
 
 class ExamsPage extends StatefulWidget {
-  const ExamsPage({
-    super.key,
-    required this.store,
-    required this.changed,
-  });
+  const ExamsPage({super.key, required this.store, required this.changed});
 
   final EducationStore store;
   final VoidCallback changed;
@@ -700,9 +637,7 @@ class _ExamsPageState extends State<ExamsPage> {
       digitsToEnglish(result['score'] ?? '').trim(),
     );
 
-    final max = double.tryParse(
-      digitsToEnglish(result['max'] ?? '').trim(),
-    );
+    final max = double.tryParse(digitsToEnglish(result['max'] ?? '').trim());
 
     final subject = result['subject']?.trim() ?? '';
 
@@ -715,10 +650,7 @@ class _ExamsPageState extends State<ExamsPage> {
         max > 1000 ||
         score < 0 ||
         score > max) {
-      showMessage(
-        context,
-        'اطلاعات نمره معتبر نیست. دوباره بررسی کن.',
-      );
+      showMessage(context, 'اطلاعات نمره معتبر نیست. دوباره بررسی کن.');
       return;
     }
 
@@ -736,10 +668,7 @@ class _ExamsPageState extends State<ExamsPage> {
   Future<void> deleteExam(Map<String, dynamic> exam) async {
     if (saving) return;
 
-    final subject = _safeLabel(
-      exam['subject'],
-      fallback: 'این نتیجه',
-    );
+    final subject = _safeLabel(exam['subject'], fallback: 'این نتیجه');
 
     final confirmed = await _confirmDelete(
       context,
@@ -778,6 +707,7 @@ class _ExamsPageState extends State<ExamsPage> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(
+        key: const Key('add_exam_button'),
         heroTag: null,
         onPressed: saving ? null : add,
         icon: const Icon(Icons.add),
@@ -805,9 +735,7 @@ class _ExamsPageState extends State<ExamsPage> {
                   ),
                   const SizedBox(height: 12),
                   LinearProgressIndicator(
-                    value: (average / 100)
-                        .clamp(0.0, 1.0)
-                        .toDouble(),
+                    value: (average / 100).clamp(0.0, 1.0).toDouble(),
                     minHeight: 7,
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -829,19 +757,17 @@ class _ExamsPageState extends State<ExamsPage> {
             ),
           ),
           const NoticeCard(
-            text: 'نمره‌ها به‌صورت محلی روی گوشی نگهداری می‌شوند. '
+            text:
+                'نمره‌ها به‌صورت محلی روی گوشی نگهداری می‌شوند. '
                 'برای بررسی دقیق‌تر نقاط قوت و بخش‌های نیازمند تمرین، '
                 'از خانه بخش «بررسی وضعیت تحصیلی» را باز کن.',
           ),
-          if (examsError != null)
-            NoticeCard(
-              text: examsError,
-              warning: true,
-            ),
+          if (examsError != null) NoticeCard(text: examsError, warning: true),
           if (exams.isEmpty)
             const EmptyState(
               title: 'کارنامه‌ات را کامل کنیم',
-              subtitle: 'نتیجه اولین آزمون را ثبت کن؛ '
+              subtitle:
+                  'نتیجه اولین آزمون را ثبت کن؛ '
                   'یک نمره، فقط یک شاهد از مسیر یادگیری است.',
               icon: Icons.assessment_outlined,
             ),
@@ -850,9 +776,7 @@ class _ExamsPageState extends State<ExamsPage> {
               child: ListTile(
                 title: Text(
                   _safeLabel(exam['subject']),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 subtitle: Text(
                   'نمره ${faNumber(exam['score'] ?? '')} '
@@ -872,15 +796,10 @@ class _ExamsPageState extends State<ExamsPage> {
   }
 }
 
-double? examPercentage(Map<String, dynamic> exam) =>
-    examPercent(exam);
+double? examPercentage(Map<String, dynamic> exam) => examPercent(exam);
 
 class CardsPage extends StatefulWidget {
-  const CardsPage({
-    super.key,
-    required this.store,
-    required this.changed,
-  });
+  const CardsPage({super.key, required this.store, required this.changed});
 
   final EducationStore store;
   final VoidCallback changed;
@@ -934,10 +853,7 @@ class _CardsPageState extends State<CardsPage> {
     final topic = result['topic']?.trim() ?? '';
 
     if (question.isEmpty || answer.isEmpty) {
-      showMessage(
-        context,
-        'پرسش و پاسخ فلش‌کارت نباید خالی باشند.',
-      );
+      showMessage(context, 'پرسش و پاسخ فلش‌کارت نباید خالی باشند.');
       return;
     }
 
@@ -957,28 +873,18 @@ class _CardsPageState extends State<CardsPage> {
   }
 
   /// SM-2 quality scale: 1 = forgot, 3 = hard, 4 = good, 5 = easy.
-  Future<void> review(
-    Map<String, dynamic> card,
-    int quality,
-  ) async {
+  Future<void> review(Map<String, dynamic> card, int quality) async {
     if (saving) return;
 
     final id = _recordId(card);
 
     if (id.isEmpty || quality < 0 || quality > 5) {
-      showMessage(
-        context,
-        'اطلاعات مرور فلش‌کارت معتبر نیست.',
-      );
+      showMessage(context, 'اطلاعات مرور فلش‌کارت معتبر نیست.');
       return;
     }
 
     final success = await mutate(
-      () => widget.store.reviewCard(
-        id,
-        quality,
-        DateTime.now(),
-      ),
+      () => widget.store.reviewCard(id, quality, DateTime.now()),
     );
 
     if (mounted && success && revealed == id) {
@@ -1004,9 +910,7 @@ class _CardsPageState extends State<CardsPage> {
       return;
     }
 
-    final success = await mutate(
-      () => widget.store.deleteCard(id),
-    );
+    final success = await mutate(() => widget.store.deleteCard(id));
 
     if (mounted && success && revealed == id) {
       setState(() => revealed = null);
@@ -1031,9 +935,7 @@ class _CardsPageState extends State<CardsPage> {
     final cards = widget.store.cards;
     final now = DateTime.now();
 
-    final due = cards.where(
-      (card) => isCardDue(card, now),
-    ).length;
+    final due = cards.where((card) => isCardDue(card, now)).length;
 
     final topicEvidence = estimateTopicMastery(cards);
     final cardsError = widget.store.dataError('edu.cards');
@@ -1050,7 +952,8 @@ class _CardsPageState extends State<CardsPage> {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 92),
         children: [
           NoticeCard(
-            text: '${faNumber(cards.length)} فلش‌کارت داری؛ '
+            text:
+                '${faNumber(cards.length)} فلش‌کارت داری؛ '
                 '${faNumber(due)} کارت آماده مرور است. '
                 'کارت‌های دشوار زودتر و کارت‌هایی که آسان‌تر '
                 'به یاد می‌آیند با فاصله بیشتر مرور می‌شوند.',
@@ -1065,26 +968,20 @@ class _CardsPageState extends State<CardsPage> {
                   children: [
                     const Text(
                       'شواهد یادآوری بر اساس مبحث',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
                     const Text(
                       'این شاخص از مرورهای ثبت‌شده فلش‌کارت‌ها '
                       'برآورد می‌شود؛ نتیجه امتحان یا '
                       'اثبات تسلط کامل نیست.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        height: 1.6,
-                      ),
+                      style: TextStyle(fontSize: 12, height: 1.6),
                     ),
                     for (final item in topicEvidence)
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
                         child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
@@ -1103,9 +1000,7 @@ class _CardsPageState extends State<CardsPage> {
                             ),
                             const SizedBox(height: 5),
                             LinearProgressIndicator(
-                              value: item.estimate
-                                  .clamp(0.0, 1.0)
-                                  .toDouble(),
+                              value: item.estimate.clamp(0.0, 1.0).toDouble(),
                             ),
                             const SizedBox(height: 3),
                             Text(
@@ -1127,15 +1022,12 @@ class _CardsPageState extends State<CardsPage> {
                 ),
               ),
             ),
-          if (cardsError != null)
-            NoticeCard(
-              text: cardsError,
-              warning: true,
-            ),
+          if (cardsError != null) NoticeCard(text: cardsError, warning: true),
           if (cards.isEmpty)
             const EmptyState(
               title: 'یادگیری را ماندگار کنیم',
-              subtitle: 'یک پرسش و پاسخ کوتاه بساز '
+              subtitle:
+                  'یک پرسش و پاسخ کوتاه بساز '
                   'و در فاصله‌های مناسب مرور کن.',
               icon: Icons.style_outlined,
             ),
@@ -1145,8 +1037,7 @@ class _CardsPageState extends State<CardsPage> {
                   ? ObjectKey(card)
                   : ValueKey<String>(_recordId(card)),
               card: card,
-              isRevealed:
-                  revealed != null && revealed == _recordId(card),
+              isRevealed: revealed != null && revealed == _recordId(card),
               saving: saving,
               onReveal: () => revealCard(card),
               onReview: (quality) => review(card, quality),
@@ -1204,9 +1095,7 @@ class _FlashcardTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Icon(
-                  due
-                      ? Icons.notifications_active_outlined
-                      : Icons.schedule,
+                  due ? Icons.notifications_active_outlined : Icons.schedule,
                   size: 19,
                   color: due ? teal : Colors.blueGrey,
                 ),
@@ -1239,10 +1128,7 @@ class _FlashcardTile extends StatelessWidget {
               const SizedBox(height: 12),
               const Text(
                 'پس از تلاش برای یادآوری، کیفیت پاسخ را انتخاب کن:',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.blueGrey,
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.blueGrey),
               ),
               const SizedBox(height: 8),
               Wrap(
@@ -1250,27 +1136,19 @@ class _FlashcardTile extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   OutlinedButton(
-                    onPressed: canReview
-                        ? () => onReview(1)
-                        : null,
+                    onPressed: canReview ? () => onReview(1) : null,
                     child: const Text('فراموش کردم'),
                   ),
                   OutlinedButton(
-                    onPressed: canReview
-                        ? () => onReview(3)
-                        : null,
+                    onPressed: canReview ? () => onReview(3) : null,
                     child: const Text('سخت بود'),
                   ),
                   FilledButton(
-                    onPressed: canReview
-                        ? () => onReview(4)
-                        : null,
+                    onPressed: canReview ? () => onReview(4) : null,
                     child: const Text('خوب بود'),
                   ),
                   FilledButton.tonal(
-                    onPressed: canReview
-                        ? () => onReview(5)
-                        : null,
+                    onPressed: canReview ? () => onReview(5) : null,
                     child: const Text('خیلی آسان'),
                   ),
                 ],
@@ -1342,52 +1220,45 @@ class StudyTipsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          title: const Text('روش‌های مؤثر مطالعه'),
+    appBar: AppBar(title: const Text('روش‌های مؤثر مطالعه')),
+    body: ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const NoticeCard(
+          text:
+              'این راهنمای عمومی و آفلاین است. '
+              'لازم نیست همه روش‌ها را هم‌زمان اجرا کنی؛ '
+              'یک روش کوچک و قابل‌دوام را انتخاب کن.',
+          icon: Icons.menu_book_outlined,
         ),
-        body: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            const NoticeCard(
-              text: 'این راهنمای عمومی و آفلاین است. '
-                  'لازم نیست همه روش‌ها را هم‌زمان اجرا کنی؛ '
-                  'یک روش کوچک و قابل‌دوام را انتخاب کن.',
-              icon: Icons.menu_book_outlined,
-            ),
-            for (final tip in tips)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        tip.$1,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        tip.$2,
-                        style: const TextStyle(height: 1.8),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'تمرین پیشنهادی: ${tip.$3}',
-                        style: const TextStyle(
-                          color: teal,
-                          height: 1.7,
-                        ),
-                      ),
-                    ],
+        for (final tip in tips)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tip.$1,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  Text(tip.$2, style: const TextStyle(height: 1.8)),
+                  const SizedBox(height: 10),
+                  Text(
+                    'تمرین پیشنهادی: ${tip.$3}',
+                    style: const TextStyle(color: teal, height: 1.7),
+                  ),
+                ],
               ),
-          ],
-        ),
-      );
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
 class _TaskDialog extends StatefulWidget {
@@ -1413,82 +1284,78 @@ class _TaskDialogState extends State<_TaskDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        title: const Text('یک قدم تازه برای مطالعه'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Form(
-              key: form,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: title,
-                    maxLength: 120,
-                    textCapitalization:
-                        TextCapitalization.sentences,
-                    decoration: const InputDecoration(
-                      labelText: 'چه کاری می‌خواهی انجام بدهی؟',
-                    ),
-                    validator: (value) =>
-                        value == null || value.trim().isEmpty
-                            ? 'عنوان کار را بنویس.'
-                            : null,
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: subject,
-                    maxLength: 80,
-                    textCapitalization:
-                        TextCapitalization.sentences,
-                    decoration: const InputDecoration(
-                      labelText: 'درس (اختیاری)',
-                    ),
-                  ),
-                  TextFormField(
-                    controller: duration,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'زمان مطالعه به دقیقه',
-                    ),
-                    validator: (value) {
-                      final number = int.tryParse(
-                        digitsToEnglish(value ?? '').trim(),
-                      );
-
-                      return number == null ||
-                              number < 1 ||
-                              number > _maxTaskMinutes
-                          ? 'زمان باید بین ۱ تا ۱۴۴۰ دقیقه باشد.'
-                          : null;
-                    },
-                  ),
-                ],
+    title: const Text('یک قدم تازه برای مطالعه'),
+    content: SizedBox(
+      width: 420,
+      child: SingleChildScrollView(
+        child: Form(
+          key: form,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                key: const Key('task_title_field'),
+                controller: title,
+                maxLength: 120,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  labelText: 'چه کاری می‌خواهی انجام بدهی؟',
+                ),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'عنوان کار را بنویس.'
+                    : null,
               ),
-            ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: subject,
+                maxLength: 80,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(labelText: 'درس (اختیاری)'),
+              ),
+              TextFormField(
+                key: const Key('task_duration_field'),
+                controller: duration,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'زمان مطالعه به دقیقه',
+                ),
+                validator: (value) {
+                  final number = int.tryParse(
+                    digitsToEnglish(value ?? '').trim(),
+                  );
+
+                  return number == null ||
+                          number < 1 ||
+                          number > _maxTaskMinutes
+                      ? 'زمان باید بین ۱ تا ۱۴۴۰ دقیقه باشد.'
+                      : null;
+                },
+              ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('انصراف'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (form.currentState?.validate() == true) {
-                Navigator.pop(context, {
-                  'title': title.text.trim(),
-                  'subject': subject.text.trim(),
-                  'minutes': digitsToEnglish(
-                    duration.text.trim(),
-                  ),
-                });
-              }
-            },
-            child: const Text('افزودن'),
-          ),
-        ],
-      );
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('انصراف'),
+      ),
+      FilledButton(
+        key: const Key('add_task_submit'),
+        onPressed: () {
+          if (form.currentState?.validate() == true) {
+            Navigator.pop(context, {
+              'title': title.text.trim(),
+              'subject': subject.text.trim(),
+              'minutes': digitsToEnglish(duration.text.trim()),
+            });
+          }
+        },
+        child: const Text('افزودن'),
+      ),
+    ],
+  );
 }
 
 class _ExamDialog extends StatefulWidget {
@@ -1537,10 +1404,7 @@ class _ExamDialogState extends State<_ExamDialog> {
     final total = _number(value ?? '');
     final earned = _number(score.text);
 
-    if (total == null ||
-        !total.isFinite ||
-        total <= 0 ||
-        total > 1000) {
+    if (total == null || !total.isFinite || total <= 0 || total > 1000) {
       return 'نمره کل باید بیشتر از صفر و حداکثر ۱۰۰۰ باشد.';
     }
 
@@ -1559,75 +1423,67 @@ class _ExamDialogState extends State<_ExamDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        title: const Text('ثبت نتیجه آزمون'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Form(
-              key: form,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: subject,
-                    maxLength: 80,
-                    textCapitalization:
-                        TextCapitalization.sentences,
-                    decoration: const InputDecoration(
-                      labelText: 'نام درس',
-                    ),
-                    validator: (value) =>
-                        value == null || value.trim().isEmpty
-                            ? 'نام درس را بنویس.'
-                            : null,
-                  ),
-                  TextFormField(
-                    controller: score,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'نمره کسب‌شده',
-                    ),
-                    validator: _validateScore,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: max,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'نمره کل',
-                    ),
-                    validator: _validateMax,
-                  ),
-                ],
+    title: const Text('ثبت نتیجه آزمون'),
+    content: SizedBox(
+      width: 420,
+      child: SingleChildScrollView(
+        child: Form(
+          key: form,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                key: const Key('exam_subject_field'),
+                controller: subject,
+                maxLength: 80,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(labelText: 'نام درس'),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'نام درس را بنویس.'
+                    : null,
               ),
-            ),
+              TextFormField(
+                key: const Key('exam_score_field'),
+                controller: score,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(labelText: 'نمره کسب‌شده'),
+                validator: _validateScore,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: max,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(labelText: 'نمره کل'),
+                validator: _validateMax,
+              ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('انصراف'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (form.currentState?.validate() == true) {
-                Navigator.pop(context, {
-                  'subject': subject.text.trim(),
-                  'score': digitsToEnglish(score.text.trim()),
-                  'max': digitsToEnglish(max.text.trim()),
-                });
-              }
-            },
-            child: const Text('ثبت نمره'),
-          ),
-        ],
-      );
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('انصراف'),
+      ),
+      FilledButton(
+        onPressed: () {
+          if (form.currentState?.validate() == true) {
+            Navigator.pop(context, {
+              'subject': subject.text.trim(),
+              'score': digitsToEnglish(score.text.trim()),
+              'max': digitsToEnglish(max.text.trim()),
+            });
+          }
+        },
+        child: const Text('ثبت نمره'),
+      ),
+    ],
+  );
 }
 
 class _CardDialog extends StatefulWidget {
@@ -1653,69 +1509,62 @@ class _CardDialogState extends State<_CardDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        title: const Text('فلش‌کارت جدید'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Form(
-              key: form,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: q,
-                    maxLines: 2,
-                    maxLength: 1000,
-                    decoration: const InputDecoration(
-                      labelText: 'پرسش',
-                    ),
-                    validator: (value) =>
-                        value == null || value.trim().isEmpty
-                            ? 'پرسش را بنویس.'
-                            : null,
-                  ),
-                  TextFormField(
-                    controller: a,
-                    maxLines: 3,
-                    maxLength: 2000,
-                    decoration: const InputDecoration(
-                      labelText: 'پاسخ',
-                    ),
-                    validator: (value) =>
-                        value == null || value.trim().isEmpty
-                            ? 'پاسخ را بنویس.'
-                            : null,
-                  ),
-                  TextFormField(
-                    controller: topic,
-                    maxLength: 80,
-                    decoration: const InputDecoration(
-                      labelText:
-                          'مبحث (اختیاری؛ برای گزارش یادگیری)',
-                    ),
-                  ),
-                ],
+    title: const Text('فلش‌کارت جدید'),
+    content: SizedBox(
+      width: 420,
+      child: SingleChildScrollView(
+        child: Form(
+          key: form,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: q,
+                maxLines: 2,
+                maxLength: 1000,
+                decoration: const InputDecoration(labelText: 'پرسش'),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'پرسش را بنویس.'
+                    : null,
               ),
-            ),
+              TextFormField(
+                controller: a,
+                maxLines: 3,
+                maxLength: 2000,
+                decoration: const InputDecoration(labelText: 'پاسخ'),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'پاسخ را بنویس.'
+                    : null,
+              ),
+              TextFormField(
+                controller: topic,
+                maxLength: 80,
+                decoration: const InputDecoration(
+                  labelText: 'مبحث (اختیاری؛ برای گزارش یادگیری)',
+                ),
+              ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('انصراف'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (form.currentState?.validate() == true) {
-                Navigator.pop(context, {
-                  'q': q.text.trim(),
-                  'a': a.text.trim(),
-                  'topic': topic.text.trim(),
-                });
-              }
-            },
-            child: const Text('ذخیره'),
-          ),
-        ],
-      );
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('انصراف'),
+      ),
+      FilledButton(
+        onPressed: () {
+          if (form.currentState?.validate() == true) {
+            Navigator.pop(context, {
+              'q': q.text.trim(),
+              'a': a.text.trim(),
+              'topic': topic.text.trim(),
+            });
+          }
+        },
+        child: const Text('ذخیره'),
+      ),
+    ],
+  );
 }

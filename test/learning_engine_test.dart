@@ -9,29 +9,36 @@ Map<String, dynamic> task(
   String subject = 'ریاضی',
   String? due,
   bool done = false,
-}) =>
-    {
-      'id': id,
-      'title': 'کار $id',
-      'subject': subject,
-      'minutes': minutes,
-      'done': done,
-      if (due != null) 'dueDate': due,
-    };
+}) => {
+  'id': id,
+  'title': 'کار $id',
+  'subject': subject,
+  'minutes': minutes,
+  'done': done,
+  if (due != null) 'dueDate': due,
+};
 
 void main() {
   final today = DateTime(2026, 11, 18); // Wednesday
 
   group('SM-2 spaced repetition', () {
-    test('first and second successful reviews are scheduled for 1 and 6 days', () {
-      var state = const ReviewState(ease: 2.5, interval: 0, reps: 0, lapses: 0);
-      state = sm2Next(state, 4);
-      expect(state.interval, 1);
-      expect(state.reps, 1);
-      state = sm2Next(state, 4);
-      expect(state.interval, 6);
-      expect(state.reps, 2);
-    });
+    test(
+      'first and second successful reviews are scheduled for 1 and 6 days',
+      () {
+        var state = const ReviewState(
+          ease: 2.5,
+          interval: 0,
+          reps: 0,
+          lapses: 0,
+        );
+        state = sm2Next(state, 4);
+        expect(state.interval, 1);
+        expect(state.reps, 1);
+        state = sm2Next(state, 4);
+        expect(state.interval, 6);
+        expect(state.reps, 2);
+      },
+    );
 
     test('later successful reviews grow by the ease factor', () {
       const state = ReviewState(ease: 2.5, interval: 6, reps: 2, lapses: 0);
@@ -48,7 +55,12 @@ void main() {
     });
 
     test('hard answers lower ease but never below 1.3', () {
-      var state = const ReviewState(ease: 1.35, interval: 6, reps: 2, lapses: 0);
+      var state = const ReviewState(
+        ease: 1.35,
+        interval: 6,
+        reps: 2,
+        lapses: 0,
+      );
       for (var i = 0; i < 5; i++) {
         state = sm2Next(state, 3);
       }
@@ -72,10 +84,17 @@ void main() {
 
     test('applyCardReview stores the new schedule and due date', () {
       final now = DateTime(2026, 11, 18, 10);
-      final card = applyCardReview({'id': 'c1', 'q': 'x', 'a': 'y', 'interval': 0}, 4, now);
+      final card = applyCardReview(
+        {'id': 'c1', 'q': 'x', 'a': 'y', 'interval': 0},
+        4,
+        now,
+      );
       expect(card['interval'], 1);
       expect(card['q'], 'x');
-      expect(DateTime.parse(card['dueAt'] as String), now.add(const Duration(days: 1)));
+      expect(
+        DateTime.parse(card['dueAt'] as String),
+        now.add(const Duration(days: 1)),
+      );
       expect(card['reviewHistory'], [
         {
           'quality': 4,
@@ -91,15 +110,29 @@ void main() {
     test('cards without a due date or with a past due date are due', () {
       final now = DateTime(2026, 11, 18, 10);
       expect(isCardDue({}, now), isTrue);
-      expect(isCardDue({'dueAt': now.add(const Duration(days: 1)).toIso8601String()}, now), isFalse);
-      expect(isCardDue({'dueAt': now.subtract(const Duration(hours: 1)).toIso8601String()}, now), isTrue);
+      expect(
+        isCardDue({
+          'dueAt': now.add(const Duration(days: 1)).toIso8601String(),
+        }, now),
+        isFalse,
+      );
+      expect(
+        isCardDue({
+          'dueAt': now.subtract(const Duration(hours: 1)).toIso8601String(),
+        }, now),
+        isTrue,
+      );
     });
   });
 
   group('adaptive planner', () {
     test('respects the daily cap and spreads work over days', () {
       final plan = buildAdaptivePlan(
-        tasks: [task('a', minutes: 60), task('b', minutes: 60), task('c', minutes: 60)],
+        tasks: [
+          task('a', minutes: 60),
+          task('b', minutes: 60),
+          task('c', minutes: 60),
+        ],
         exams: const [],
         deadlines: const [],
         today: today,
@@ -110,7 +143,10 @@ void main() {
       for (final minutes in plan.loadByDay.values) {
         expect(minutes, lessThanOrEqualTo(120));
       }
-      expect(plan.loadByDay.values.fold<int>(0, (sum, value) => sum + value), 180);
+      expect(
+        plan.loadByDay.values.fold<int>(0, (sum, value) => sum + value),
+        180,
+      );
     });
 
     test('never schedules work on rest weekdays', () {
@@ -204,9 +240,24 @@ void main() {
     test('subject averages and trend use valid scored exams only', () {
       final report = buildLearningReport(
         exams: [
-          {'subject': 'ریاضی', 'score': 10, 'max': 20, 'createdAt': '2026-10-01T00:00:00.000'},
-          {'subject': 'ریاضی', 'score': 16, 'max': 20, 'createdAt': '2026-11-01T00:00:00.000'},
-          {'subject': 'فیزیک', 'score': 25, 'max': 20, 'createdAt': '2026-11-02T00:00:00.000'},
+          {
+            'subject': 'ریاضی',
+            'score': 10,
+            'max': 20,
+            'createdAt': '2026-10-01T00:00:00.000',
+          },
+          {
+            'subject': 'ریاضی',
+            'score': 16,
+            'max': 20,
+            'createdAt': '2026-11-01T00:00:00.000',
+          },
+          {
+            'subject': 'فیزیک',
+            'score': 25,
+            'max': 20,
+            'createdAt': '2026-11-02T00:00:00.000',
+          },
           {'subject': 'ادبیات', 'score': 19, 'max': 20},
         ],
         tasks: const [],
@@ -221,25 +272,33 @@ void main() {
       expect(report.weaknesses, isEmpty);
     });
 
-    test('adherence counts only past-due tasks and weekly minutes use completion date', () {
-      final tasks = <Map<String, dynamic>>[
-        {
-          'id': '1',
-          'minutes': 30,
-          'done': true,
-          'dueDate': '2026-11-15',
-          'completedAt': DateTime(2026, 11, 15, 20).toUtc().toIso8601String(),
-        },
-        {'id': '2', 'minutes': 30, 'done': false, 'dueDate': '2026-11-16'},
-        {'id': '3', 'minutes': 30, 'done': false, 'dueDate': '2026-11-18'},
-        {'id': '4', 'minutes': 30, 'done': true},
-      ];
-      final report = buildLearningReport(exams: const [], tasks: tasks, cards: const [], now: now);
-      expect(report.adherenceSample, 2);
-      expect(report.adherence, 0.5);
-      expect(report.weeks.length, 4);
-      expect(report.weeks.last.completedMinutes, 30);
-    });
+    test(
+      'adherence counts only past-due tasks and weekly minutes use completion date',
+      () {
+        final tasks = <Map<String, dynamic>>[
+          {
+            'id': '1',
+            'minutes': 30,
+            'done': true,
+            'dueDate': '2026-11-15',
+            'completedAt': DateTime(2026, 11, 15, 20).toUtc().toIso8601String(),
+          },
+          {'id': '2', 'minutes': 30, 'done': false, 'dueDate': '2026-11-16'},
+          {'id': '3', 'minutes': 30, 'done': false, 'dueDate': '2026-11-18'},
+          {'id': '4', 'minutes': 30, 'done': true},
+        ];
+        final report = buildLearningReport(
+          exams: const [],
+          tasks: tasks,
+          cards: const [],
+          now: now,
+        );
+        expect(report.adherenceSample, 2);
+        expect(report.adherence, 0.5);
+        expect(report.weeks.length, 4);
+        expect(report.weeks.last.completedMinutes, 30);
+      },
+    );
 
     test('missing data is reported as a gap instead of an invented trend', () {
       final report = buildLearningReport(
@@ -270,42 +329,70 @@ void main() {
   });
 
   group('daily suggestions', () {
-    test('lists overdue work, weak subjects and near deadlines without guarantees', () {
-      final now = DateTime(2026, 11, 18, 9);
-      final tasks = <Map<String, dynamic>>[
-        {'id': 'o', 'title': 'تمرین', 'subject': 'فیزیک', 'minutes': 200, 'done': false, 'dueDate': '2026-11-10'},
-      ];
-      final report = buildLearningReport(
-        exams: [
-          {'subject': 'فیزیک', 'score': 8, 'max': 20, 'createdAt': '2026-11-01T00:00:00'},
-        ],
-        tasks: tasks,
-        cards: const [],
-        now: now,
-      );
-      final tips = dailySuggestions(
-        report: report,
-        tasks: tasks,
-        deadlines: [
-          {'id': 'd', 'subject': 'فیزیک', 'date': '2026-11-19'},
-        ],
-        now: now,
-      );
-      expect(tips.length, lessThanOrEqualTo(3));
-      expect(tips.any((tip) => tip.contains('عقب‌افتاده')), isTrue);
-      expect(tips.any((tip) => tip.contains('امتحان فیزیک')), isTrue);
-      for (final tip in tips) {
-        expect(tip.contains('قطعی'), isFalse);
-        expect(tip.contains('تضمین'), isFalse);
-      }
-    });
+    test(
+      'lists overdue work, weak subjects and near deadlines without guarantees',
+      () {
+        final now = DateTime(2026, 11, 18, 9);
+        final tasks = <Map<String, dynamic>>[
+          {
+            'id': 'o',
+            'title': 'تمرین',
+            'subject': 'فیزیک',
+            'minutes': 200,
+            'done': false,
+            'dueDate': '2026-11-10',
+          },
+        ];
+        final report = buildLearningReport(
+          exams: [
+            {
+              'subject': 'فیزیک',
+              'score': 8,
+              'max': 20,
+              'createdAt': '2026-11-01T00:00:00',
+            },
+          ],
+          tasks: tasks,
+          cards: const [],
+          now: now,
+        );
+        final tips = dailySuggestions(
+          report: report,
+          tasks: tasks,
+          deadlines: [
+            {'id': 'd', 'subject': 'فیزیک', 'date': '2026-11-19'},
+          ],
+          now: now,
+        );
+        expect(tips.length, lessThanOrEqualTo(3));
+        expect(tips.any((tip) => tip.contains('عقب‌افتاده')), isTrue);
+        expect(tips.any((tip) => tip.contains('امتحان فیزیک')), isTrue);
+        for (final tip in tips) {
+          expect(tip.contains('قطعی'), isFalse);
+          expect(tip.contains('تضمین'), isFalse);
+        }
+      },
+    );
 
-    test('falls back to one small, actionable step when there is nothing else', () {
-      final report = buildLearningReport(exams: const [], tasks: const [], cards: const [], now: DateTime(2026, 11, 18));
-      final tips = dailySuggestions(report: report, tasks: const [], deadlines: const [], now: DateTime(2026, 11, 18));
-      expect(tips.length, 1);
-      expect(tips.single, contains('یک کار کوچک'));
-    });
+    test(
+      'falls back to one small, actionable step when there is nothing else',
+      () {
+        final report = buildLearningReport(
+          exams: const [],
+          tasks: const [],
+          cards: const [],
+          now: DateTime(2026, 11, 18),
+        );
+        final tips = dailySuggestions(
+          report: report,
+          tasks: const [],
+          deadlines: const [],
+          now: DateTime(2026, 11, 18),
+        );
+        expect(tips.length, 1);
+        expect(tips.single, contains('یک کار کوچک'));
+      },
+    );
   });
 
   group('persian digits', () {
@@ -316,78 +403,119 @@ void main() {
 
   group('workspace backup format', () {
     test('round-trips study sections', () {
-      final raw = WorkspaceBackup.encode(
-        {
-          'edu.tasks': [
-            {'id': 't1', 'title': 'x', 'done': false},
-          ],
-          'edu.profile': {'grade': 'دهم'},
-        },
-        DateTime(2026, 11, 18),
-      );
+      final raw = WorkspaceBackup.encode({
+        'edu.tasks': [
+          {'id': 't1', 'title': 'x', 'done': false},
+        ],
+        'edu.profile': {'grade': 'دهم'},
+      }, DateTime(2026, 11, 18));
       final decoded = WorkspaceBackup.decode(raw);
       expect(decoded.keys, containsAll(['edu.tasks', 'edu.profile']));
     });
 
-    test('rejects the AI wallet so credits can never be created by importing a file', () {
-      final raw = jsonEncode({
-        'app': 'simorgh',
-        'format': 1,
-        'data': <String, Object?>{
-          'edu.ai.wallet': {'credits': 999999},
-        },
-      });
-      expect(() => WorkspaceBackup.decode(raw), throwsA(isA<BackupFormatException>()));
-    });
+    test(
+      'rejects the AI wallet so credits can never be created by importing a file',
+      () {
+        final raw = jsonEncode({
+          'app': 'simorgh',
+          'format': 1,
+          'data': <String, Object?>{
+            'edu.ai.wallet': {'credits': 999999},
+          },
+        });
+        expect(
+          () => WorkspaceBackup.decode(raw),
+          throwsA(isA<BackupFormatException>()),
+        );
+      },
+    );
 
     test('rejects unknown sections, other apps and unsupported formats', () {
       expect(
-        () => WorkspaceBackup.decode(jsonEncode({'app': 'simorgh', 'format': 1, 'data': <String, Object?>{'edu.unknown': <Object>[]}})),
+        () => WorkspaceBackup.decode(
+          jsonEncode({
+            'app': 'simorgh',
+            'format': 1,
+            'data': <String, Object?>{'edu.unknown': <Object>[]},
+          }),
+        ),
         throwsA(isA<BackupFormatException>()),
       );
       expect(
-        () => WorkspaceBackup.decode(jsonEncode({'app': 'other', 'format': 1, 'data': <String, Object?>{}})),
+        () => WorkspaceBackup.decode(
+          jsonEncode({
+            'app': 'other',
+            'format': 1,
+            'data': <String, Object?>{},
+          }),
+        ),
         throwsA(isA<BackupFormatException>()),
       );
       expect(
-        () => WorkspaceBackup.decode(jsonEncode({'app': 'simorgh', 'format': 9, 'data': <String, Object?>{}})),
+        () => WorkspaceBackup.decode(
+          jsonEncode({
+            'app': 'simorgh',
+            'format': 9,
+            'data': <String, Object?>{},
+          }),
+        ),
         throwsA(isA<BackupFormatException>()),
       );
     });
 
     test('rejects malformed JSON, empty input and wrong item shapes', () {
-      expect(() => WorkspaceBackup.decode('not json'), throwsA(isA<BackupFormatException>()));
-      expect(() => WorkspaceBackup.decode('   '), throwsA(isA<BackupFormatException>()));
       expect(
-        () => WorkspaceBackup.decode(jsonEncode({'app': 'simorgh', 'format': 1, 'data': <String, Object?>{'edu.tasks': 'bad'}})),
+        () => WorkspaceBackup.decode('not json'),
         throwsA(isA<BackupFormatException>()),
       );
       expect(
-        () => WorkspaceBackup.decode(jsonEncode({'app': 'simorgh', 'format': 1, 'data': <String, Object?>{'edu.tasks': [1, 2]}})),
+        () => WorkspaceBackup.decode('   '),
+        throwsA(isA<BackupFormatException>()),
+      );
+      expect(
+        () => WorkspaceBackup.decode(
+          jsonEncode({
+            'app': 'simorgh',
+            'format': 1,
+            'data': <String, Object?>{'edu.tasks': 'bad'},
+          }),
+        ),
+        throwsA(isA<BackupFormatException>()),
+      );
+      expect(
+        () => WorkspaceBackup.decode(
+          jsonEncode({
+            'app': 'simorgh',
+            'format': 1,
+            'data': <String, Object?>{
+              'edu.tasks': [1, 2],
+            },
+          }),
+        ),
         throwsA(isA<BackupFormatException>()),
       );
     });
 
     test('rejects oversized input before parsing it', () {
       final huge = 'x' * (WorkspaceBackup.maxBytes + 1);
-      expect(() => WorkspaceBackup.decode(huge), throwsA(isA<BackupFormatException>()));
+      expect(
+        () => WorkspaceBackup.decode(huge),
+        throwsA(isA<BackupFormatException>()),
+      );
     });
   });
   test('backup encoder refuses documents that its decoder would reject', () {
     expect(
-      () => WorkspaceBackup.encode(
-        {'edu.ai.wallet': {'credits': 100}},
-        DateTime(2026, 11, 19),
-      ),
+      () => WorkspaceBackup.encode({
+        'edu.ai.wallet': {'credits': 100},
+      }, DateTime(2026, 11, 19)),
       throwsA(isA<BackupFormatException>()),
     );
     expect(
-      () => WorkspaceBackup.encode(
-        {'edu.profile': {'notes': 'x' * WorkspaceBackup.maxBytes}},
-        DateTime(2026, 11, 19),
-      ),
+      () => WorkspaceBackup.encode({
+        'edu.profile': {'notes': 'x' * WorkspaceBackup.maxBytes},
+      }, DateTime(2026, 11, 19)),
       throwsA(isA<BackupFormatException>()),
     );
   });
-
 }

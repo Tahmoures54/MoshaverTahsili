@@ -124,9 +124,7 @@ final RegExp _unsafeTopicCharacters = RegExp(
   r'\u2066-\u2069\uFEFF]',
 );
 
-final RegExp _isoTimestampPrefix = RegExp(
-  r'^(\d{4})-(\d{2})-(\d{2})[Tt ]',
-);
+final RegExp _isoTimestampPrefix = RegExp(r'^(\d{4})-(\d{2})-(\d{2})[Tt ]');
 
 String? _normalizedTopic(Object? value) {
   if (value is! String) return null;
@@ -187,11 +185,7 @@ DateTime? _reviewedAtOf(Object? value) {
   final month = int.parse(match.group(2)!);
   final day = int.parse(match.group(3)!);
 
-  if (year < 1 ||
-      month < 1 ||
-      month > 12 ||
-      day < 1 ||
-      day > 31) {
+  if (year < 1 || month < 1 || month > 12 || day < 1 || day > 31) {
     return null;
   }
 
@@ -234,9 +228,7 @@ class _ReviewEvidence {
 }
 
 class _CardEvidence {
-  _CardEvidence({
-    required this.topic,
-  });
+  _CardEvidence({required this.topic});
 
   final String topic;
 
@@ -260,10 +252,7 @@ class _CardEvidence {
   }
 
   List<_ReviewEvidence> retainedReviews(int maximum) {
-    final reviews = <_ReviewEvidence>[
-      ...dated.values,
-      ...undated,
-    ];
+    final reviews = <_ReviewEvidence>[...dated.values, ...undated];
 
     reviews.sort((a, b) {
       final aDate = a.reviewedAt;
@@ -330,8 +319,7 @@ void _validateOptions({
   required int? lookbackDays,
   required double? halfLifeDays,
 }) {
-  if (maxReviewsPerCard < 1 ||
-      maxReviewsPerCard > _maxHistoryRecordsToRead) {
+  if (maxReviewsPerCard < 1 || maxReviewsPerCard > _maxHistoryRecordsToRead) {
     throw RangeError.range(
       maxReviewsPerCard,
       1,
@@ -351,20 +339,12 @@ void _validateOptions({
     );
   }
 
-  if (lookbackDays != null &&
-      (lookbackDays < 1 || lookbackDays > 36500)) {
-    throw RangeError.range(
-      lookbackDays,
-      1,
-      36500,
-      'lookbackDays',
-    );
+  if (lookbackDays != null && (lookbackDays < 1 || lookbackDays > 36500)) {
+    throw RangeError.range(lookbackDays, 1, 36500, 'lookbackDays');
   }
 
   if (halfLifeDays != null &&
-      (!halfLifeDays.isFinite ||
-          halfLifeDays <= 0 ||
-          halfLifeDays > 36500)) {
+      (!halfLifeDays.isFinite || halfLifeDays <= 0 || halfLifeDays > 36500)) {
     throw ArgumentError.value(
       halfLifeDays,
       'halfLifeDays',
@@ -450,8 +430,7 @@ List<TopicMastery> estimateTopicMastery(
       ? referenceTime.subtract(Duration(days: lookbackDays))
       : null;
 
-  final requiresTimestamp =
-      lookbackDays != null || halfLifeDays != null;
+  final requiresTimestamp = lookbackDays != null || halfLifeDays != null;
 
   // Prefixes prevent real ids from colliding with generated identities.
   final cardEvidence = <String, _CardEvidence>{};
@@ -487,10 +466,7 @@ List<TopicMastery> estimateTopicMastery(
       () => _CardEvidence(topic: topic),
     );
 
-    final firstIndex = math.max(
-      0,
-      history.length - _maxHistoryRecordsToRead,
-    );
+    final firstIndex = math.max(0, history.length - _maxHistoryRecordsToRead);
 
     for (var index = firstIndex; index < history.length; index++) {
       final raw = history[index];
@@ -552,13 +528,9 @@ List<TopicMastery> estimateTopicMastery(
       if (halfLifeDays != null) {
         // Option validation and filtering guarantee both values exist here.
         final age = referenceTime!.difference(review.reviewedAt!);
-        final ageDays =
-            age.inMicroseconds / Duration.microsecondsPerDay;
+        final ageDays = age.inMicroseconds / Duration.microsecondsPerDay;
 
-        final decay = math.pow(
-          0.5,
-          ageDays / halfLifeDays,
-        ).toDouble();
+        final decay = math.pow(0.5, ageDays / halfLifeDays).toDouble();
 
         weight *= decay;
       }
@@ -588,8 +560,7 @@ List<TopicMastery> estimateTopicMastery(
       if (timestamp != null) {
         datedCount++;
 
-        if (latestReviewedAt == null ||
-            timestamp.isAfter(latestReviewedAt)) {
+        if (latestReviewedAt == null || timestamp.isAfter(latestReviewedAt)) {
           latestReviewedAt = timestamp;
         }
       }
@@ -597,9 +568,7 @@ List<TopicMastery> estimateTopicMastery(
 
     final rawWeight = weightedSuccesses + weightedFailures;
 
-    if (retainedCount == 0 ||
-        !rawWeight.isFinite ||
-        rawWeight <= 0) {
+    if (retainedCount == 0 || !rawWeight.isFinite || rawWeight <= 0) {
       continue;
     }
 
@@ -611,10 +580,7 @@ List<TopicMastery> estimateTopicMastery(
     final successEvidence = weightedSuccesses * scale;
     final failureEvidence = weightedFailures * scale;
 
-    final totals = totalsByTopic.putIfAbsent(
-      bucket.topic,
-      _TopicTotals.new,
-    );
+    final totals = totalsByTopic.putIfAbsent(bucket.topic, _TopicTotals.new);
 
     totals.alpha += successEvidence;
     totals.beta += failureEvidence;
@@ -632,8 +598,7 @@ List<TopicMastery> estimateTopicMastery(
     final previousLatest = totals.latestReviewedAt;
 
     if (latestReviewedAt != null &&
-        (previousLatest == null ||
-            latestReviewedAt.isAfter(previousLatest))) {
+        (previousLatest == null || latestReviewedAt.isAfter(previousLatest))) {
       totals.latestReviewedAt = latestReviewedAt;
     }
   }
@@ -644,15 +609,11 @@ List<TopicMastery> estimateTopicMastery(
     final totals = entry.value;
     final total = totals.alpha + totals.beta;
 
-    if (totals.count <= 0 ||
-        !total.isFinite ||
-        total <= 0) {
+    if (totals.count <= 0 || !total.isFinite || total <= 0) {
       continue;
     }
 
-    final mean = (totals.alpha / total)
-        .clamp(0.0, 1.0)
-        .toDouble();
+    final mean = (totals.alpha / total).clamp(0.0, 1.0).toDouble();
 
     // Algebraically equivalent to alpha*beta / (total²*(total+1)),
     // but avoids unnecessary large intermediate products.
@@ -681,9 +642,7 @@ List<TopicMastery> estimateTopicMastery(
   result.sort((a, b) {
     final byEstimate = a.estimate.compareTo(b.estimate);
 
-    return byEstimate != 0
-        ? byEstimate
-        : a.topic.compareTo(b.topic);
+    return byEstimate != 0 ? byEstimate : a.topic.compareTo(b.topic);
   });
 
   return List<TopicMastery>.unmodifiable(result);

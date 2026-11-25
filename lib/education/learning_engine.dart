@@ -48,9 +48,7 @@ DateTime? parseDay(Object? value) {
   if (value == null) return null;
 
   final text = value.toString().trim();
-  final match = RegExp(
-    r'^(\d{4})-(\d{2})-(\d{2})(?:$|[Tt ])',
-  ).firstMatch(text);
+  final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})(?:$|[Tt ])').firstMatch(text);
 
   if (match == null) return null;
 
@@ -58,11 +56,7 @@ DateTime? parseDay(Object? value) {
   final month = int.parse(match.group(2)!);
   final day = int.parse(match.group(3)!);
 
-  if (year < 1 ||
-      month < 1 ||
-      month > 12 ||
-      day < 1 ||
-      day > 31) {
+  if (year < 1 || month < 1 || month > 12 || day < 1 || day > 31) {
     return null;
   }
 
@@ -154,18 +148,11 @@ double _boundedDouble(
 }) {
   final number = _finiteNumberOf(value);
 
-  return (number ?? fallback)
-      .clamp(minimum, maximum)
-      .toDouble();
+  return (number ?? fallback).clamp(minimum, maximum).toDouble();
 }
 
 int _learningMinutes(Object? value, {int fallback = 0}) {
-  return _boundedInt(
-    value,
-    fallback: fallback,
-    minimum: 0,
-    maximum: 1440,
-  );
+  return _boundedInt(value, fallback: fallback, minimum: 0, maximum: 1440);
 }
 
 /// Normalizes labels without truncating their identity.
@@ -216,11 +203,7 @@ double? examPercent(Entry exam) {
   final s = score.toDouble();
   final m = max.toDouble();
 
-  if (!s.isFinite ||
-      !m.isFinite ||
-      m <= 0 ||
-      s < 0 ||
-      s > m) {
+  if (!s.isFinite || !m.isFinite || m <= 0 || s < 0 || s > m) {
     return null;
   }
 
@@ -243,8 +226,7 @@ Map<String, double> subjectAverages(List<Entry> exams) {
   }
 
   return Map<String, double>.unmodifiable({
-    for (final subject in sums.keys)
-      subject: sums[subject]! / counts[subject]!,
+    for (final subject in sums.keys) subject: sums[subject]! / counts[subject]!,
   });
 }
 
@@ -280,12 +262,7 @@ ReviewState reviewStateOf(Entry card) {
       minimum: 0,
       maximum: 365,
     ),
-    reps: _boundedInt(
-      card['reps'],
-      fallback: 0,
-      minimum: 0,
-      maximum: 100000,
-    ),
+    reps: _boundedInt(card['reps'], fallback: 0, minimum: 0, maximum: 100000),
     lapses: _boundedInt(
       card['lapses'],
       fallback: 0,
@@ -333,10 +310,9 @@ ReviewState sm2Next(ReviewState state, int quality) {
   }
 
   final penalty = 5 - quality;
-  final ease = (
-    current.ease +
-        (0.1 - penalty * (0.08 + penalty * 0.02))
-  ).clamp(1.3, 3.0).toDouble();
+  final ease = (current.ease + (0.1 - penalty * (0.08 + penalty * 0.02)))
+      .clamp(1.3, 3.0)
+      .toDouble();
 
   final reps = (current.reps + 1).clamp(0, 100000).toInt();
 
@@ -413,9 +389,7 @@ bool isCardDue(Entry card, DateTime now) {
   if (raw.isEmpty) return true;
 
   // Accept legacy date-only due values at local midnight.
-  final due = raw.length == 10
-      ? parseDay(raw)
-      : _parseInstant(raw);
+  final due = raw.length == 10 ? parseDay(raw) : _parseInstant(raw);
 
   return due != null && !due.isAfter(now);
 }
@@ -425,9 +399,7 @@ bool _hasInvalidCardDue(Entry card) {
 
   if (raw.isEmpty) return false;
 
-  return raw.length == 10
-      ? parseDay(raw) == null
-      : _parseInstant(raw) == null;
+  return raw.length == 10 ? parseDay(raw) == null : _parseInstant(raw) == null;
 }
 
 // ---------------------------------------------------------------------------
@@ -517,9 +489,7 @@ AdaptivePlan buildAdaptivePlan({
         : 100.0 - recordedAverage;
 
     final days = nearestDeadline[subject];
-    final urgency = days == null
-        ? 0
-        : (30 - days).clamp(0, 30).toInt() * 2;
+    final urgency = days == null ? 0 : (30 - days).clamp(0, 30).toInt() * 2;
 
     return practiceWeight + urgency;
   }
@@ -535,9 +505,7 @@ AdaptivePlan buildAdaptivePlan({
     if (id.trim().isEmpty) continue;
 
     if (!seenIds.add(id)) {
-      throw ArgumentError(
-        'Duplicate task id in adaptive planner: $id',
-      );
+      throw ArgumentError('Duplicate task id in adaptive planner: $id');
     }
 
     open.add(task);
@@ -606,8 +574,7 @@ AdaptivePlan buildAdaptivePlan({
 
     final String reason;
 
-    if (currentDue != null &&
-        _calendarDaysBetween(start, currentDue) < 0) {
+    if (currentDue != null && _calendarDaysBetween(start, currentDue) < 0) {
       reason =
           'این کار از موعد گذشته بود و با توجه به ترتیب اولویت‌ها، '
           'به اولین روز دارای ظرفیت منتقل شد.';
@@ -627,12 +594,7 @@ AdaptivePlan buildAdaptivePlan({
     }
 
     changes.add(
-      PlanChange(
-        taskId: id,
-        title: title,
-        newDate: newDate,
-        reason: reason,
-      ),
+      PlanChange(taskId: id, title: title, newDate: newDate, reason: reason),
     );
   }
 
@@ -641,8 +603,7 @@ AdaptivePlan buildAdaptivePlan({
     changes: List<PlanChange>.unmodifiable(changes),
     unplacedIds: List<String>.unmodifiable(unplaced),
     loadByDay: Map<String, int>.unmodifiable({
-      for (final entry in loads.entries)
-        isoDay(days[entry.key]): entry.value,
+      for (final entry in loads.entries) isoDay(days[entry.key]): entry.value,
     }),
   );
 }
@@ -724,13 +685,10 @@ class LearningReport {
   ///
   /// Consumers should check examCount before making subject-level advice.
   List<SubjectProgress> get weaknesses {
-    return subjects.where((s) => s.average < 60).toList()
-      ..sort((a, b) {
-        final byAverage = a.average.compareTo(b.average);
-        return byAverage != 0
-            ? byAverage
-            : a.subject.compareTo(b.subject);
-      });
+    return subjects.where((s) => s.average < 60).toList()..sort((a, b) {
+      final byAverage = a.average.compareTo(b.average);
+      return byAverage != 0 ? byAverage : a.subject.compareTo(b.subject);
+    });
   }
 }
 
@@ -763,14 +721,8 @@ LearningReport buildLearningReport({
     }
 
     grouped
-        .putIfAbsent(
-          subject,
-          () => <({double percent, DateTime? date})>[],
-        )
-        .add((
-          percent: percent,
-          date: _parseInstant(exam['createdAt']),
-        ));
+        .putIfAbsent(subject, () => <({double percent, DateTime? date})>[])
+        .add((percent: percent, date: _parseInstant(exam['createdAt'])));
   }
 
   final subjects = <SubjectProgress>[];
@@ -778,10 +730,9 @@ LearningReport buildLearningReport({
 
   for (final entry in grouped.entries) {
     final values = entry.value;
-    final average = values.fold<double>(
-      0.0,
-      (sum, exam) => sum + exam.percent,
-    ) / values.length;
+    final average =
+        values.fold<double>(0.0, (sum, exam) => sum + exam.percent) /
+        values.length;
 
     double? trend;
 
@@ -790,20 +741,17 @@ LearningReport buildLearningReport({
 
       final hasCertainChronology = values.every((exam) {
         final date = exam.date;
-        return date != null &&
-            uniqueTimes.add(date.microsecondsSinceEpoch);
+        return date != null && uniqueTimes.add(date.microsecondsSinceEpoch);
       });
 
       if (hasCertainChronology) {
-        final ordered = [...values]
-          ..sort((a, b) => a.date!.compareTo(b.date!));
+        final ordered = [...values]..sort((a, b) => a.date!.compareTo(b.date!));
 
         final earlierSum = ordered
             .take(ordered.length - 1)
             .fold<double>(0.0, (sum, exam) => sum + exam.percent);
 
-        trend = ordered.last.percent -
-            earlierSum / (ordered.length - 1);
+        trend = ordered.last.percent - earlierSum / (ordered.length - 1);
       } else {
         uncertainChronologySubjects++;
       }
@@ -821,9 +769,7 @@ LearningReport buildLearningReport({
 
   subjects.sort((a, b) {
     final byAverage = b.average.compareTo(a.average);
-    return byAverage != 0
-        ? byAverage
-        : a.subject.compareTo(b.subject);
+    return byAverage != 0 ? byAverage : a.subject.compareTo(b.subject);
   });
 
   final weeks = <WeekLoad>[];
@@ -839,9 +785,7 @@ LearningReport buildLearningReport({
       final minutes = _learningMinutes(task['minutes']);
       final due = parseDay(task['dueDate']);
 
-      if (due != null &&
-          !due.isBefore(weekStart) &&
-          due.isBefore(weekEnd)) {
+      if (due != null && !due.isBefore(weekStart) && due.isBefore(weekEnd)) {
         planned += minutes;
       }
 
@@ -874,9 +818,7 @@ LearningReport buildLearningReport({
   for (final task in tasks) {
     final due = parseDay(task['dueDate']);
 
-    if (due == null ||
-        due.isBefore(windowStart) ||
-        !due.isBefore(today)) {
+    if (due == null || due.isBefore(windowStart) || !due.isBefore(today)) {
       continue;
     }
 
@@ -892,15 +834,16 @@ LearningReport buildLearningReport({
     (sum, values) => sum + values.length,
   );
 
-  final invalidTaskDates = tasks.where(
-    (task) => parseDay(task['dueDate']) == null,
-  ).length;
+  final invalidTaskDates = tasks
+      .where((task) => parseDay(task['dueDate']) == null)
+      .length;
 
-  final missingCompletionDates = tasks.where(
-    (task) =>
-        task['done'] == true &&
-        _parseInstant(task['completedAt']) == null,
-  ).length;
+  final missingCompletionDates = tasks
+      .where(
+        (task) =>
+            task['done'] == true && _parseInstant(task['completedAt']) == null,
+      )
+      .length;
 
   final invalidMinutes = tasks.where((task) {
     final number = _finiteNumberOf(task['minutes']);
@@ -1024,28 +967,27 @@ List<String> dailySuggestions({
   final suggestions = <String>[];
   final dailyCap = dailyMinutes.clamp(15, 240).toInt();
 
-  final upcoming = deadlines
-      .map(
-        (item) => (
-          subject: _subjectOf(item['subject']),
-          date: parseDay(item['date']),
-        ),
-      )
-      .where((entry) {
-        final date = entry.date;
+  final upcoming =
+      deadlines
+          .map(
+            (item) => (
+              subject: _subjectOf(item['subject']),
+              date: parseDay(item['date']),
+            ),
+          )
+          .where((entry) {
+            final date = entry.date;
 
-        if (date == null || entry.subject.isEmpty) return false;
+            if (date == null || entry.subject.isEmpty) return false;
 
-        final days = _calendarDaysBetween(today, date);
-        return days >= 0 && days <= 3;
-      })
-      .toList()
-    ..sort((a, b) {
-      final dateOrder = a.date!.compareTo(b.date!);
-      return dateOrder != 0
-          ? dateOrder
-          : a.subject.compareTo(b.subject);
-    });
+            final days = _calendarDaysBetween(today, date);
+            return days >= 0 && days <= 3;
+          })
+          .toList()
+        ..sort((a, b) {
+          final dateOrder = a.date!.compareTo(b.date!);
+          return dateOrder != 0 ? dateOrder : a.subject.compareTo(b.subject);
+        });
 
   if (upcoming.isNotEmpty) {
     final exam = upcoming.first;
@@ -1171,10 +1113,7 @@ class WorkspaceBackup {
   static const maxItemsPerKey = 5000;
   static const maxNestingDepth = 32;
 
-  static const objectKeys = {
-    'edu.profile',
-    'edu.career.draft',
-  };
+  static const objectKeys = {'edu.profile', 'edu.career.draft'};
 
   static const listKeys = {
     'edu.tasks',
@@ -1186,10 +1125,7 @@ class WorkspaceBackup {
     'edu.deadlines',
   };
 
-  static Set<String> get allowedKeys => {
-    ...objectKeys,
-    ...listKeys,
-  };
+  static Set<String> get allowedKeys => {...objectKeys, ...listKeys};
 
   static String encode(Map<String, Object?> data, DateTime now) {
     // Validate before encoding, including cyclic or excessively deep values.
@@ -1227,21 +1163,15 @@ class WorkspaceBackup {
   static Map<String, Object?> decode(String raw) {
     // Cheap bound before allocating an additional UTF-8 byte buffer.
     if (raw.length > maxBytes) {
-      throw const BackupFormatException(
-        'فایل پشتیبان بیش از حد بزرگ است.',
-      );
+      throw const BackupFormatException('فایل پشتیبان بیش از حد بزرگ است.');
     }
 
     if (raw.trim().isEmpty) {
-      throw const BackupFormatException(
-        'متنی برای بازیابی وارد نشده است.',
-      );
+      throw const BackupFormatException('متنی برای بازیابی وارد نشده است.');
     }
 
     if (utf8.encode(raw).length > maxBytes) {
-      throw const BackupFormatException(
-        'فایل پشتیبان بیش از حد بزرگ است.',
-      );
+      throw const BackupFormatException('فایل پشتیبان بیش از حد بزرگ است.');
     }
 
     final Object? root;
@@ -1249,9 +1179,7 @@ class WorkspaceBackup {
     try {
       root = jsonDecode(raw);
     } on FormatException {
-      throw const BackupFormatException(
-        'متن واردشده یک پشتیبان معتبر نیست.',
-      );
+      throw const BackupFormatException('متن واردشده یک پشتیبان معتبر نیست.');
     }
 
     if (root is! Map ||
@@ -1267,10 +1195,7 @@ class WorkspaceBackup {
     final data = root['data'] as Map;
     _validateData(data);
 
-    return {
-      for (final entry in data.entries)
-        entry.key as String: entry.value,
-    };
+    return {for (final entry in data.entries) entry.key as String: entry.value};
   }
 
   static void _validateData(Map<Object?, Object?> data) {
@@ -1286,9 +1211,7 @@ class WorkspaceBackup {
 
       if (objectKeys.contains(key)) {
         if (value != null && value is! Map) {
-          throw BackupFormatException(
-            'بخش «$key» در پشتیبان معتبر نیست.',
-          );
+          throw BackupFormatException('بخش «$key» در پشتیبان معتبر نیست.');
         }
 
         if (value is Map) {
@@ -1300,24 +1223,18 @@ class WorkspaceBackup {
       }
 
       if (value is! List) {
-        throw BackupFormatException(
-          'بخش «$key» در پشتیبان معتبر نیست.',
-        );
+        throw BackupFormatException('بخش «$key» در پشتیبان معتبر نیست.');
       }
 
       if (value.length > maxItemsPerKey) {
-        throw BackupFormatException(
-          'تعداد موارد «$key» بیش از حد مجاز است.',
-        );
+        throw BackupFormatException('تعداد موارد «$key» بیش از حد مجاز است.');
       }
 
       final seenIds = <String>{};
 
       for (final item in value) {
         if (item is! Map) {
-          throw BackupFormatException(
-            'بخش «$key» در پشتیبان معتبر نیست.',
-          );
+          throw BackupFormatException('بخش «$key» در پشتیبان معتبر نیست.');
         }
 
         _checkItem(item);
@@ -1327,9 +1244,7 @@ class WorkspaceBackup {
 
         // Legacy records may omit id. Existing ids must remain unique.
         if (id is String && !seenIds.add(id)) {
-          throw BackupFormatException(
-            'بخش «$key» دارای شناسه تکراری است.',
-          );
+          throw BackupFormatException('بخش «$key» دارای شناسه تکراری است.');
         }
 
         _checkKnownFields(key, item);
@@ -1340,10 +1255,7 @@ class WorkspaceBackup {
   static void _checkItem(Map<Object?, Object?> item) {
     final id = item['id'];
 
-    if (id != null &&
-        (id is! String ||
-            id.trim().isEmpty ||
-            id.length > 160)) {
+    if (id != null && (id is! String || id.trim().isEmpty || id.length > 160)) {
       throw const BackupFormatException(
         'یکی از موارد پشتیبان شناسه معتبر ندارد.',
       );
@@ -1354,10 +1266,7 @@ class WorkspaceBackup {
   ///
   /// Missing legacy fields remain allowed. Present fields must have compatible
   /// types, while incomplete scores/dates are surfaced by learning analytics.
-  static void _checkKnownFields(
-    String key,
-    Map<Object?, Object?> item,
-  ) {
+  static void _checkKnownFields(String key, Map<Object?, Object?> item) {
     void checkText(String field) {
       final value = item[field];
 

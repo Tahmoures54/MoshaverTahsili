@@ -7,11 +7,7 @@ import 'education_store.dart';
 import 'ui.dart';
 
 class CreditShopPage extends StatefulWidget {
-  const CreditShopPage({
-    super.key,
-    required this.store,
-    this.billing,
-  });
+  const CreditShopPage({super.key, required this.store, this.billing});
 
   final EducationStore store;
 
@@ -51,9 +47,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
   }
 
   bool get _canUseBilling {
-    return _billing.isConfigured &&
-        !_isBusy &&
-        !_hasWalletError;
+    return _billing.isConfigured && !_isBusy && !_hasWalletError;
   }
 
   @override
@@ -66,8 +60,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
   void _attachBilling() {
     final injected = widget.billing;
 
-    if (injected != null &&
-        !identical(injected.store, widget.store)) {
+    if (injected != null && !identical(injected.store, widget.store)) {
       throw ArgumentError(
         'CreditShopPage and its billing service must use '
         'the same EducationStore.',
@@ -78,30 +71,26 @@ class _CreditShopPageState extends State<CreditShopPage> {
     _billing = injected ?? BazaarBillingService(widget.store);
 
     _observedBillingBusy = _billing.isBusy;
-    _observedRecoveryRequired =
-        _billing.requiresPurchaseRecovery;
+    _observedRecoveryRequired = _billing.requiresPurchaseRecovery;
 
     // BazaarBillingService currently exposes getters, not a Listenable.
     // Only rebuild when its observable state changes.
-    _billingMonitor = Timer.periodic(
-      const Duration(seconds: 1),
-      (_) {
-        if (!mounted) return;
+    _billingMonitor = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
 
-        final busy = _billing.isBusy;
-        final recovery = _billing.requiresPurchaseRecovery;
+      final busy = _billing.isBusy;
+      final recovery = _billing.requiresPurchaseRecovery;
 
-        if (busy == _observedBillingBusy &&
-            recovery == _observedRecoveryRequired) {
-          return;
-        }
+      if (busy == _observedBillingBusy &&
+          recovery == _observedRecoveryRequired) {
+        return;
+      }
 
-        setState(() {
-          _observedBillingBusy = busy;
-          _observedRecoveryRequired = recovery;
-        });
-      },
-    );
+      setState(() {
+        _observedBillingBusy = busy;
+        _observedRecoveryRequired = recovery;
+      });
+    });
 
     if (_billing.isConfigured) {
       unawaited(_loadProducts());
@@ -156,9 +145,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
 
     final message = friendlyError(value).trim();
 
-    return message.isEmpty
-        ? 'عملیات کامل نشد. دوباره تلاش کن.'
-        : message;
+    return message.isEmpty ? 'عملیات کامل نشد. دوباره تلاش کن.' : message;
   }
 
   void _finishOperation(int generation) {
@@ -167,8 +154,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
     setState(() {
       _operation = null;
       _observedBillingBusy = _billing.isBusy;
-      _observedRecoveryRequired =
-          _billing.requiresPurchaseRecovery;
+      _observedRecoveryRequired = _billing.requiresPurchaseRecovery;
     });
   }
 
@@ -196,13 +182,11 @@ class _CreditShopPageState extends State<CreditShopPage> {
       if (!_isCurrent(generation)) return;
 
       setState(() {
-        _prices = {
-          for (final item in products)
-            item.product.id: item.price,
-        };
+        _prices = {for (final item in products) item.product.id: item.price};
 
         if (_prices.isEmpty) {
-          _error = 'در حال حاضر بسته‌ای برای خرید دریافت نشد. '
+          _error =
+              'در حال حاضر بسته‌ای برای خرید دریافت نشد. '
               'کمی بعد دوباره قیمت‌ها را دریافت کن.';
         }
       });
@@ -231,10 +215,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
 
     final service = _billing;
 
-    await _run(
-      id,
-      () => service.buy(id),
-    );
+    await _run(id, () => service.buy(id));
   }
 
   Future<void> _restore() async {
@@ -242,10 +223,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
 
     final service = _billing;
 
-    await _run(
-      'restore',
-      service.restorePurchases,
-    );
+    await _run('restore', service.restorePurchases);
   }
 
   Future<void> _run(
@@ -309,24 +287,13 @@ class _CreditShopPageState extends State<CreditShopPage> {
     );
   }
 
-  Widget _buttonContent(
-    String label, {
-    required bool loading,
-  }) {
+  Widget _buttonContent(String label, {required bool loading}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        if (loading) ...[
-          _spinner(),
-          const SizedBox(width: 8),
-        ],
-        Flexible(
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-          ),
-        ),
+        if (loading) ...[_spinner(), const SizedBox(width: 8)],
+        Flexible(child: Text(label, textAlign: TextAlign.center)),
       ],
     );
   }
@@ -337,8 +304,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
       listenable: widget.store,
       builder: (context, _) {
         final busy = _isBusy;
-        final recoveryRequired =
-            _billing.requiresPurchaseRecovery;
+        final recoveryRequired = _billing.requiresPurchaseRecovery;
 
         return Directionality(
           textDirection: TextDirection.rtl,
@@ -352,17 +318,13 @@ class _CreditShopPageState extends State<CreditShopPage> {
               body: SafeArea(
                 top: false,
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(
-                    16,
-                    12,
-                    16,
-                    28,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
                   children: [
                     CreditSummary(store: widget.store),
 
                     const NoticeCard(
-                      text: 'پرهای سیمرغ برای دریافت راهنمایی '
+                      text:
+                          'پرهای سیمرغ برای دریافت راهنمایی '
                           'مصرف می‌شوند. شرایط هدیه آغازین، '
                           'مصرف و بازگشت پرها به قواعد '
                           'سرویس بستگی دارد. '
@@ -408,7 +370,8 @@ class _CreditShopPageState extends State<CreditShopPage> {
                     if (recoveryRequired) ...[
                       const SizedBox(height: 8),
                       const NoticeCard(
-                        text: 'وضعیت خرید قبلی هنوز کامل '
+                        text:
+                            'وضعیت خرید قبلی هنوز کامل '
                             'بررسی نشده است. پس از پایان '
                             'عملیات بازار، ابتدا بازیابی '
                             'خریدها را اجرا کن. تا آن زمان '
@@ -418,11 +381,11 @@ class _CreditShopPageState extends State<CreditShopPage> {
                       ),
                     ],
 
-                    if (_billing.isBusy &&
-                        _operation == null) ...[
+                    if (_billing.isBusy && _operation == null) ...[
                       const SizedBox(height: 8),
                       const NoticeCard(
-                        text: 'عملیات قبلی بازار هنوز '
+                        text:
+                            'عملیات قبلی بازار هنوز '
                             'پایان نیافته است. پایان زمان '
                             'انتظار برنامه به معنی لغو '
                             'پرداخت نیست. فعلاً پرداخت '
@@ -450,8 +413,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
                     if (_billing.isConfigured) ...[
                       const SizedBox(height: 8),
                       OutlinedButton.icon(
-                        onPressed:
-                            _canUseBilling ? _loadProducts : null,
+                        onPressed: _canUseBilling ? _loadProducts : null,
                         icon: _operation == 'prices'
                             ? _spinner()
                             : const Icon(Icons.refresh),
@@ -488,9 +450,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
                       'فهرست نباشند و این عملیات تضمین '
                       'بازیابی اعتبار پس از حذف برنامه نیست.',
                       style: TextStyle(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurfaceVariant,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         height: 1.7,
                       ),
                     ),
@@ -522,12 +482,10 @@ class _CreditShopPageState extends State<CreditShopPage> {
     final price = _prices[product.id];
     final isBuying = _operation == product.id;
 
-    final canBuy = _canUseBilling &&
-        !_billing.requiresPurchaseRecovery &&
-        price != null;
+    final canBuy =
+        _canUseBilling && !_billing.requiresPurchaseRecovery && price != null;
 
-    final mutedColor =
-        Theme.of(context).colorScheme.onSurfaceVariant;
+    final mutedColor = Theme.of(context).colorScheme.onSurfaceVariant;
 
     return Card(
       child: Padding(
@@ -552,9 +510,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
                 const SizedBox(width: 8),
                 Text(
                   '${faNumber(product.credits)} پر',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -565,23 +521,16 @@ class _CreditShopPageState extends State<CreditShopPage> {
               price == null
                   ? 'قیمت این بسته هنوز از بازار دریافت نشده است.'
                   : 'قیمت بازار: $price\n'
-                      'مبلغ نهایی را پیش از تأیید در بازار بررسی کن.',
-              style: TextStyle(
-                color: mutedColor,
-                height: 1.6,
-              ),
+                        'مبلغ نهایی را پیش از تأیید در بازار بررسی کن.',
+              style: TextStyle(color: mutedColor, height: 1.6),
             ),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: canBuy
-                    ? () => unawaited(_buy(product.id))
-                    : null,
+                onPressed: canBuy ? () => unawaited(_buy(product.id)) : null,
                 child: _buttonContent(
-                  isBuying
-                      ? 'در حال بررسی خرید…'
-                      : 'خرید از بازار',
+                  isBuying ? 'در حال بررسی خرید…' : 'خرید از بازار',
                   loading: isBuying,
                 ),
               ),
@@ -601,7 +550,8 @@ class _CreditShopPageState extends State<CreditShopPage> {
     if (history.isEmpty) {
       return const EmptyState(
         title: 'هنوز تراکنشی ثبت نشده',
-        subtitle: 'دریافت، مصرف و بازگشت پرهای سیمرغ '
+        subtitle:
+            'دریافت، مصرف و بازگشت پرهای سیمرغ '
             'اینجا نمایش داده می‌شوند.',
         icon: Icons.receipt_long_outlined,
       );
@@ -609,8 +559,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
 
     return Column(
       children: [
-        for (final item in history)
-          _buildHistoryItem(item),
+        for (final item in history) _buildHistoryItem(item),
         Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Text(
@@ -620,9 +569,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
             'حذف یا محدودکردن تاریخچه نمایشی نباید '
             'دفتر توکن‌های خرید را حذف کند.',
             style: TextStyle(
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurfaceVariant,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               height: 1.7,
             ),
           ),
@@ -636,21 +583,16 @@ class _CreditShopPageState extends State<CreditShopPage> {
     final status = item['status']?.toString() ?? '';
 
     final rawTitle = item['title']?.toString().trim() ?? '';
-    final title = rawTitle.isEmpty
-        ? 'تراکنش پر سیمرغ'
-        : rawTitle;
+    final title = rawTitle.isEmpty ? 'تراکنش پر سیمرغ' : rawTitle;
 
     final value = item['amount'];
-    final parsed = value is num
-        ? value
-        : num.tryParse(value?.toString() ?? '');
+    final parsed = value is num ? value : num.tryParse(value?.toString() ?? '');
 
     final validAmount = parsed != null && parsed.isFinite;
     final amount = validAmount ? parsed.abs() : 0;
 
     final isAi = kind == 'ai';
-    final isAddition =
-        kind == 'purchase' || kind == 'bonus';
+    final isAddition = kind == 'purchase' || kind == 'bonus';
     final isRefund = kind == 'refund';
 
     final IconData icon;
@@ -661,13 +603,9 @@ class _CreditShopPageState extends State<CreditShopPage> {
       amountText = 'نامشخص';
     } else if (isAi) {
       icon = Icons.auto_awesome;
-      amountText = amount == 0
-          ? 'رایگان'
-          : '−${faNumber(amount)} پر';
+      amountText = amount == 0 ? 'رایگان' : '−${faNumber(amount)} پر';
     } else if (isAddition || isRefund) {
-      icon = isRefund
-          ? Icons.undo
-          : Icons.add_circle_outline;
+      icon = isRefund ? Icons.undo : Icons.add_circle_outline;
 
       amountText = '+${faNumber(amount)} پر';
     } else {
@@ -678,10 +616,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
 
     return Card(
       child: ListTile(
-        leading: Icon(
-          icon,
-          color: Theme.of(context).colorScheme.primary,
-        ),
+        leading: Icon(icon, color: Theme.of(context).colorScheme.primary),
         title: Text(title),
         subtitle: Text(
           '${_date(item['createdAt']?.toString() ?? '')}'
@@ -689,10 +624,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
         ),
         trailing: Text(
           amountText,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -707,10 +639,8 @@ class _CreditShopPageState extends State<CreditShopPage> {
       return value.toString().padLeft(2, '0');
     }
 
-    return 'میلادی: ${faNumber(
-      '${date.year}/${two(date.month)}/${two(date.day)} '
-      '${two(date.hour)}:${two(date.minute)}',
-    )}';
+    return 'میلادی: ${faNumber('${date.year}/${two(date.month)}/${two(date.day)} '
+    '${two(date.hour)}:${two(date.minute)}')}';
   }
 
   String _status(String status) {
@@ -719,8 +649,7 @@ class _CreditShopPageState extends State<CreditShopPage> {
       'refunded' => ' · پر برگشت خورد',
       'failed' => ' · ناموفق',
       'cancelled' => ' · لغوشده',
-      'completed' || 'success' || 'credited' =>
-        ' · ثبت‌شده',
+      'completed' || 'success' || 'credited' => ' · ثبت‌شده',
       '' => '',
       _ => ' · وضعیت نامشخص',
     };

@@ -19,10 +19,7 @@ const _familyReportRelevantKeys = <String>[
 ///
 /// Removes control characters and hidden directional formatting. Truncation
 /// uses Unicode code points to avoid splitting UTF-16 surrogate pairs.
-String _reportText(
-  Object? value, {
-  int limit = _familyReportMaxLabelLength,
-}) {
+String _reportText(Object? value, {int limit = _familyReportMaxLabelLength}) {
   if (value == null || limit <= 0) return '';
 
   final normalized = value
@@ -48,17 +45,9 @@ String _reportText(
 
 /// Calendar-day distance, independent of daylight-saving transitions.
 int _calendarDayDistance(DateTime from, DateTime to) {
-  final fromUtc = DateTime.utc(
-    from.year,
-    from.month,
-    from.day,
-  );
+  final fromUtc = DateTime.utc(from.year, from.month, from.day);
 
-  final toUtc = DateTime.utc(
-    to.year,
-    to.month,
-    to.day,
-  );
+  final toUtc = DateTime.utc(to.year, to.month, to.day);
 
   return toUtc.difference(fromUtc).inDays;
 }
@@ -111,60 +100,52 @@ String buildFamilyProgressReport({
     now: now,
   );
 
-  final grade = _reportText(
-    profile?['grade'],
-    limit: 40,
-  );
+  final grade = _reportText(profile?['grade'], limit: 40);
 
-  final year = _reportText(
-    profile?['year'],
-    limit: 40,
-  );
+  final year = _reportText(profile?['year'], limit: 40);
 
   final educationLabel = [
     grade,
     year,
   ].where((value) => value.isNotEmpty).join(' · ');
 
-  final openTasks = tasks
-      .where((task) => task['done'] != true)
-      .length;
+  final openTasks = tasks.where((task) => task['done'] != true).length;
 
   final completedTasks = tasks.length - openTasks;
 
   final today = startOfDay(now);
 
   // Includes today and the next seven calendar days.
-  final upcoming = deadlines
-      .map((item) {
-        final date = parseDay(item['date']);
-        return (item: item, date: date);
-      })
-      .where((entry) {
-        final date = entry.date;
+  final upcoming =
+      deadlines
+          .map((item) {
+            final date = parseDay(item['date']);
+            return (item: item, date: date);
+          })
+          .where((entry) {
+            final date = entry.date;
 
-        if (date == null) return false;
+            if (date == null) return false;
 
-        final distance = _calendarDayDistance(today, date);
+            final distance = _calendarDayDistance(today, date);
 
-        return distance >= 0 && distance <= 7;
-      })
-      .toList()
-    ..sort((a, b) {
-      final dateOrder = a.date!.compareTo(b.date!);
+            return distance >= 0 && distance <= 7;
+          })
+          .toList()
+        ..sort((a, b) {
+          final dateOrder = a.date!.compareTo(b.date!);
 
-      if (dateOrder != 0) return dateOrder;
+          if (dateOrder != 0) return dateOrder;
 
-      return _reportSubject(a.item['subject']).compareTo(
-        _reportSubject(b.item['subject']),
-      );
-    });
+          return _reportSubject(
+            a.item['subject'],
+          ).compareTo(_reportSubject(b.item['subject']));
+        });
 
   final overdueDeadlines = deadlines.where((item) {
     final date = parseDay(item['date']);
 
-    return date != null &&
-        _calendarDayDistance(today, date) < 0;
+    return date != null && _calendarDayDistance(today, date) < 0;
   }).length;
 
   final invalidDeadlineDates = deadlines.where((item) {
@@ -183,15 +164,15 @@ String buildFamilyProgressReport({
 
   final adherence = report.adherence;
 
-  final hasValidAdherence = adherence != null &&
+  final hasValidAdherence =
+      adherence != null &&
       adherence.isFinite &&
       adherence >= 0 &&
       adherence <= 1;
 
   final dataGaps = <String>[
     for (final gap in report.dataGaps)
-      if (_reportText(gap, limit: 400).isNotEmpty)
-        _reportText(gap, limit: 400),
+      if (_reportText(gap, limit: 400).isNotEmpty) _reportText(gap, limit: 400),
     if (invalidDeadlineDates > 0)
       '${faNumber(invalidDeadlineDates)} امتحان ثبت‌شده '
           'تاریخ قابل خواندن ندارد و در فهرست موعدها '
@@ -204,8 +185,7 @@ String buildFamilyProgressReport({
   final lines = <String>[
     'گزارش پیشرفت تحصیلی سیمرغ',
     'تاریخ تهیه: ${faNumber(isoDay(now))}',
-    if (educationLabel.isNotEmpty)
-      'مقطع و پایه: $educationLabel',
+    if (educationLabel.isNotEmpty) 'مقطع و پایه: $educationLabel',
     '',
     '۱) وضعیت درس‌ها',
     if (report.subjects.isEmpty)
@@ -228,7 +208,7 @@ String buildFamilyProgressReport({
     if (hasValidAdherence)
       'از ${faNumber(report.adherenceSample)} کار دارای موعد '
           'در بازه بررسی ۱۴ روزه، '
-          '${faNumber((adherence! * 100).round())}٪ '
+          '${faNumber((adherence * 100).round())}٪ '
           'تکمیل شده است.',
     'این اعداد از اطلاعات واردشده در برنامه به دست می‌آیند؛ '
         'زمان واقعی مطالعه یا کیفیت یادگیری را '
@@ -283,10 +263,7 @@ String buildFamilyProgressReport({
 }
 
 class _FamilyReportSnapshot {
-  const _FamilyReportSnapshot({
-    required this.errors,
-    this.report,
-  });
+  const _FamilyReportSnapshot({required this.errors, this.report});
 
   final List<String> errors;
   final String? report;
@@ -297,8 +274,7 @@ class _FamilyReportSnapshot {
 List<String> _familyReportReadErrors(EducationStore store) {
   return <String>{
     for (final key in _familyReportRelevantKeys)
-      if (store.dataError(key) != null)
-        store.dataError(key)!,
+      if (store.dataError(key) != null) store.dataError(key)!,
   }.toList(growable: false);
 }
 
@@ -313,9 +289,7 @@ _FamilyReportSnapshot _readFamilyReportSnapshot(
   final existingErrors = _familyReportReadErrors(store);
 
   if (existingErrors.isNotEmpty) {
-    return _FamilyReportSnapshot(
-      errors: existingErrors,
-    );
+    return _FamilyReportSnapshot(errors: existingErrors);
   }
 
   try {
@@ -328,9 +302,7 @@ _FamilyReportSnapshot _readFamilyReportSnapshot(
     final readErrors = _familyReportReadErrors(store);
 
     if (readErrors.isNotEmpty) {
-      return _FamilyReportSnapshot(
-        errors: readErrors,
-      );
+      return _FamilyReportSnapshot(errors: readErrors);
     }
 
     final report = buildFamilyProgressReport(
@@ -342,10 +314,7 @@ _FamilyReportSnapshot _readFamilyReportSnapshot(
       now: now,
     );
 
-    return _FamilyReportSnapshot(
-      errors: const [],
-      report: report,
-    );
+    return _FamilyReportSnapshot(errors: const [], report: report);
   } on Object {
     // Do not expose exception details or underlying student data in the UI.
     final readErrors = _familyReportReadErrors(store);
@@ -362,10 +331,7 @@ _FamilyReportSnapshot _readFamilyReportSnapshot(
 }
 
 class FamilyProgressReportPage extends StatefulWidget {
-  const FamilyProgressReportPage({
-    super.key,
-    required this.store,
-  });
+  const FamilyProgressReportPage({super.key, required this.store});
 
   final EducationStore store;
 
@@ -374,17 +340,14 @@ class FamilyProgressReportPage extends StatefulWidget {
       _FamilyProgressReportPageState();
 }
 
-class _FamilyProgressReportPageState
-    extends State<FamilyProgressReportPage> {
+class _FamilyProgressReportPageState extends State<FamilyProgressReportPage> {
   bool _copying = false;
 
   Future<void> _copyReport(
     _FamilyReportSnapshot displayedSnapshot,
     DateTime reportTime,
   ) async {
-    if (_copying ||
-        !displayedSnapshot.canCopy ||
-        !mounted) {
+    if (_copying || !displayedSnapshot.canCopy || !mounted) {
       return;
     }
 
@@ -424,11 +387,7 @@ class _FamilyProgressReportPageState
         return;
       }
 
-      await Clipboard.setData(
-        ClipboardData(
-          text: displayedSnapshot.report!,
-        ),
-      );
+      await Clipboard.setData(ClipboardData(text: displayedSnapshot.report!));
 
       if (mounted) {
         showMessage(
@@ -439,17 +398,11 @@ class _FamilyProgressReportPageState
       }
     } on PlatformException {
       if (mounted) {
-        showMessage(
-          context,
-          'کپی گزارش انجام نشد. دوباره تلاش کن.',
-        );
+        showMessage(context, 'کپی گزارش انجام نشد. دوباره تلاش کن.');
       }
     } on Object {
       if (mounted) {
-        showMessage(
-          context,
-          'کپی گزارش انجام نشد. دوباره تلاش کن.',
-        );
+        showMessage(context, 'کپی گزارش انجام نشد. دوباره تلاش کن.');
       }
     } finally {
       if (mounted) {
@@ -467,17 +420,10 @@ class _FamilyProgressReportPageState
       builder: (context, _) {
         final reportTime = DateTime.now();
 
-        final snapshot = _readFamilyReportSnapshot(
-          widget.store,
-          reportTime,
-        );
+        final snapshot = _readFamilyReportSnapshot(widget.store, reportTime);
 
         return Scaffold(
-          appBar: AppBar(
-            title: const Text(
-              'گزارش قابل اشتراک با خانواده',
-            ),
-          ),
+          appBar: AppBar(title: const Text('گزارش قابل اشتراک با خانواده')),
           body: SafeArea(
             child: Directionality(
               textDirection: TextDirection.rtl,
@@ -506,14 +452,10 @@ class _FamilyProgressReportPageState
                     ),
                     for (final error in snapshot.errors)
                       Padding(
-                        padding: const EdgeInsets.only(
-                          top: 8,
-                        ),
+                        padding: const EdgeInsets.only(top: 8),
                         child: Text(
                           error,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall,
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ),
                     const SizedBox(height: 12),
@@ -523,12 +465,8 @@ class _FamilyProgressReportPageState
                           : () {
                               setState(() {});
                             },
-                      icon: const Icon(
-                        Icons.refresh_outlined,
-                      ),
-                      label: const Text(
-                        'بررسی دوباره اطلاعات',
-                      ),
+                      icon: const Icon(Icons.refresh_outlined),
+                      label: const Text('بررسی دوباره اطلاعات'),
                     ),
                   ] else if (snapshot.report != null) ...[
                     Card(
@@ -537,9 +475,7 @@ class _FamilyProgressReportPageState
                         child: SelectableText(
                           snapshot.report!,
                           textDirection: TextDirection.rtl,
-                          style: const TextStyle(
-                            height: 1.9,
-                          ),
+                          style: const TextStyle(height: 1.9),
                         ),
                       ),
                     ),
@@ -547,22 +483,15 @@ class _FamilyProgressReportPageState
                   ],
                   FilledButton.icon(
                     onPressed: snapshot.canCopy && !_copying
-                        ? () => _copyReport(
-                              snapshot,
-                              reportTime,
-                            )
+                        ? () => _copyReport(snapshot, reportTime)
                         : null,
                     icon: _copying
                         ? const SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                            ),
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(
-                            Icons.copy_outlined,
-                          ),
+                        : const Icon(Icons.copy_outlined),
                     label: Text(
                       _copying
                           ? 'در حال کپی گزارش…'

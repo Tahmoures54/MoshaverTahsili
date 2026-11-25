@@ -54,10 +54,7 @@ class _BackupInputFormatter extends TextInputFormatter {
 /// - Import should be atomic or support reliable rollback.
 /// - Native openBackup must enforce file-size limits before loading the file.
 class BackupPage extends StatefulWidget {
-  const BackupPage({
-    super.key,
-    required this.store,
-  });
+  const BackupPage({super.key, required this.store});
 
   final EducationStore store;
 
@@ -66,8 +63,9 @@ class BackupPage extends StatefulWidget {
 }
 
 class _BackupPageState extends State<BackupPage> {
-  static const MethodChannel _backupChannel =
-      MethodChannel('ir.moshaver.tahsili/backup');
+  static const MethodChannel _backupChannel = MethodChannel(
+    'ir.moshaver.tahsili/backup',
+  );
 
   static const int _maxBackupBytes = 5 * 1024 * 1024;
 
@@ -135,10 +133,7 @@ class _BackupPageState extends State<BackupPage> {
     });
   }
 
-  void _handleError(
-    Object error, {
-    required String fallback,
-  }) {
+  void _handleError(Object error, {required String fallback}) {
     if (error is BackupFormatException) {
       _setError(error.toString());
       return;
@@ -178,9 +173,7 @@ class _BackupPageState extends State<BackupPage> {
     }
 
     if (raw.trim().isEmpty) {
-      throw const BackupFormatException(
-        'محتوای پشتیبان خالی است.',
-      );
+      throw const BackupFormatException('محتوای پشتیبان خالی است.');
     }
 
     final byteLength = utf8.encode(raw).length;
@@ -309,9 +302,7 @@ class _BackupPageState extends State<BackupPage> {
     }
 
     try {
-      final raw = await _backupChannel.invokeMethod<String>(
-        'openBackup',
-      );
+      final raw = await _backupChannel.invokeMethod<String>('openBackup');
 
       if (!mounted || raw == null) return;
 
@@ -324,10 +315,7 @@ class _BackupPageState extends State<BackupPage> {
         'برای جایگزینی اطلاعات، دکمه بازیابی را بزن.',
       );
     } on Object catch (error) {
-      _handleError(
-        error,
-        fallback: 'خواندن فایل پشتیبان انجام نشد.',
-      );
+      _handleError(error, fallback: 'خواندن فایل پشتیبان انجام نشد.');
     } finally {
       _endOperation();
     }
@@ -358,14 +346,12 @@ class _BackupPageState extends State<BackupPage> {
       final minute = now.minute.toString().padLeft(2, '0');
       final second = now.second.toString().padLeft(2, '0');
 
-      final saved = await _backupChannel.invokeMethod<bool>(
-        'saveBackup',
-        <String, Object>{
-          'content': raw,
-          'fileName':
-              'simorgh-backup-$year-$month-$day-$hour$minute$second.json',
-        },
-      );
+      final saved = await _backupChannel
+          .invokeMethod<bool>('saveBackup', <String, Object>{
+            'content': raw,
+            'fileName':
+                'simorgh-backup-$year-$month-$day-$hour$minute$second.json',
+          });
 
       if (!mounted) return;
 
@@ -375,10 +361,7 @@ class _BackupPageState extends State<BackupPage> {
         _showMessage('ذخیره فایل انجام نشد یا لغو شد.');
       }
     } on Object catch (error) {
-      _handleError(
-        error,
-        fallback: 'ذخیره فایل پشتیبان انجام نشد.',
-      );
+      _handleError(error, fallback: 'ذخیره فایل پشتیبان انجام نشد.');
     } finally {
       _endOperation();
     }
@@ -404,19 +387,14 @@ class _BackupPageState extends State<BackupPage> {
 
       if (!mounted) return;
 
-      await Clipboard.setData(
-        ClipboardData(text: raw),
-      );
+      await Clipboard.setData(ClipboardData(text: raw));
 
       _showMessage(
         'متن پشتیبان کپی شد. پس از انتقال به محل امن، '
         'آن را در حافظه موقت باقی نگذار.',
       );
     } on Object catch (error) {
-      _handleError(
-        error,
-        fallback: 'کپی متن پشتیبان انجام نشد.',
-      );
+      _handleError(error, fallback: 'کپی متن پشتیبان انجام نشد.');
     } finally {
       _endOperation();
     }
@@ -432,9 +410,7 @@ class _BackupPageState extends State<BackupPage> {
     }
 
     try {
-      final data = await Clipboard.getData(
-        Clipboard.kTextPlain,
-      );
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
 
       if (!mounted) return;
 
@@ -455,10 +431,7 @@ class _BackupPageState extends State<BackupPage> {
         'هنوز هیچ اطلاعاتی بازیابی نشده است.',
       );
     } on Object catch (error) {
-      _handleError(
-        error,
-        fallback: 'خواندن متن پشتیبان انجام نشد.',
-      );
+      _handleError(error, fallback: 'خواندن متن پشتیبان انجام نشد.');
     } finally {
       _endOperation();
     }
@@ -503,10 +476,7 @@ class _BackupPageState extends State<BackupPage> {
         '${faNumber(sections)} بخش بازیابی شد.',
       );
     } on Object catch (error) {
-      _handleError(
-        error,
-        fallback: 'بازیابی پشتیبان انجام نشد.',
-      );
+      _handleError(error, fallback: 'بازیابی پشتیبان انجام نشد.');
     } finally {
       _endOperation();
     }
@@ -539,27 +509,16 @@ class _BackupPageState extends State<BackupPage> {
         children: [
           Icon(icon),
           const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-            ),
-          ),
+          Flexible(child: Text(label, textAlign: TextAlign.center)),
         ],
       ),
     );
 
     if (filled) {
-      return FilledButton(
-        onPressed: _busy ? null : onPressed,
-        child: content,
-      );
+      return FilledButton(onPressed: _busy ? null : onPressed, child: content);
     }
 
-    return OutlinedButton(
-      onPressed: _busy ? null : onPressed,
-      child: content,
-    );
+    return OutlinedButton(onPressed: _busy ? null : onPressed, child: content);
   }
 
   Widget _buildEditor() {
@@ -577,9 +536,7 @@ class _BackupPageState extends State<BackupPage> {
       enableSuggestions: false,
       smartDashesType: SmartDashesType.disabled,
       smartQuotesType: SmartQuotesType.disabled,
-      inputFormatters: const [
-        _BackupInputFormatter(_maxBackupBytes),
-      ],
+      inputFormatters: const [_BackupInputFormatter(_maxBackupBytes)],
       decoration: const InputDecoration(
         labelText: 'متن پشتیبان',
         hintText: '{"version": ...}',
@@ -619,11 +576,7 @@ class _BackupPageState extends State<BackupPage> {
             if (constraints.maxWidth < 360) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  actions[0],
-                  const SizedBox(height: 8),
-                  actions[1],
-                ],
+                children: [actions[0], const SizedBox(height: 8), actions[1]],
               );
             }
 
@@ -644,10 +597,7 @@ class _BackupPageState extends State<BackupPage> {
     return Positioned.fill(
       child: AbsorbPointer(
         child: ColoredBox(
-          color: Theme.of(context)
-              .colorScheme
-              .scrim
-              .withOpacity(0.18),
+          color: Theme.of(context).colorScheme.scrim.withOpacity(0.18),
           child: Center(
             child: Semantics(
               liveRegion: true,
@@ -703,17 +653,13 @@ class _BackupPageState extends State<BackupPage> {
                 AbsorbPointer(
                   absorbing: _busy,
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(
-                      16,
-                      16,
-                      16,
-                      28,
-                    ),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.onDrag,
                     children: [
                       const NoticeCard(
-                        text: 'پشتیبان برای انتقال و نگهداری '
+                        text:
+                            'پشتیبان برای انتقال و نگهداری '
                             'اطلاعات تحصیلی مانند پروفایل، '
                             'برنامه‌ها، امتحان‌ها، فلش‌کارت‌ها، '
                             'گفت‌وگوها، جلسه‌های تدریس، یادآورها '
@@ -726,7 +672,8 @@ class _BackupPageState extends State<BackupPage> {
                       ),
                       const SizedBox(height: 8),
                       const NoticeCard(
-                        text: 'این فایل متن ساده است، '
+                        text:
+                            'این فایل متن ساده است، '
                             'رمزگذاری نشده و ممکن است شامل '
                             'اطلاعات خصوصی باشد. آن را در '
                             'محل امن نگه دار و با افراد '
@@ -741,10 +688,7 @@ class _BackupPageState extends State<BackupPage> {
                         const SizedBox(height: 8),
                         Semantics(
                           liveRegion: true,
-                          child: NoticeCard(
-                            text: _error!,
-                            warning: true,
-                          ),
+                          child: NoticeCard(text: _error!, warning: true),
                         ),
                       ],
                       const SizedBox(height: 16),
@@ -766,9 +710,7 @@ class _BackupPageState extends State<BackupPage> {
                       TextButton.icon(
                         onPressed: _busy ? null : _copyBackup,
                         icon: const Icon(Icons.copy_outlined),
-                        label: const Text(
-                          'کپی متن پشتیبان؛ روش جایگزین',
-                        ),
+                        label: const Text('کپی متن پشتیبان؛ روش جایگزین'),
                       ),
                       const SizedBox(height: 24),
                       const Text(
@@ -801,23 +743,21 @@ class _BackupPageState extends State<BackupPage> {
                         valueListenable: _input,
                         builder: (context, value, _) {
                           return Align(
-                            alignment:
-                                AlignmentDirectional.centerEnd,
+                            alignment: AlignmentDirectional.centerEnd,
                             child: TextButton.icon(
                               onPressed: _busy || value.text.isEmpty
                                   ? null
                                   : _clearInput,
                               icon: const Icon(Icons.clear),
-                              label: const Text(
-                                'پاک‌کردن متن واردشده',
-                              ),
+                              label: const Text('پاک‌کردن متن واردشده'),
                             ),
                           );
                         },
                       ),
                       const SizedBox(height: 12),
                       const NoticeCard(
-                        text: 'بازیابی اطلاعات فعلی را '
+                        text:
+                            'بازیابی اطلاعات فعلی را '
                             'جایگزین می‌کند. ابتدا یک نسخه '
                             'پشتیبان از وضعیت فعلی تهیه کن. '
                             'بررسی معتبر بودن ساختار فایل، '

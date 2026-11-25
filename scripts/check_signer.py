@@ -41,17 +41,32 @@ from pathlib import Path
 
 VERIFY_TIMEOUT_SECONDS = 120
 
-SHA256_PATTERN = re.compile(
-    r"^Signer #(?P<signer>[1-9][0-9]*) "
-    r"certificate SHA-256 digest:[ \t]*"
-    r"(?P<fingerprint>[0-9a-fA-F]{64})[ \t]*$",
-    re.MULTILINE,
+# apksigner may also print a separate "Source Stamp Signer" certificate.
+# Only lines beginning with the APK's numbered "Signer #N" identity count
+# toward APK signer policy; source-stamp certificates are intentionally ignored.
+# apksigner output varies across Android Build Tools versions: some versions
+# put the signer identity and digest on one line, while others print a
+# "Signer #N:" heading followed by separate certificate detail lines.
+# Source Stamp records must never be treated as APK signers.
+SIGNER_HEADER_PATTERN = re.compile(
+    r"^[ \t]*Signer\s*#\s*(?P<signer>[1-9][0-9]*)\s*:?\s*$",
+    re.MULTILINE | re.IGNORECASE,
+)
+SIGNER_DIGEST_PATTERN = re.compile(
+    r"^[ \t]*(?:(?:Signer\s*#\s*(?P<signer>[1-9][0-9]*)[ \t]+)"
+    r"|(?:V[0-9]+(?:\.[0-9]+)*[ \t]+Signer:[ \t]*))?"
+    r"(?:certificate[ \t]+)?SHA[ -]?256"
+    r"(?:[ \t]+digest)?\s*:[ \t]*"
+    r"(?P<fingerprint>[^\r\n]+?)[ \t]*$",
+    re.MULTILINE | re.IGNORECASE,
 )
 
 DN_PATTERN = re.compile(
-    r"^Signer #(?P<signer>[1-9][0-9]*) "
-    r"certificate DN:[ \t]*(?P<dn>[^\r\n]*)$",
-    re.MULTILINE,
+    r"^[ \t]*(?:(?:Signer\s*#\s*(?P<signer>[1-9][0-9]*)[ \t]+)"
+    r"|(?:V[0-9]+(?:\.[0-9]+)*[ \t]+Signer:[ \t]*))"
+    r"[^\r\n]*?\b(?:certificate[ \t]+)?DN\s*:"
+    r"[ \t]*(?P<dn>[^\r\n]*)[ \t]*$",
+    re.MULTILINE | re.IGNORECASE,
 )
 
 DEBUG_CN_PATTERN = re.compile(
@@ -76,16 +91,10 @@ def emit_error(message: str) -> None:
 def normalize_sha256(value: str) -> str:
     """Accept plain hex or 32 colon-separated hexadecimal octets."""
 
-    value = value.strip()
+    value = re.sub(r"[:\s]", "", value.strip())
 
     if re.fullmatch(r"[0-9a-fA-F]{64}", value):
         return value.upper()
-
-    if re.fullmatch(
-        r"[0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){31}",
-        value,
-    ):
-        return value.replace(":", "").upper()
 
     raise ConfigurationError(
         "EXPECTED_RELEASE_CERT_SHA256 must contain a valid "
@@ -223,40 +232,121 @@ def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
         )
 
     try:
-        output = completed.stdout.decode("utf-8", errors="strict")
+        stdout = completed.stdout.decode("utf-8", errors="strict")
+        stderr = completed.stderr.decode("utf-8", errors="strict")
     except UnicodeDecodeError:
         raise VerificationError(
             "apksigner returned unsupported output encoding."
         ) from None
 
-    fingerprints = list(SHA256_PATTERN.finditer(output))
+    # Android SDK builds may write certificate details to either stream.
+    # Parse both while retaining the process exit code as the trust signal.
+    output = f"{stdout}\n{stderr}"
+    output = output.replace("\r\n", "\n").replace("\r", "\n")
+    output = output.replace("\u00a0", " ")
+    # Some wrapped tool environments may add terminal styling to output.
+    output = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", output)
 
-    # Explicit single-signer policy. Supporting multiple current signers
-    # requires a separate allowlist policy.
-    if len(fingerprints) != 1:
+    # Parse only normalized hexadecimal fingerprints. Ignore unrelated
+    # certificate digest lines (for example SHA-1 and MD5).
+    fingerprints: list[tuple[str, str]] = []
+    active_signer: str | None = None
+    for line in output.splitlines():
+        if "source stamp" in line.lower():
+            active_signer = None
+            continue
+
+        header = SIGNER_HEADER_PATTERN.match(line)
+        if header:
+            active_signer = header.group("signer")
+            continue
+
+        digest_match = SIGNER_DIGEST_PATTERN.match(line)
+        if not digest_match:
+            # Ignore Source Stamp certificate details and unrelated digests.
+            continue
+
+        signer_id = digest_match.group("signer") or active_signer
+        if signer_id is None and re.match(
+            r"^[ \t]*V[0-9]+(?:\.[0-9]+)*[ \t]+Signer:",
+            line,
+            re.IGNORECASE,
+        ):
+            # Scheme-labelled output such as "V3.0 Signer: certificate ...".
+            signer_id = "1"
+        if signer_id is None:
+            continue
+
+        try:
+            normalized = normalize_sha256(digest_match.group("fingerprint"))
+        except ConfigurationError:
+            continue
+        fingerprints.append((signer_id, normalized))
+
+    # Repeated identical records are harmless; different signers or
+    # fingerprints require a separate explicit multi-signer policy.
+    unique_fingerprints = set(fingerprints)
+    if len(unique_fingerprints) != 1:
+        # Keep diagnostics useful without dumping complete tool output.
+        sha256_records = [
+            line for line in output.splitlines()
+            if re.search(r"SHA[ -]?256", line, re.IGNORECASE)
+        ]
+        signer_headers = len(list(SIGNER_HEADER_PATTERN.finditer(output)))
+        signer_marked = sum(
+            1 for line in sha256_records
+            if re.search(r"Signer\\s*#\\s*[1-9][0-9]*", line, re.IGNORECASE)
+        )
+        source_stamp_records = sum(
+            1 for line in sha256_records
+            if "source stamp" in line.lower()
+        )
+        digest_hex_lengths = [
+            len(re.sub(r"[^0-9a-fA-F]", "", line.split(":", 1)[-1]))
+            for line in sha256_records
+        ]
+        # Keep the diagnostic useful while redacting every possible digest.
+        sha256_line_shapes = [
+            re.sub(
+                r"(?i)(?:[0-9a-f]{2}:){31}[0-9a-f]{2}|[0-9a-f]{64}",
+                "<fingerprint>",
+                line,
+            )[:140]
+            for line in sha256_records
+        ]
         raise VerificationError(
-            "Expected exactly one signer certificate SHA-256 record."
+            "Expected one unique signer certificate SHA-256 record; "
+            f"found {len(unique_fingerprints)} "
+            f"(SHA-256 lines: {len(sha256_records)}; "
+            f"numbered signer headers: {signer_headers}; "
+            f"signer-marked digest lines: {signer_marked}; "
+            f"source-stamp digest lines: {source_stamp_records}; "
+            f"digest hex lengths: {digest_hex_lengths}; "
+            f"SHA-256 line shapes: {sha256_line_shapes})."
         )
 
-    fingerprint_match = fingerprints[0]
-
-    if fingerprint_match.group("signer") != "1":
+    signer, fingerprint = next(iter(unique_fingerprints))
+    if signer != "1":
         raise VerificationError(
             "Unexpected signer identifier in apksigner output."
         )
 
     distinguished_names = list(DN_PATTERN.finditer(output))
-
-    if (
-        len(distinguished_names) != 1
-        or distinguished_names[0].group("signer") != "1"
-    ):
+    unique_names = {
+        (match.group("signer") or "1", match.group("dn"))
+        for match in distinguished_names
+    }
+    if len(unique_names) != 1:
         raise VerificationError(
-            "Could not identify a single signer certificate DN."
+            "Expected one unique signer certificate DN; "
+            f"found {len(unique_names)}."
         )
 
-    fingerprint = fingerprint_match.group("fingerprint").upper()
-    distinguished_name = distinguished_names[0].group("dn")
+    signer_name, distinguished_name = next(iter(unique_names))
+    if signer_name != "1":
+        raise VerificationError(
+            "Unexpected signer identifier in certificate DN."
+        )
 
     # A DN marker is only a heuristic; pinning is the identity check.
     is_debug = bool(DEBUG_CN_PATTERN.search(distinguished_name))
