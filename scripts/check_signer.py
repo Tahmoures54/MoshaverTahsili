@@ -276,9 +276,17 @@ def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
     # fingerprints require a separate explicit multi-signer policy.
     unique_fingerprints = set(fingerprints)
     if len(unique_fingerprints) != 1:
+        # Keep diagnostics useful without dumping complete tool output.
+        sha256_lines = sum(
+            1 for line in output.splitlines()
+            if re.search(r"SHA[ -]?256", line, re.IGNORECASE)
+        )
+        signer_headers = len(list(SIGNER_HEADER_PATTERN.finditer(output)))
         raise VerificationError(
             "Expected one unique signer certificate SHA-256 record; "
-            f"found {len(unique_fingerprints)}."
+            f"found {len(unique_fingerprints)} "
+            f"(SHA-256 lines: {sha256_lines}; "
+            f"numbered signer headers: {signer_headers})."
         )
 
     signer, fingerprint = next(iter(unique_fingerprints))
