@@ -99,6 +99,31 @@ class CheckSignerTests(unittest.TestCase):
         self.assertFalse(is_debug)
 
 
+    def test_parses_split_signer_header_and_certificate_details(self) -> None:
+        apk_digest = "9a" * 32
+        stamp_digest = "bc" * 32
+        output = (
+            "Verifies\\n"
+            "Signer #1:\\n"
+            "  Signer #1 certificate DN: CN=Release,O=App,C=US\\n"
+            f"  Certificate SHA-256 digest: {apk_digest}\\n"
+            "Source Stamp Signer certificate DN: CN=Stamp,O=App,C=US\\n"
+            f"Source Stamp certificate SHA-256 digest: {stamp_digest}\\n"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            apk = Path(directory) / "candidate.apk"
+            apk.write_bytes(b"test apk")
+            completed = subprocess.CompletedProcess(
+                args=["apksigner", "verify"],
+                returncode=0,
+                stdout=output.encode(),
+                stderr=b"",
+            )
+            with patch.object(check_signer.subprocess, "run", return_value=completed):
+                fingerprint, is_debug = check_signer.verify_apk(apk, "apksigner")
+        self.assertEqual(fingerprint, apk_digest.upper())
+        self.assertFalse(is_debug)
+
     def test_ignores_source_stamp_certificate(self) -> None:
         apk_digest = "56" * 32
         stamp_digest = "78" * 32
