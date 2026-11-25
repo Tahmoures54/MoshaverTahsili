@@ -268,7 +268,7 @@ def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
 
         signer_id = digest_match.group("signer") or active_signer
         if signer_id is None and re.match(
-            r"^[ \\t]*V[0-9]+(?:\\.[0-9]+)*[ \\t]+Signer:",
+            r"^[ \t]*V[0-9]+(?:\.[0-9]+)*[ \t]+Signer:",
             line,
             re.IGNORECASE,
         ):
