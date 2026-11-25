@@ -518,6 +518,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
                     ),
                     const SizedBox(height: 18),
                     TextFormField(
+                      key: const Key('profile_name_field'),
                       controller: _fullName,
                       enabled: !_saving,
                       maxLength: 80,
@@ -645,6 +646,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
                     ],
                     const SizedBox(height: 16),
                     FilledButton.icon(
+                      key: const Key('save_profile_button'),
                       onPressed: _saving ? null : _save,
                       icon: _saving
                           ? const SizedBox(
@@ -859,6 +861,7 @@ class _EntryScreenState extends State<EntryScreen> {
                             ),
                           ),
                           CheckboxListTile(
+                            key: const Key('consent_checkbox'),
                             value: _accepted,
                             contentPadding: EdgeInsets.zero,
                             controlAffinity: ListTileControlAffinity.leading,
@@ -885,6 +888,7 @@ class _EntryScreenState extends State<EntryScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
+                      key: const Key('start_button'),
                       onPressed: _accepted && !_openingProfile ? _start : null,
                       icon: const Icon(Icons.arrow_forward),
                       label: Text(
