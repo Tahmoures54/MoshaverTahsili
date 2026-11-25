@@ -54,8 +54,8 @@ SIGNER_HEADER_PATTERN = re.compile(
 )
 SIGNER_DIGEST_PATTERN = re.compile(
     r"^[ \t]*(?:(?:Signer\s*#\s*(?P<signer>[1-9][0-9]*)[ \t]+)"
-    r"|(?:V[0-9]+(?:\.[0-9]+)*[ \t]+Signer:[ \t]*))?"
-    r"[^\r\n]*?\bcertificate[ \t]+SHA[ -]?256"
+    r"|(?:V[0-9]+(?:\.[0-9]+)*[ \t]+Signer:[ \t]*))"
+    r"(?:certificate[ \t]+)?SHA[ -]?256"
     r"(?:[ \t]+digest)?\s*:[ \t]*"
     r"(?P<fingerprint>[^\r\n]+?)[ \t]*$",
     re.MULTILINE | re.IGNORECASE,
