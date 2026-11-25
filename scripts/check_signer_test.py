@@ -103,12 +103,12 @@ class CheckSignerTests(unittest.TestCase):
         apk_digest = "9a" * 32
         stamp_digest = "bc" * 32
         output = (
-            "Verifies\\n"
-            "Signer #1:\\n"
-            "  Signer #1 certificate DN: CN=Release,O=App,C=US\\n"
-            f"  Certificate SHA-256 digest: {apk_digest}\\n"
-            "Source Stamp Signer certificate DN: CN=Stamp,O=App,C=US\\n"
-            f"Source Stamp certificate SHA-256 digest: {stamp_digest}\\n"
+            "Verifies\n"
+            "Signer #1:\n"
+            "  Signer #1 certificate DN: CN=Release,O=App,C=US\n"
+            f"  Certificate SHA-256 digest: {apk_digest}\n"
+            "Source Stamp Signer certificate DN: CN=Stamp,O=App,C=US\n"
+            f"Source Stamp certificate SHA-256 digest: {stamp_digest}\n"
         )
         with tempfile.TemporaryDirectory() as directory:
             apk = Path(directory) / "candidate.apk"
