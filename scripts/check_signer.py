@@ -45,15 +45,15 @@ VERIFY_TIMEOUT_SECONDS = 120
 # Only lines beginning with the APK's numbered "Signer #N" identity count
 # toward APK signer policy; source-stamp certificates are intentionally ignored.
 SHA256_PATTERN = re.compile(
-    r"^[ \\t]*Signer\\s*#\\s*(?P<signer>[1-9][0-9]*)[ \\t]+"
-    r"[^\\r\\n]*?SHA[ -]?256[^\\r\\n]*?digest\\s*:[ \\t]*"
-    r"(?P<fingerprint>[^\\r\\n]+?)[ \\t]*$",
+    r"^[ \t]*Signer\s*#\s*(?P<signer>[1-9][0-9]*)[ \t]+"
+    r"[^\r\n]*?SHA[ -]?256[^\r\n]*?digest\s*:[ \t]*"
+    r"(?P<fingerprint>[^\r\n]+?)[ \t]*$",
     re.MULTILINE | re.IGNORECASE,
 )
 
 DN_PATTERN = re.compile(
-    r"^[ \\t]*Signer\\s*#\\s*(?P<signer>[1-9][0-9]*)[ \\t]+"
-    r"[^\\r\\n]*?\\bDN\\s*:[ \\t]*(?P<dn>[^\\r\\n]*)[ \\t]*$",
+    r"^[ \t]*Signer\s*#\s*(?P<signer>[1-9][0-9]*)[ \t]+"
+    r"[^\r\n]*?\bDN\s*:[ \t]*(?P<dn>[^\r\n]*)[ \t]*$",
     re.MULTILINE | re.IGNORECASE,
 )
 
