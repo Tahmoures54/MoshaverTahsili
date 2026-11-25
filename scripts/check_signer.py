@@ -294,6 +294,15 @@ def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
             len(re.sub(r"[^0-9a-fA-F]", "", line.split(":", 1)[-1]))
             for line in sha256_records
         ]
+        # Keep the diagnostic useful while redacting every possible digest.
+        sha256_line_shapes = [
+            re.sub(
+                r"(?i)(?:[0-9a-f]{2}:){31}[0-9a-f]{2}|[0-9a-f]{64}",
+                "<fingerprint>",
+                line,
+            )[:140]
+            for line in sha256_records
+        ]
         raise VerificationError(
             "Expected one unique signer certificate SHA-256 record; "
             f"found {len(unique_fingerprints)} "
@@ -301,7 +310,8 @@ def verify_apk(apk: Path, executable: str) -> tuple[str, bool]:
             f"numbered signer headers: {signer_headers}; "
             f"signer-marked digest lines: {signer_marked}; "
             f"source-stamp digest lines: {source_stamp_records}; "
-            f"digest hex lengths: {digest_hex_lengths})."
+            f"digest hex lengths: {digest_hex_lengths}; "
+            f"SHA-256 line shapes: {sha256_line_shapes})."
         )
 
     signer, fingerprint = next(iter(unique_fingerprints))
